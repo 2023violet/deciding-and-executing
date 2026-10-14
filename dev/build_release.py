@@ -6,7 +6,7 @@ from pathlib import Path
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = ROOT.parent / "deciding-and-executing-v4.0.1.zip"
+DEFAULT_OUTPUT = ROOT.parent / "deciding-and-executing-v4.1.0.zip"
 EXCLUDE_DIRS = {"__pycache__", ".git", ".pytest_cache"}
 
 
@@ -32,7 +32,7 @@ def main():
     a = ap.parse_args()
     for name in ("deciding-and-executing", "closing-out"):
         bundle(ROOT / "dist" / (name + ".skill"), ROOT / "skills" / name, name)
-    rootname = "deciding-and-executing-v4.0.1"
+    rootname = "deciding-and-executing-v4.1.0"
     # Destination is intentionally outside project tree to avoid packaging itself.
     output = a.output.resolve()
     if output == ROOT or ROOT in output.parents:

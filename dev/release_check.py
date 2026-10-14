@@ -52,7 +52,7 @@ def validate_outer(archive):
                 for p in pathlib.Path(ROOT).rglob("*") if p.is_file()
                 and "__pycache__" not in p.parts and not p.name.endswith(".pyc")}
     with zipfile.ZipFile(archive) as z, tempfile.TemporaryDirectory(prefix="skill-release-") as td:
-        rootname = "deciding-and-executing-v4.0.1"
+        rootname = "deciding-and-executing-v4.1.0"
         actual = {}
         for obj in z.infolist():
             name = obj.filename
@@ -86,8 +86,8 @@ def validate_outer(archive):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--outer-zip", default=os.path.join(os.path.dirname(ROOT), "deciding-and-executing-v4.0.1.zip"),
-                    help="最终交付 ZIP；必查，默认使用仓库同级 deciding-and-executing-v4.0.1.zip")
+    ap.add_argument("--outer-zip", default=os.path.join(os.path.dirname(ROOT), "deciding-and-executing-v4.1.0.zip"),
+                    help="最终交付 ZIP；必查，默认使用仓库同级 deciding-and-executing-v4.1.0.zip")
     a = ap.parse_args()
     results, ok = [], True
     skills = sorted(x for x in os.listdir(os.path.join(ROOT, "skills"))

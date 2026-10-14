@@ -9,6 +9,8 @@
   de.py check    card|plan
   de.py gate     A|B [--confirm TOKEN]          # 闸门 A=决策卡，B=计划；两步确认
   de.py status
+  de.py preflight                         # 只读：环境/Git/验证命令检查
+  de.py coverage                          # 只读：成功标准与证据对应关系
   de.py step     ID --status STATUS [--evidence 文本 | --artifact 路径] [--hours H] [--note 文本] [--confirm TOKEN]
   de.py verify   ID | --all [--timeout 秒]      # 由脚本执行 verify_cmd 并记录退出码
   de.py fail     ID --note 文本 [--hours H]
@@ -48,7 +50,7 @@ import sys
 
 SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = os.path.join(SKILL_DIR, "assets")
-VERSION = "4.0.1"
+VERSION = "4.1.0"
 MARKER = ".de-workspace"
 WORKSPACE_FILES = {MARKER, "decision-card.md", "plan.json", "events.jsonl", "progress.md", "retro.md",
                    "ARCHIVED", "closeout-audit.json", "closeout-report.md"}
@@ -563,6 +565,102 @@ def run_verify(ctx, step, timeout):
     return ev
 
 
+# ---------------------------------------------------------------- R2：只读预检与验收覆盖
+# 这只是已知危险模式提示，绝不是 shell 安全解析器或沙箱。
+_VERIFY_HAZARDS = (
+    (r"(?i)\b(?:rm|rmdir|del|erase|format|mkfs|shred)\b", "可能删除或破坏文件"),
+    (r"(?i)\bgit\s+(?:push|reset|clean|rebase|branch\s+-D)\b", "可能修改 Git 共享或本地状态"),
+    (r"(?i)\b(?:curl|wget|Invoke-WebRequest)\b", "可能访问外部网络"),
+    (r"(?i)(?:^|[;&|])\s*(?:sudo|powershell|pwsh)\b", "可能获得扩展执行能力"),
+    (r"(?:>>?|\|\s*tee\s+)", "可能写入或组合 Shell 操作"),
+)
+
+
+def verify_command_review(cmd):
+    """返回需要人工审查的风险信号；无命中不代表命令安全。"""
+    return [label for pattern, label in _VERIFY_HAZARDS if re.search(pattern, cmd)]
+
+
+def cmd_preflight(a, ctx):
+    """不会修改工作区。列出环境、Git 状态和即将执行的验证命令。"""
+    code, branch = run(["git", "branch", "--show-current"], ctx.root)
+    branch = branch.decode("utf-8", "replace").strip() if code == 0 else None
+    status_code, raw = run(["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"], ctx.root)
+    paths = [os.fsdecode(item[3:]) for item in raw.split(b"\0") if item] if status_code == 0 else []
+    checks = []
+    warnings = []
+    if not ctx.git:
+        warnings.append("项目未处于 Git 仓库中：不能依靠代码指纹证明历史证据有效")
+    if status_code != 0 and ctx.git:
+        warnings.append("无法读取 Git 状态")
+    if paths:
+        warnings.append("工作区存在改动，执行前应确认它们的归属，不要自动清理")
+    if os.path.isfile(ctx.p(MARKER)):
+        try:
+            plan = load_plan(ctx)
+            for step in plan["steps"]:
+                cmd = str(step.get("verify_cmd") or "").strip()
+                if not cmd:
+                    continue
+                checks.append({"step": step["id"], "command": cmd,
+                               "review_required": True, "hazards": verify_command_review(cmd)})
+        except Refuse as e:
+            warnings.append("无法读取当前计划：" + e.reason)
+    out({"ok": True, "read_only": True, "root": ctx.root, "git": ctx.git,
+         "branch": branch, "dirty_file_count": len(paths), "dirty_paths_preview": paths[:30],
+         "workspace_initialized": os.path.isfile(ctx.p(MARKER)),
+         "verification_commands": checks, "warnings": warnings,
+         "limits": ["未核验依赖安装、设备连接及凭据权限",
+                    "命令模式检测只提供提示；所有 shell 命令都可能产生副作用，须在隔离环境并按授权执行",
+                    "不修改或清理用户工作树"]})
+
+
+def cmd_coverage(a, ctx):
+    """只给证据覆盖候选，不把步骤自报 covers 当成成功标准已验证。"""
+    ctx.require()
+    plan, ci = load_plan(ctx), card_info(ctx)
+    fp = fingerprint(ctx)
+    items = []
+    for line in ci["criteria"]:
+        m = re.match(r"^(\d+)[.、]\s*(.*)$", line)
+        if not m:
+            continue
+        cid = int(m.group(1))
+        linked = []
+        for step in plan["steps"]:
+            if cid not in step.get("covers", []):
+                continue
+            state = step.get("status", "todo")
+            evidence = step.get("evidence", [])
+            failure = stale_verified_step(ctx, step, fp) if state == "done" else None
+            if state != "done":
+                quality = "PENDING"
+            elif failure:
+                quality = "STALE"
+            elif step.get("verify_cmd") and fresh_command_pass(step, fp):
+                quality = "COMMAND_PASS"
+            elif any(isinstance(e, dict) and e.get("kind") == "artifact" for e in evidence):
+                quality = "ARTIFACT_INTACT"
+            else:
+                quality = "UNVERIFIED_NOTE"
+            linked.append({"step": step.get("id"), "state": state,
+                           "evidence_quality": quality, "reason": failure})
+        if not linked:
+            status = "NO_COVERAGE"
+        elif any(e["evidence_quality"] == "STALE" for e in linked):
+            status = "STALE"
+        elif any(e["evidence_quality"] in ("PENDING", "UNVERIFIED_NOTE") for e in linked):
+            status = "NEEDS_VERIFICATION"
+        else:
+            status = "READY_FOR_INDEPENDENT_REVIEW"
+        items.append({"criterion": cid, "text": m.group(2), "status": status, "steps": linked})
+    out({"ok": True, "read_only": True, "fingerprint": fp, "criteria": items,
+         "all_ready_for_review": bool(items) and all(x["status"] == "READY_FOR_INDEPENDENT_REVIEW" for x in items),
+         "limits": ["covers 由 Agent 编写，不证明测试与真实需求存在语义对应",
+                    "命令 PASS 仅证明该命令成功退出；artifact 完整不证明内容属实",
+                    "即便全部 READY_FOR_INDEPENDENT_REVIEW，也不等于用户验收通过"]})
+
+
 # ---------------------------------------------------------------- 命令实现
 def cmd_init(a, ctx):
     if os.path.exists(ctx.p(MARKER)):
@@ -631,7 +729,10 @@ def cmd_gate(a, ctx):
     h = plan_hash(plan)
     preview = {"risk": plan.get("risk"), "first_step": plan.get("first_step"),
                "steps": [{"id": s.get("id"), "title": s.get("title"), "verify_cmd": s.get("verify_cmd"),
-                          "irreversible": s.get("irreversible", False)} for s in plan["steps"]],
+                          "irreversible": s.get("irreversible", False),
+                          "verify_command_review_required": bool(s.get("verify_cmd")),
+                          "verify_command_risk_hints": verify_command_review(str(s.get("verify_cmd") or ""))}
+                         for s in plan["steps"]],
                "说明": "确认计划即同意脚本在验证时执行上面列出的 verify_cmd", "warnings": warnings}
     two_step("gate-B", h, a.confirm, preview)
     plan["gates"]["B"] = {"hash": h, "a_hash": plan["gates"]["A"]["hash"], "at": now(), "confirmed_via": "token"}
@@ -1151,6 +1252,8 @@ def main():
     s.add_argument("which", choices=["A", "B"])
     s.add_argument("--confirm")
     add("status", "当前阶段、闸门、升级与证据状态")
+    add("preflight", "只读环境/Git/命令副作用预检")
+    add("coverage", "只读验收条件与证据覆盖映射")
     s = add("step", "更新步骤状态（受状态机、闸门与证据规则约束）")
     s.add_argument("id")
     s.add_argument("--status", required=True, choices=[x for x in STATUSES if x != "needs_replan"])
@@ -1198,7 +1301,7 @@ def main():
     try:
         ctx = Ctx(a.dir)
         {"init": cmd_init, "check": cmd_check, "gate": cmd_gate, "status": cmd_status, "step": cmd_step,
-         "verify": cmd_verify, "fail": cmd_fail, "replan": cmd_replan, "reopen": cmd_reopen,
+         "verify": cmd_verify, "preflight": cmd_preflight, "coverage": cmd_coverage, "fail": cmd_fail, "replan": cmd_replan, "reopen": cmd_reopen,
          "review": cmd_review, "archive": cmd_archive, "sync": cmd_sync, "purge": cmd_purge,
          "show": cmd_show}[a.cmd](a, ctx)
     except Refuse as r:

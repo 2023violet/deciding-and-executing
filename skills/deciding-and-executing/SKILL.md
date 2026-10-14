@@ -3,7 +3,7 @@ name: deciding-and-executing
 description: 当用户要把一件有返工成本的事从"想清楚"推进到"做出来"时使用：做项目或重要决定、拿不定方向或要评审方案、说"先别急着回答"、方向定了问"接下来怎么做"、要排执行计划、执行中报错卡住或怀疑跑偏、准备交付上线、项目结束要结案，或提到钢人论证、事前验尸、决策卡、止损、复盘、SOP。即使用户没说"计划"或"决策"，只要事情跨多个步骤且做错了代价不小，也应使用。不用于一次性事实问答、十分钟内能改完的小修复、纯闲聊、只要一段文案，也不用于单纯的文档同步与仓库整理。
 license: MIT
 metadata:
-  version: "4.0.1"
+  version: "4.1.0"
   language: zh-CN
   companion: closing-out
 ---
@@ -69,6 +69,8 @@ metadata:
 | `check card` / `check plan` | 只校验，不改状态 |
 | `gate A` / `gate B` [`--confirm`] | 闸门确认 |
 | `status` | 每次开工、每个新会话先运行 |
+| `preflight` | 只读预检：仓库/分支/未提交改动/验证命令潜在副作用 |
+| `coverage` | 只读列出成功标准与步骤证据对应关系（不自动宣称满足） |
 | `step ID --status …` | 状态转换受状态机约束；`done` 的证据规则见下 |
 | `verify ID` / `verify --all` | 脚本执行 `verify_cmd`，记录退出码与代码指纹 |
 | `fail ID --note` | 记录失败；到上限自动变为 `needs_replan` |
@@ -125,6 +127,7 @@ metadata:
 - [references/worked-example.md](references/worked-example.md)：第一次使用时读
 - [references/prompts-standalone.md](references/prompts-standalone.md)：用户要在没装技能的 AI 里用时读
 - [references/evidence.md](references/evidence.md)：用户问"为什么这样设计"时读
+- [references/verification-strategy.md](references/verification-strategy.md)：②规划验证方法或④判断验收充分性时读（按交付类型选择证据）
 - `assets/`：决策卡、计划、进度日志、复盘模板（`init` 自动复制）
 
 
@@ -135,3 +138,9 @@ metadata:
 - `--artifact` 完成的步骤在 review 和完成型 archive 时会重读文件并比对哈希及代码指纹；找不到文件、符号链接改变或内容不同时拒绝。
 - `sync` **不会信任外部预先提交的审计 JSON**：必须安装配套 `closing-out`，本次调用现场执行审计；旧 `--audit-json` 仅作为工作区内固定输出路径，不能作为输入证明。
 - 两步确认 token 不能证明真人授权；删除、生产变更等高风险操作仍需要宿主审批和用户明确同意。
+
+### R2 验证与环境约束
+
+- 执行前运行 `preflight`，报告当前分支、dirty 工作区和 `verify_cmd`；不得自动清理用户改动。
+- 阶段④运行 `coverage`，将编号成功标准逐条与实际证据比对，缺少 GUI/硬件/人工观察时保留 `NOT_VERIFIED`。
+- `verify_cmd` 是 Shell 命令，不是安全验证语言；Gate B 展示命令与已知风险提示，不能自动认定“未命中提示=安全”。高风险操作继续要求宿主授权与隔离环境。

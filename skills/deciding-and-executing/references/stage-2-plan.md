@@ -34,7 +34,7 @@
 
 **4 排序**：先做验证 A1 的最小实验（`tests_assumption: "A1"`），再做确定性高的工作。有先后关系的写 `depends_on`，脚本会阻止提前开始。
 
-**5 验证**：`done_when` 写完成时世界的样子；`verify` 写怎么证明。**能用命令证明的，一定写 `verify_cmd`**（测试、构建、lint、`curl -f` 检查、`test -f 文件`），这是唯一能被脚本复核的证据。不能写命令的（访谈、用户确认、截图），完成时用 `--artifact` 指向证据文件。
+**5 验证**：根据 [verification-strategy.md](verification-strategy.md) 的交付类型选择验证手段。运行命令前先查看 `de.py preflight` 的只读报告。`verify_cmd` 按 Shell 运行，不是沙箱；即便只写 `test`/`pytest` 也可能有副作用。高风险命令需宿主审批和隔离执行，不得因 Gate B token 存在便假定授权安全。`done_when` 写完成时世界的样子；`verify` 写怎么证明。**能用命令证明的，一定写 `verify_cmd`**（测试、构建、lint、`curl -f` 检查、`test -f 文件`），这是可由脚本检查退出状态的一类证据，但不能证明命令完全无副作用或验收充分。不能写命令的（访谈、用户确认、截图），完成时用 `--artifact` 指向证据文件。
 
 **6 不可逆步骤**：删数据、迁移、发布到生产、改权限、对外发送……标 `"irreversible": true`。开始这一步时脚本会要求两步确认；高风险档还要配宿主审批（见 permissions.md）。
 
@@ -58,7 +58,8 @@
 | `irreversible` | 布尔 | 不可逆步骤 | 是 |
 | `estimate_h` | 数字 | 预计小时 | 是 |
 | `status` / `fails` / `spent_h` / `evidence` 等 | — | 由脚本维护，不要手改 | 否 |
-| `if_then` / `early_signals` / `milestones` / `first_step` | — | 计划辅助信息 | 否 |
+| `if_then` / `first_step` | — | 执行预案与第一步（属于批准过的计划） | **是**
+| `early_signals` / `milestones` | — | 辅助说明，不绑定批准 | 否 |
 
 `verify_cmd` 会被脚本执行，所以闸门 B 的 preview 会把每条命令列出来请用户确认；之后任何人改了命令，闸门 B 都会失效。
 
@@ -83,3 +84,12 @@
 - 计划里悄悄混进了决策卡"非目标"里的东西。
 
 完整示例见 [worked-example.md](worked-example.md)。
+
+
+## R2｜验证证据覆盖（只读）
+
+在执行前使用 `de.py preflight` 核对当前分支、用户未提交改动与验证命令；步骤完成后用 `de.py coverage` 将每条编号成功标准与 `covers`、步骤状态和证据质量逐条映射。
+
+- `READY_FOR_INDEPENDENT_REVIEW` 只表示关联步骤的命令已通过/文件未改变；**不意味着该成功标准已真实满足**。
+- 对真实 GUI、硬件、安全和外部 API 应明确验收工具、人工观察以及 `NOT_VERIFIED` 项。
+- 若 `covers` 没有指向真实需求，脚本不能自动识别，这一部分由独立审查者负责。

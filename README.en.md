@@ -1,3 +1,5 @@
+> **v4.1.0 local candidate (not a stable release).** R1 paired real-agent trials are not yet run. R2 adds read-only `preflight` and `coverage`; R3 strengthens regression checks. See [validation report](docs/R1-R2-R3-验收报告.md).
+
 # deciding-and-executing · From decision to delivery to a clean repo
 
 [简体中文](README.md) | **English**
@@ -330,3 +332,8 @@ Released under the [MIT License](LICENSE). The methodology draws on several sour
 - Open-source skill libraries including [anthropics/skills](https://github.com/anthropics/skills), [openai/skills](https://github.com/openai/skills), [obra/superpowers](https://github.com/obra/superpowers) and [KKKKhazix/khazix-skills](https://github.com/KKKKhazix/khazix-skills).
 
 Most of the 4.0.0 changes came from an external engineering review. The full source list is in [the guide](docs/教程-如何制作高质量Skill.md).
+
+
+## R2 validation visibility
+
+Run `de.py preflight` to inspect Git state and planned shell commands, and `de.py coverage` to see criterion-to-evidence mappings. Neither command proves shell commands are safe or that acceptance requirements are satisfied. R1 agent-level comparisons remain NOT_RUN.

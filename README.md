@@ -1,3 +1,5 @@
+> **v4.1.0 本地候选（非稳定发布）**：R1 的真实 Agent 三组对照尚未执行；R2 新增只读 `preflight` 与 `coverage`；R3 增加回归和评测边界说明。完整结论见 [R1-R2-R3 验收报告](docs/R1-R2-R3-验收报告.md)。
+
 > **v4.0.1 本地候选（未正式发布）**：修复 v4.0.0 六项独立复审 P1 问题。安装和迁移前阅读 [验收记录](docs/v4.0.1-独立验收记录.md) 与 [最终愿景](docs/Skill-愿景与演进路线.md)。
 
 # deciding-and-executing · 从决策到执行，再到收拾干净
@@ -9,7 +11,7 @@
 > **closing-out** 负责整个仓库的知识：工作结束后，让 README、docs、规则文件、决策记录重新与代码现状一致。
 > 闸门由脚本把守。脚本只宣称它能验证的东西：能验证的就强制，不能验证的（比如"是不是真人同意的"）就明说，并交给宿主的审批机制。
 
-![version](https://img.shields.io/badge/version-4.0.1-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
+![version](https://img.shields.io/badge/version-4.1.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ---
 
@@ -318,3 +320,14 @@ bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                      
 - 代码指纹包含 Git 已跟踪变更与未跟踪文件（单文件上限 32 MiB、总量上限 128 MiB）的内容，**不包含 Git 忽略文件**。证据可靠性还取决于验证命令是否覆盖正确的需求。
 - `review pass` 及完成型 `archive` 现在会重新验证 artifact 文件的当前哈希、路径和与代码版本的匹配状态。
 - v4.0.1 仍需要 Windows/macOS、Claude Code/Codex 真实宿主审批与 Agent 触发/行为对照评测，见验收记录。
+
+
+## R1→R2→R3 补充：新能力与限制
+
+- `python3 scripts/de.py preflight`：只读检查当前 Git 分支、未提交文件和待执行命令的潜在副作用；它不是沙箱或命令安全解析器。
+- `python3 scripts/de.py coverage`：只读列出每条成功标准相关的步骤及最新证据状态；不证明实际需求已被完整测试。
+- 启动真实评测时遵循 R1 冻结实验合同；无真实日志不得生成性能比较。
+- 当前不能据单元测试宣称 Claude Code / Codex 上触发、审批或长期任务效益通过。
+
+
+[查看 R1→R2→R3 验收报告](docs/R1-R2-R3-验收报告.md) · [面向使用者的解释](docs/R1-R2-R3-用户说明.md)

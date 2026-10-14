@@ -1,3 +1,10 @@
+## deciding-and-executing 4.1.0（R1→R2→R3 本地候选）
+
+- R1: 保留 v4.0.1 三组实验合同和结果边界；只允许真实 Agent 日志进入比较统计。
+- R2: 增加只读 `preflight` 和 `coverage` 命令；闸门 B 展示验证命令的已知风险提示；修复阶段②字段说明不一致。
+- R3: 添加对新命令的对抗/边界回归及评测使用指南，维持简洁主 Skill 和现有 SOP。
+- 限制：尚无真实 Agent 三组实验成绩；新命令不能证明 shell 命令安全，也不能推断验收已充分。
+
 # 更新日志 / Changelog
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。本文件是本仓库**版本、验证结果与测试数量的唯一权威位置**，README 与教程只链接到这里。
