@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "requirements_source": {"kind":"user-supplied-contract", "reference":"REQ-001"},
+  "requirements": [
+    {"id":"R-01", "text":"Entry module parses as Python"},
+    {"id":"R-02", "text":"Security behavior is independently tested against traversal"}
+  ],
+  "criteria": [
+    {"id":"CHK-01", "requirement_id":"R-01", "probe":{"type":"python_syntax", "path":"src/main.py"}},
+    {"id":"CHK-02", "requirement_id":"R-02", "probe":{"type":"manual"}}
+  ]
+}

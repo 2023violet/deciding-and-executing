@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "requirements_source": {
+    "kind": "synthetic-fixture",
+    "reference": "cases/ui/REQUIREMENTS.md"
+  },
+  "requirements": [
+    {
+      "id": "UI-01",
+      "text": "Each form control has a detectable accessible name"
+    },
+    {
+      "id": "UI-02",
+      "text": "Browser interaction and visual appearance independently observed"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "UI-01-CHECK",
+      "requirement_id": "UI-01",
+      "probe": {
+        "type": "html_form_labels",
+        "path": "index.html"
+      }
+    },
+    {
+      "id": "UI-02-CHECK",
+      "requirement_id": "UI-02",
+      "probe": {
+        "type": "manual"
+      }
+    }
+  ]
+}

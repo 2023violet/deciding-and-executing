@@ -1,0 +1,49 @@
+{
+  "study": "independent-v02-stage4-pilot",
+  "state": "INSUFFICIENT_PAIRED_DATA",
+  "paired_cases_scored": 0,
+  "expected_pairs": 3,
+  "trials": [
+    {
+      "trial_id": "S002",
+      "case_id": "code",
+      "arm": "independent",
+      "state": "NOT_RUN"
+    },
+    {
+      "trial_id": "S001",
+      "case_id": "code",
+      "arm": "stage4",
+      "state": "NOT_RUN"
+    },
+    {
+      "trial_id": "S004",
+      "case_id": "ui",
+      "arm": "independent",
+      "state": "NOT_RUN"
+    },
+    {
+      "trial_id": "S006",
+      "case_id": "docs",
+      "arm": "independent",
+      "state": "NOT_RUN"
+    },
+    {
+      "trial_id": "S003",
+      "case_id": "ui",
+      "arm": "stage4",
+      "state": "NOT_RUN"
+    },
+    {
+      "trial_id": "S005",
+      "case_id": "docs",
+      "arm": "stage4",
+      "state": "NOT_RUN"
+    }
+  ],
+  "limits": [
+    "Judge/operator records are not cryptographically authenticated.",
+    "Synthetic fixture oracle is narrow, not a general measure of product quality.",
+    "Scores cannot demonstrate independence without full primary transcripts and blind judging."
+  ]
+}

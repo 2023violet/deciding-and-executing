@@ -1,0 +1,6 @@
+{
+  "mutation": "manual probe NOT_VERIFIED -> PASS",
+  "original_should_be": "INCOMPLETE",
+  "mutant_outcome": "EVIDENCE_CHECKS_PASS",
+  "detected_as_contract_violation": true
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "review_root": "/mnt/data/dae_deep_delivery/independent_verification_v020/cases/ui",
+  "review_outcome": "BLOCKED",
+  "release_approved": false,
+  "requirements_source": {
+    "kind": "synthetic-fixture",
+    "reference": "cases/ui/REQUIREMENTS.md"
+  },
+  "requirement_probe_coverage": {
+    "UI-01": "FAIL",
+    "UI-02": "NOT_VERIFIED"
+  },
+  "findings": [
+    {
+      "id": "UI-01-CHECK",
+      "requirement_id": "UI-01",
+      "requirement": "Each form control has a detectable accessible name",
+      "probe_type": "html_form_labels",
+      "path": "index.html",
+      "status": "FAIL",
+      "detail": "Controls without detectable nonempty name: input#email",
+      "observed_sha256": "4d40703abec5a6b1649a18c70c43a8813f815d0dcee2cb10225293a65bc9f1bb"
+    },
+    {
+      "id": "UI-02-CHECK",
+      "requirement_id": "UI-02",
+      "requirement": "Browser interaction and visual appearance independently observed",
+      "probe_type": "manual",
+      "path": null,
+      "status": "NOT_VERIFIED",
+      "detail": "Requires independent observation; automatic probe cannot satisfy this requirement",
+      "observed_sha256": null
+    }
+  ],
+  "observed_probe_snapshot_sha256": "d8a40b33d4c69de0b03fee3be3463bd2aed1a25e7af1d53495326bfd98aa902f",
+  "limits": [
+    "Probe contract and original requirement source are NOT authenticated.",
+    "Only explicitly listed paths are observed; snapshot does not cover entire repository.",
+    "Static probes are narrow heuristics, NOT proof of function, accessibility or security.",
+    "No project tests, UI/hardware observation, release approval, or human identity verification."
+  ],
+  "cli_exit_code": 1
+}

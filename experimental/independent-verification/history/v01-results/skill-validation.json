@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "skill": "independent-verification",
+  "errors": [],
+  "warnings": [],
+  "info": {
+    "yaml_parser": "PyYAML",
+    "description_chars": 391,
+    "body_lines": 39
+  }
+}

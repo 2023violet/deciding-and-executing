@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "requirements_source": {
+    "kind": "synthetic-fixture",
+    "reference": "cases/docs/REQUIREMENTS.md"
+  },
+  "requirements": [
+    {
+      "id": "DOC-01",
+      "text": "Local Markdown links resolve"
+    },
+    {
+      "id": "DOC-02",
+      "text": "API statements agree with the implementation"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "DOC-01-CHECK",
+      "requirement_id": "DOC-01",
+      "probe": {
+        "type": "markdown_links",
+        "path": "README.md"
+      }
+    },
+    {
+      "id": "DOC-02-CHECK",
+      "requirement_id": "DOC-02",
+      "probe": {
+        "type": "manual"
+      }
+    }
+  ]
+}

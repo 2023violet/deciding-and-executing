@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "requirements_source": {
+    "kind": "synthetic-fixture",
+    "reference": "cases/code/REQUIREMENTS.md"
+  },
+  "requirements": [
+    {
+      "id": "CODE-01",
+      "text": "Python file is syntactically parseable (not behavioral proof)"
+    },
+    {
+      "id": "CODE-02",
+      "text": "Path traversal and symlink escape behavior independently tested"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "CODE-01-CHECK",
+      "requirement_id": "CODE-01",
+      "probe": {
+        "type": "python_syntax",
+        "path": "security.py"
+      }
+    },
+    {
+      "id": "CODE-02-CHECK",
+      "requirement_id": "CODE-02",
+      "probe": {
+        "type": "manual"
+      }
+    }
+  ]
+}

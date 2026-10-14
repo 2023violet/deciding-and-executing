@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "review_root": "/mnt/data/independent_verification_pilot/cases/code",
+  "review_outcome": "INCOMPLETE",
+  "release_approved": false,
+  "findings": [
+    {
+      "id": "CODE-01",
+      "requirement": "Python file is syntactically parseable (not behavioral proof)",
+      "probe_type": "python_syntax",
+      "status": "PASS",
+      "detail": "Python parsed successfully; behavior NOT tested",
+      "observed_sha256": "e5fa4694a79a728d626ee53302b8068be3f868d3bc71f62d9a3cf3dd20d2221c"
+    },
+    {
+      "id": "CODE-02",
+      "requirement": "Path traversal and symlink escape behavior independently tested",
+      "probe_type": "manual",
+      "status": "NOT_VERIFIED",
+      "detail": "Requires independent observation; no automatic approval",
+      "observed_sha256": null
+    }
+  ],
+  "limits": [
+    "Automated probes are narrow heuristics, not proof of product correctness.",
+    "No tests or commands were run; no screenshots or hardware were observed.",
+    "This tool never provides human approval or independent agent identity."
+  ]
+}

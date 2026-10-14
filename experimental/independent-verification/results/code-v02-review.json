@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "review_root": "/mnt/data/dae_deep_delivery/independent_verification_v020/cases/code",
+  "review_outcome": "INCOMPLETE",
+  "release_approved": false,
+  "requirements_source": {
+    "kind": "synthetic-fixture",
+    "reference": "cases/code/REQUIREMENTS.md"
+  },
+  "requirement_probe_coverage": {
+    "CODE-01": "STATIC_PROBES_PASS",
+    "CODE-02": "NOT_VERIFIED"
+  },
+  "findings": [
+    {
+      "id": "CODE-01-CHECK",
+      "requirement_id": "CODE-01",
+      "requirement": "Python file is syntactically parseable (not behavioral proof)",
+      "probe_type": "python_syntax",
+      "path": "security.py",
+      "status": "PASS",
+      "detail": "Python parsed; functional behavior NOT verified",
+      "observed_sha256": "e5fa4694a79a728d626ee53302b8068be3f868d3bc71f62d9a3cf3dd20d2221c"
+    },
+    {
+      "id": "CODE-02-CHECK",
+      "requirement_id": "CODE-02",
+      "requirement": "Path traversal and symlink escape behavior independently tested",
+      "probe_type": "manual",
+      "path": null,
+      "status": "NOT_VERIFIED",
+      "detail": "Requires independent observation; automatic probe cannot satisfy this requirement",
+      "observed_sha256": null
+    }
+  ],
+  "observed_probe_snapshot_sha256": "19ae62383c234f0921e71f2483973d5934ca31010face5676eb238f27168938d",
+  "limits": [
+    "Probe contract and original requirement source are NOT authenticated.",
+    "Only explicitly listed paths are observed; snapshot does not cover entire repository.",
+    "Static probes are narrow heuristics, NOT proof of function, accessibility or security.",
+    "No project tests, UI/hardware observation, release approval, or human identity verification."
+  ],
+  "cli_exit_code": 3
+}

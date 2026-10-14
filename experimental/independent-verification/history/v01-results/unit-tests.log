@@ -1,0 +1,17 @@
+test_case_results (test_review_checks.IndependentChecksTest.test_case_results) ... ok
+test_cli_exit_codes (test_review_checks.IndependentChecksTest.test_cli_exit_codes) ... ok
+test_duplicates_rejected (test_review_checks.IndependentChecksTest.test_duplicates_rejected) ... ok
+test_escape_path_rejected (test_review_checks.IndependentChecksTest.test_escape_path_rejected) ... ok
+test_html_label_detected_and_fixed (test_review_checks.IndependentChecksTest.test_html_label_detected_and_fixed) ... ok
+test_manual_never_passes (test_review_checks.IndependentChecksTest.test_manual_never_passes) ... ok
+test_markdown_link_fixed (test_review_checks.IndependentChecksTest.test_markdown_link_fixed) ... ok
+test_missing_is_fail (test_review_checks.IndependentChecksTest.test_missing_is_fail) ... ok
+test_no_file_writes (test_review_checks.IndependentChecksTest.test_no_file_writes) ... ok
+test_python_syntax_not_behavioral_proof (test_review_checks.IndependentChecksTest.test_python_syntax_not_behavioral_proof) ... ok
+test_sha_mismatch (test_review_checks.IndependentChecksTest.test_sha_mismatch) ... ok
+test_symlink_outside_rejected (test_review_checks.IndependentChecksTest.test_symlink_outside_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.056s
+
+OK

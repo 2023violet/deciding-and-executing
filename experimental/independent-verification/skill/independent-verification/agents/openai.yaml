@@ -1,0 +1,6 @@
+interface:
+  display_name: "Independent Verification"
+  short_description: "Independently check deliverables against original criteria"
+  default_prompt: "Use $independent-verification to independently review the supplied artifact against the original requirements and primary evidence, recording unverified items without claiming automatic release approval."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "review_root": "/mnt/data/dae_deep_delivery/independent_verification_v020/cases/docs",
+  "review_outcome": "BLOCKED",
+  "release_approved": false,
+  "requirements_source": {
+    "kind": "synthetic-fixture",
+    "reference": "cases/docs/REQUIREMENTS.md"
+  },
+  "requirement_probe_coverage": {
+    "DOC-01": "FAIL",
+    "DOC-02": "NOT_VERIFIED"
+  },
+  "findings": [
+    {
+      "id": "DOC-01-CHECK",
+      "requirement_id": "DOC-01",
+      "requirement": "Local Markdown links resolve",
+      "probe_type": "markdown_links",
+      "path": "README.md",
+      "status": "FAIL",
+      "detail": "Missing/outside local links: docs/usage.md",
+      "observed_sha256": "7291daac6db8ba14350e5d61291d7b09c5b494039ef1108672d57a759feeeacc"
+    },
+    {
+      "id": "DOC-02-CHECK",
+      "requirement_id": "DOC-02",
+      "requirement": "API statements agree with the implementation",
+      "probe_type": "manual",
+      "path": null,
+      "status": "NOT_VERIFIED",
+      "detail": "Requires independent observation; automatic probe cannot satisfy this requirement",
+      "observed_sha256": null
+    }
+  ],
+  "observed_probe_snapshot_sha256": "0b0e009bfd3575cfd2c3544f38f57adba12ce0795edcc0ddf09deaa6758a4b72",
+  "limits": [
+    "Probe contract and original requirement source are NOT authenticated.",
+    "Only explicitly listed paths are observed; snapshot does not cover entire repository.",
+    "Static probes are narrow heuristics, NOT proof of function, accessibility or security.",
+    "No project tests, UI/hardware observation, release approval, or human identity verification."
+  ],
+  "cli_exit_code": 1
+}

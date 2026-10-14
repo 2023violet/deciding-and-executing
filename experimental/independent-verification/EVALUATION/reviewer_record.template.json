@@ -1,0 +1,14 @@
+{
+  "trial_id": "S001",
+  "real_agent_executed": false,
+  "transcript_path": null,
+  "found_issue_ids": [],
+  "unexpected_findings_for_manual_review": [],
+  "false_approval_claim": null,
+  "explicit_unverified": [],
+  "elapsed_seconds": null,
+  "human_interventions": null,
+  "model_version": null,
+  "sandbox_environment": null,
+  "notes": "Operator must use primary transcript, not model's self-reported scores."
+}

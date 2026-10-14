@@ -4,3 +4,9 @@ __pycache__/
 # 评测时在仓库里生成的临时工作区
 *-workspace/
 CLAUDE.local.md
+
+# Experimental evaluator secrets (never commit)
+/experimental/independent-verification/EVALUATION/operator_only/
+/experimental/independent-verification/R1_SMOKE_TRIAL_MAP_PRIVATE.json
+# Local generated test outputs
+/experimental/independent-verification/EVALUATION/records/

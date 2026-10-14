@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "review_root": "/mnt/data/independent_verification_pilot/cases/docs",
+  "review_outcome": "BLOCKED",
+  "release_approved": false,
+  "findings": [
+    {
+      "id": "DOC-01",
+      "requirement": "Local Markdown links resolve",
+      "probe_type": "markdown_links",
+      "status": "FAIL",
+      "detail": "Missing/outside local links: docs/usage.md",
+      "observed_sha256": "7291daac6db8ba14350e5d61291d7b09c5b494039ef1108672d57a759feeeacc"
+    },
+    {
+      "id": "DOC-02",
+      "requirement": "API statements agree with the implementation",
+      "probe_type": "manual",
+      "status": "NOT_VERIFIED",
+      "detail": "Requires independent observation; no automatic approval",
+      "observed_sha256": null
+    }
+  ],
+  "limits": [
+    "Automated probes are narrow heuristics, not proof of product correctness.",
+    "No tests or commands were run; no screenshots or hardware were observed.",
+    "This tool never provides human approval or independent agent identity."
+  ]
+}
