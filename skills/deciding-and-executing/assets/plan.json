@@ -1,0 +1,35 @@
+{
+  "schema": 2,
+  "name": "[名称]",
+  "risk": "standard",
+  "milestones": [
+    "[可检查的状态，不是一段工作]"
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "title": "[验证 A1 的最小实验]",
+      "done_when": "[可观察的完成判据]",
+      "verify": "[怎么证明：跑什么、看什么、谁确认]",
+      "verify_cmd": "",
+      "depends_on": [],
+      "covers": [1],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 2,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    }
+  ],
+  "if_then": [
+    {"if": "[最可能的障碍]", "then": "[具体动作]"}
+  ],
+  "early_signals": [
+    "[事前验尸得出的早期信号]"
+  ],
+  "first_step": 1,
+  "gates": {},
+  "last_event": 0
+}

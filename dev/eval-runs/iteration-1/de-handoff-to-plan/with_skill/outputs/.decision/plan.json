@@ -1,0 +1,83 @@
+{
+  "name": "点单小程序付费验证",
+  "card": "decision-card.md",
+  "milestones": [
+    "拿到 1 份预付或意向书（2026-11-30 前）",
+    "1 家店真实试用 2 周",
+    "3 家店付费"
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "title": "访谈 5 家小餐馆店主，问现状、痛点和可接受月费",
+      "done_when": "5 份访谈记录，每份含是否愿付费与报价",
+      "verify": "notes/interviews.md 有 5 条完整记录",
+      "estimate_h": 6,
+      "tests_assumption": "A1",
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 2,
+      "title": "假门测试：一页介绍+收款码，向访谈中有兴趣的店收预付",
+      "done_when": "至少 1 家预付或签意向书",
+      "verify": "收款截图或签字意向书照片",
+      "estimate_h": 4,
+      "tests_assumption": "A1",
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 3,
+      "title": "做静态点单页（菜单展示+加购）并部署到托管平台",
+      "done_when": "店主手机扫码能打开并加购",
+      "verify": "真机扫码录屏",
+      "estimate_h": 8,
+      "tests_assumption": "A2",
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 4,
+      "title": "接入下单通知（后厨收到订单）",
+      "done_when": "顾客下单后 10 秒内后厨端收到",
+      "verify": "连续 10 次下单测试记录",
+      "estimate_h": 8,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 5,
+      "title": "在预付的店试运行 2 周",
+      "done_when": "14 天内每天有真实订单且无阻断故障",
+      "verify": "订单日志 + 店主确认",
+      "estimate_h": 4,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    }
+  ],
+  "if_then": [
+    {
+      "if": "一周内约不到 3 位店主",
+      "then": "去常去的 3 家店午市后当面问，带打印的一页介绍"
+    },
+    {
+      "if": "店主只肯免费试用",
+      "then": "记录最低可接受价格，提出'试用 2 周后按 X 元收费'并请其签字"
+    },
+    {
+      "if": "某周投入不足 6 小时",
+      "then": "顺延当周步骤，不压缩验证步骤"
+    }
+  ],
+  "early_signals": [
+    "连续 3 家店说现有纸质菜单够用",
+    "访谈报价普遍低于 30 元/月"
+  ],
+  "first_step": 1
+}

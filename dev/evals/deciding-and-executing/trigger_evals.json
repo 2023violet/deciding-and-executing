@@ -1,0 +1,98 @@
+[
+  {
+    "query": "我在纠结要不要把团队现在用的 jenkins 全部迁到 github actions，大概 40 个 pipeline，迁一半发现不行就很尴尬，帮我想想",
+    "should_trigger": true
+  },
+  {
+    "query": "老板让我下个月牵头做客服系统改版，我现在脑子很乱不知道从哪开始，你先别给方案，帮我理一理",
+    "should_trigger": true
+  },
+  {
+    "query": "方向已经定了，用 supabase 做后端、两周内上线内测版，帮我拆一下每天干什么",
+    "should_trigger": true
+  },
+  {
+    "query": "按昨天定的计划在做第4步数据迁移，跑到一半报 duplicate key，我改了两次索引还是不行，是不是这个方案本身有问题",
+    "should_trigger": true
+  },
+  {
+    "query": "感觉做着做着偏了，本来只想做个记账小工具，现在在写多币种汇率同步……",
+    "should_trigger": true
+  },
+  {
+    "query": "项目做完了，下周要给投资人演示，帮我从头到尾检查一遍还有什么坑",
+    "should_trigger": true
+  },
+  {
+    "query": "上个季度那个增长实验失败了，想认真复盘一下到底是决策错了还是运气不好",
+    "should_trigger": true
+  },
+  {
+    "query": "用钢人论证帮我评估一下：要不要把公众号停掉专心做小红书",
+    "should_trigger": true
+  },
+  {
+    "query": "我想给自己的副业定个止损线，什么情况下该放弃，帮我想清楚",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我把开一家咖啡馆这件事写成一个从调研到开业的 SOP，每步怎么判断完成了",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我写一段给客户的道歉邮件，项目延期了两周",
+    "should_trigger": false
+  },
+  {
+    "query": "钢人论证和稻草人谬误有什么区别？举个例子",
+    "should_trigger": false
+  },
+  {
+    "query": "这段 python 报 KeyError: 'id'，代码贴给你了，帮我看看哪一行的问题",
+    "should_trigger": false
+  },
+  {
+    "query": "把这份会议纪要整理成 5 条要点",
+    "should_trigger": false
+  },
+  {
+    "query": "推荐几本讲决策和复盘的书",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我把这个函数改成异步的",
+    "should_trigger": false
+  },
+  {
+    "query": "给我做一个下周的健身计划，一周练四次",
+    "should_trigger": false
+  },
+  {
+    "query": "SOP 这个词英文全称是什么",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我润色一下这份项目复盘报告的措辞，内容不用改",
+    "should_trigger": false
+  },
+  {
+    "query": "今天中午吃什么好，在公司附近",
+    "should_trigger": false
+  },
+  {
+    "query": "这个项目做完了，.decision 里的东西帮我结个案，复盘已经写好了",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我把 README 和 AGENTS.md 跟今天的改动对齐一下，改了好几个接口名",
+    "should_trigger": false
+  },
+  {
+    "query": "readme 有个错别字帮我改下",
+    "should_trigger": false
+  },
+  {
+    "query": "要把生产库的用户表迁到新 schema，几百万行数据，不能丢，先帮我想清楚再动手",
+    "should_trigger": true
+  }
+]

@@ -1,0 +1,57 @@
+{
+  "ok": true,
+  "summary": {
+    "error": 0,
+    "warn": 2,
+    "info": 2
+  },
+  "inventory": {
+    "root": "/tmp/claude-0/fixture-co",
+    "git": true,
+    "markdown_files": 5,
+    "rule_files": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "master",
+    "changed_files": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "PLAN.md",
+      "README.md",
+      "debug_rename.js",
+      "docs/arch.md",
+      "package.json",
+      "src/app.ts"
+    ]
+  },
+  "findings": [
+    {
+      "check": "residue",
+      "severity": "warn",
+      "file": "PLAN.md",
+      "message": "残留候选（一次性计划草稿）",
+      "suggestion": "有用的内容并入正式文档；删除前列入候选清单请用户确认"
+    },
+    {
+      "check": "residue",
+      "severity": "warn",
+      "file": "debug_rename.js",
+      "message": "残留候选（调试脚本）",
+      "suggestion": "有用的内容并入正式文档；删除前列入候选清单请用户确认"
+    },
+    {
+      "check": "residue",
+      "severity": "info",
+      "file": "debug_rename.js",
+      "message": "未被 git 跟踪的文件",
+      "suggestion": "决定：提交、加入 .gitignore，或列为删除候选"
+    },
+    {
+      "check": "stale-names",
+      "severity": "info",
+      "message": "旧名字 getUser 已无残留（历史类文件除外）"
+    }
+  ],
+  "truncated": false
+}

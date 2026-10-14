@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "dir": ".decision",
+  "created": [
+    ".decision/decision-card.md",
+    ".decision/plan.json",
+    ".decision/progress.md"
+  ],
+  "kept_existing": [],
+  "next": "填写 decision-card.md，然后运行: python3 scripts/de.py check card"
+}

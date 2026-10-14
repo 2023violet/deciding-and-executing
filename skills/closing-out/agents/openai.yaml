@@ -1,0 +1,6 @@
+interface:
+  display_name: "收尾与知识同步"
+  short_description: "工作结束后让文档、规则文件、决策记录重新等于代码现状"
+  default_prompt: "用 $closing-out 给这次的改动收个尾，同步文档和规则文件。"
+policy:
+  allow_implicit_invocation: true

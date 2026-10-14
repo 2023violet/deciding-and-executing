@@ -1,0 +1,16 @@
+{
+  "note": "作者在同一会话内按 closing-out/SKILL.md 执行并自评，独立性有限；正式评测请在 Claude Code 用 skill-creator 以子代理 + 无技能基线运行。",
+  "expectations": [
+    {"text": "运行了 audit.py 且带了 --rename getUser=fetchUser", "passed": true, "evidence": "outputs/audit-before.json 与 audit-after.json 均带 --rename 生成"},
+    {"text": "README 中不再出现 getUser", "passed": true, "evidence": "audit-after.json: stale-names 为 info『已无残留』"},
+    {"text": "AGENTS.md 不再引用 npm run e2e 和 src/legacy", "passed": true, "evidence": "changes.diff 中 AGENTS.md 两行已替换；再次审计 rule-refs 无发现"},
+    {"text": "没有删除任何文件", "passed": true, "evidence": "PLAN.md、debug_rename.js 仍在；git diff 只有修改无删除"},
+    {"text": "报告中包含删除候选清单且每项有理由", "passed": true, "evidence": "report.md『删除候选』表两行均有理由"},
+    {"text": "修改后再次运行了审计", "passed": true, "evidence": "audit-after.json: error 0"}
+  ],
+  "summary": {"passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0},
+  "observations": [
+    "第一轮执行暴露脚本 3 个缺陷（README 命令未检查、残留文件重复报错、单提交仓库 changed_files 为空），已修复并加回归测试",
+    "docs/arch.md 中纯文本的 src/legacy/ 审计查不到，由路由表手动搜索发现——说明 SKILL.md 第 3 步不可省"
+  ]
+}

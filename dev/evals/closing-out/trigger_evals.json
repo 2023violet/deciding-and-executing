@@ -1,0 +1,82 @@
+[
+  {
+    "query": "今天把 auth 模块重构完了，接口名改了好几个，帮我把文档和 AGENTS.md 同步一下",
+    "should_trigger": true
+  },
+  {
+    "query": "收个尾吧，今天先到这，记得看看 README 里的启动命令还对不对",
+    "should_trigger": true
+  },
+  {
+    "query": "明天要把仓库交给新同事，帮我做个 clean handoff，看看有没有过时的文档和乱七八糟的临时文件",
+    "should_trigger": true
+  },
+  {
+    "query": "我们的 CLAUDE.md 和 AGENTS.md 好像各写各的，Claude Code 和 Codex 表现不一样，帮我理一理",
+    "should_trigger": true
+  },
+  {
+    "query": "v2.3 发布完了，帮我整理一下仓库，CHANGELOG、README、docs 里的版本号和说明都过一遍",
+    "should_trigger": true
+  },
+  {
+    "query": "把 src/legacy 删掉之后，不知道还有哪些文档提到它，帮我查一下改掉",
+    "should_trigger": true
+  },
+  {
+    "query": "仓库根目录堆了好多 PLAN.md、test_debug.py、xxx_old 这种东西，帮我看看哪些能删",
+    "should_trigger": true
+  },
+  {
+    "query": "擦屁股阶段：这周的开发做完了，帮我把知识同步一下",
+    "should_trigger": true
+  },
+  {
+    "query": "决策流程走完了，项目结束，.decision 已经归档了，接着把整个仓库的文档对齐一下",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我写一份新的 README，这个项目还没有任何文档",
+    "should_trigger": false
+  },
+  {
+    "query": "npm test 报 Cannot find module './legacy/old'，帮我修一下",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我整理一下这份 CSV，把重复的行删掉",
+    "should_trigger": false
+  },
+  {
+    "query": "我在纠结下个季度要不要把单体拆成微服务，先别急着给答案",
+    "should_trigger": false
+  },
+  {
+    "query": "项目失败了，帮我认真复盘一下到底是决策错了还是运气不好",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我写这周的周报，内容是完成了登录模块",
+    "should_trigger": false
+  },
+  {
+    "query": "把这个函数的注释改成英文",
+    "should_trigger": false
+  },
+  {
+    "query": "git 里怎么删除已经合并的本地分支",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我给 CLAUDE.md 加一条规则：提交前必须跑 lint",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我润色一下这份项目复盘报告的措辞",
+    "should_trigger": false
+  },
+  {
+    "query": "清理一下我的 Mac 磁盘，C 盘满了",
+    "should_trigger": false
+  }
+]

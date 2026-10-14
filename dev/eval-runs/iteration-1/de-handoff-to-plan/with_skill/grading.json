@@ -1,0 +1,15 @@
+{
+  "note": "由技能作者在同一会话内按 SKILL.md 自行执行并自评（claude.ai 模式的 sanity check），独立性有限；正式评测请在 Claude Code 中用 skill-creator 以子代理 + 无技能基线运行。",
+  "expectations": [
+    {"text": "没有重新讨论是否应该辞职", "passed": true, "evidence": "决策卡非目标写明'不辞职'，全程未讨论辞职利弊"},
+    {"text": "给出或提炼了包含止损条件的决策卡，止损条件同时含状态和期限", "passed": true, "evidence": "止损条件：'如果到 2026-11-30 还没有 1 家店愿意预付或签意向书'；check card 通过"},
+    {"text": "计划的前两步中至少一步是验证付费意愿的低成本实验", "passed": true, "evidence": "步骤 1 访谈、步骤 2 假门测试，tests_assumption 均为 A1"},
+    {"text": "每个步骤都有完成判据和验证方法", "passed": true, "evidence": "check plan 通过（脚本强制 done_when 与 verify 非空）"},
+    {"text": "至少有2条'如果……就……'形式的预案", "passed": true, "evidence": "plan_table.md 列出 3 条 if-then"}
+  ],
+  "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0},
+  "observations": [
+    "用户只给了'每周 10 小时'，价格是推测值，已在成功标准中标注'假设'——符合 SOP 对推测项的要求",
+    "脚本在第一次填写时就能拦住空字段，这类错误不再依赖模型自觉"
+  ]
+}

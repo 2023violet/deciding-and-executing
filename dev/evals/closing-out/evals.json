@@ -1,0 +1,72 @@
+{
+  "skill_name": "closing-out",
+  "evals": [
+    {
+      "id": 1,
+      "name": "rename-and-delete-module",
+      "prompt": "今天把 getUser 全部改成了 fetchUser，顺手删了 src/legacy 目录，测试命令也从 npm run e2e 合并成 npm test 了。今天先到这，帮我收个尾。",
+      "expected_output": "运行审计（带 --rename getUser=fetchUser），修正 README 与规则文件里的旧名字、失效路径、失效命令；残留只列候选；按模板报告。",
+      "files": [
+        "dev/evals/closing-out/make_fixture.sh（先运行它生成示例仓库）"
+      ],
+      "assertions": [
+        "运行了 audit.py 且带了 --rename getUser=fetchUser",
+        "README 中不再出现 getUser",
+        "AGENTS.md 不再引用 npm run e2e 和 src/legacy",
+        "没有删除任何文件",
+        "报告中包含删除候选清单且每项有理由",
+        "修改后再次运行了审计",
+        "报告的知识面状态写明了证据层级，只做静态审计的面没有写成『已核实』"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "rules-drift-claude-codex",
+      "prompt": "我们仓库同时有 CLAUDE.md 和 AGENTS.md，最近发现 Codex 和 Claude Code 的表现不一致，帮我看看规则文件是不是有问题，整理一下",
+      "expected_output": "识别两份规则文件分离导致漂移；建议以 AGENTS.md 为唯一来源、CLAUDE.md 导入；检查失效引用和体积上限。",
+      "files": [
+        "dev/evals/closing-out/make_fixture.sh（先运行它生成示例仓库）"
+      ],
+      "assertions": [
+        "指出 Claude Code 在两者同时存在时只读 CLAUDE.md",
+        "建议或实施 CLAUDE.md 首行 @AGENTS.md",
+        "合并时没有丢掉只在 CLAUDE.md 里的规则"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "handoff-light",
+      "prompt": "明天同事接手这个仓库，今天就改了一个 bug，没动接口，帮我确认一下文档有没有要改的",
+      "expected_output": "选择轻量档，只看本次改动；没有需要同步的就明确说没有，不为了有产出而改文档。",
+      "files": [],
+      "assertions": [
+        "选择了轻量档或说明只看本次改动范围",
+        "没有对与本次改动无关的文档做修改",
+        "结论明确（需要改什么 / 不需要改）"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "not-closeout-debugging",
+      "prompt": "npm test 跑挂了，报 Cannot find module './legacy/old'，帮我修一下",
+      "expected_output": "这是排查报错，不应进入收尾流程。",
+      "files": [],
+      "assertions": [
+        "没有运行收尾审计或输出收尾报告",
+        "直接着手排查报错"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "semantic-drift-not-caught-by-audit",
+      "prompt": "这周把存储从 SQLite 换成了 PostgreSQL，帮我收个尾，看看文档要不要改。",
+      "expected_output": "审计不会发现 README 里的 SQLite 描述；按路由表做源码事实核查，找到并修改所有提到 SQLite 的地方；报告中区分静态审计与源码核查。",
+      "files": [],
+      "assertions": [
+        "搜索了 SQLite 在文档中的出现位置（不只依赖审计结果）",
+        "报告中明确静态审计 error 0 不代表文档正确，或分层列出证据",
+        "README/docs 中关于存储的描述已更新为 PostgreSQL"
+      ]
+    }
+  ]
+}

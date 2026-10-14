@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.DS_Store
+# 评测时在仓库里生成的临时工作区
+*-workspace/
+CLAUDE.local.md

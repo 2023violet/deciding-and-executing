@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "file": ".decision/decision-card.md",
+  "errors": [],
+  "warnings": [],
+  "assumptions": [
+    "| A1 | 小餐馆愿意为点单工具按月付费 | 方向不成立 | 未验证 |",
+    "| A2 | 每周 10 小时足够在 6 周内做出可试用版本 | 时间线翻倍 | 未验证 |"
+  ]
+}

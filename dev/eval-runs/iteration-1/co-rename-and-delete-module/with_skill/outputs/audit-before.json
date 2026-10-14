@@ -1,0 +1,88 @@
+{
+  "ok": false,
+  "summary": {
+    "error": 4,
+    "warn": 4,
+    "info": 1
+  },
+  "inventory": {
+    "root": "/tmp/claude-0/fixture-co",
+    "git": true,
+    "markdown_files": 5,
+    "rule_files": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "master",
+    "changed_files": [
+      "debug_rename.js"
+    ]
+  },
+  "findings": [
+    {
+      "check": "dead-links",
+      "severity": "error",
+      "file": "README.md",
+      "line": 9,
+      "message": "链接指向不存在的文件：docs/api.md"
+    },
+    {
+      "check": "rule-refs",
+      "severity": "error",
+      "file": "AGENTS.md",
+      "line": 3,
+      "message": "规则引用的脚本 e2e 不在 package.json 的 scripts 里"
+    },
+    {
+      "check": "stale-names",
+      "severity": "error",
+      "file": "PLAN.md",
+      "line": 1,
+      "message": "旧名字 getUser 仍在使用（新名字 fetchUser）"
+    },
+    {
+      "check": "stale-names",
+      "severity": "error",
+      "file": "README.md",
+      "line": 3,
+      "message": "旧名字 getUser 仍在使用（新名字 fetchUser）"
+    },
+    {
+      "check": "residue",
+      "severity": "warn",
+      "file": "PLAN.md",
+      "message": "残留候选（一次性计划草稿）",
+      "suggestion": "有用的内容并入正式文档；删除前列入候选清单请用户确认"
+    },
+    {
+      "check": "residue",
+      "severity": "warn",
+      "file": "debug_rename.js",
+      "message": "残留候选（调试脚本）",
+      "suggestion": "有用的内容并入正式文档；删除前列入候选清单请用户确认"
+    },
+    {
+      "check": "rule-refs",
+      "severity": "warn",
+      "file": "AGENTS.md",
+      "line": 4,
+      "message": "规则里提到的路径不存在：src/legacy/user.ts",
+      "suggestion": "更新为现在的路径，或删除这条已失效的规则"
+    },
+    {
+      "check": "rules-chain",
+      "severity": "warn",
+      "file": "CLAUDE.md",
+      "message": "CLAUDE.md 与 AGENTS.md 同时存在，但 CLAUDE.md 没有导入 AGENTS.md：Claude Code 只会读 CLAUDE.md，Codex 只会读 AGENTS.md，两边规则会各自漂移",
+      "suggestion": "以 AGENTS.md 为唯一规则源，在 CLAUDE.md 第一行写 @AGENTS.md，下方只放 Claude 专属内容"
+    },
+    {
+      "check": "residue",
+      "severity": "info",
+      "file": "debug_rename.js",
+      "message": "未被 git 跟踪的文件",
+      "suggestion": "决定：提交、加入 .gitignore，或列为删除候选"
+    }
+  ],
+  "truncated": false
+}
