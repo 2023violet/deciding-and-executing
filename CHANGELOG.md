@@ -2,9 +2,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。本文件是本仓库**版本、验证结果与测试数量的唯一权威位置**，README 与教程只链接到这里。
 
-## [未发布]
+## [4.2.0] - 2026-11-16（本地候选）
 
-### 变更：可信度与易用性（P1）
+- deciding-and-executing 4.2.0；closing-out 2.1.0。
+- 一句话：按一次全面评审的结论分三轮整改——P0 修掉会让人第一次上手就卡住的问题，P1 提高可信度并减少确认次数，P2 收拾表达与维护成本。工作区格式有变化（新增 `state.json`），旧工作区自动迁移。
+
+### P0：落地阻断项
+- 统一脚本调用说明：文档里的 `de.py …` / `audit.py …` 是简写，SKILL.md 写明 Claude Code（`${CLAUDE_SKILL_DIR}`）、其他宿主与 Windows（`python` / `py -3`）下的实际写法；原先 14 处 `python3 scripts/de.py` 在项目根目录执行会找不到脚本。
+- 占位符改为白名单识别：只有模板里原样出现的 `[…]` 才算"未填写"。此前任何含方括号的内容都会被当成占位符——成功标准"返回 [400]"被静默丢弃、步骤标题"修复 [P1] …"被判缺少标题。
+- 新增 `verify_argv`（参数数组，不经 shell 直接执行，按 PATH/PATHEXT 查找程序），与 `verify_cmd` 二选一；找不到程序记为退出码 127 而不是崩溃。gate B 预览用 `verify_command` / `runs_via_shell` 展示命令。旧计划不含该字段时批准哈希不变。
+- `verify --all` 在步骤之间复用代码指纹，少算一半指纹。
+
+### P1：可信度与易用性
 - **运行时状态与计划分离**：`plan.json` 只放 Agent 编写的计划结构；状态、证据、闸门、审查结论移到只由脚本写入的 `state.json`，每次写入的摘要记在 `events.jsonl`。`plan.json` 里的运行时字段被忽略并在 `status` 中提示；`state.json` 在脚本之外被修改时 `status` 报警。旧工作区在下一次写入命令时自动迁移，已有的闸门批准保持有效。README 的"不能保证"表补上"不防有意同时伪造两份文件"。
 - **收窄触发、减少确认**：description 改为面向跨会话、返工代价高、需要交付证据的开发任务，排除一次会话内能做完的普通开发；标准档新增 `gate AB`（一次确认决策卡与计划，高风险档拒绝）；新增 `closeout`（archive + sync 一步完成，先预览后 `--apply`）。
 - **以开发任务为主线**：新的端到端示例改为"订单服务从 SQLite 迁到 PostgreSQL"（`verify_argv`、`gate AB`、一级升级、不可逆步骤、`coverage`、`closeout`）；原"辞职做点单小程序"示例改名为 `example-decision.md`，用于非代码的重要决定。
@@ -13,15 +22,16 @@
 - `audit.py` 从 `state.json` 读取步骤进度（兼容旧工作区）。
 - **未完成**：真实 Agent 的触发与行为评测仍未运行——它需要把技能安装到全局目录并发起上百次 Claude Code 调用，留给维护者决定何时运行（`dev/run_trigger_eval.sh`）。
 
-### 新增与修复：落地阻断项（P0）
-- 统一脚本调用说明：文档里的 `de.py …` / `audit.py …` 是简写，SKILL.md 写明 Claude Code（`${CLAUDE_SKILL_DIR}`）、其他宿主与 Windows（`python` / `py -3`）下的实际写法；原先 14 处 `python3 scripts/de.py` 在项目根目录执行会找不到脚本。
-- 占位符改为白名单识别：只有模板里原样出现的 `[…]` 才算"未填写"。此前任何含方括号的内容都会被当成占位符——成功标准"返回 [400]"被静默丢弃、步骤标题"修复 [P1] …"被判缺少标题。
-- 新增 `verify_argv`（参数数组，不经 shell 直接执行，按 PATH/PATHEXT 查找程序），与 `verify_cmd` 二选一；找不到程序记为退出码 127 而不是崩溃。gate B 预览用 `verify_command` / `runs_via_shell` 展示命令。旧计划不含该字段时批准哈希不变。
-- `verify --all` 在步骤之间复用代码指纹，少算一半指纹。
+### P2：表达与可维护性
+- 用户可见的文档去掉研发阶段代号（R1/R2/R3）；README 不再复制命令表，统一链接到 SKILL.md 第 4 节（单一权威位置）。
+- 版本号只写在各 SKILL.md 的 `metadata.version`：`de.py` 运行时读取，`build_release.py` / `release_check.py` 由它推出发布包名，不再在三处硬编码。
+- 历次评审与验收记录移到 `docs/history/`，`docs/` 只留教程与演进路线；README.en 的版本徽章（原为 4.0.1）与中文版一致。
+- `audit.py` 的命令检查改为可扩展的 `RUNNERS` 表，新增 `just` 配方检查。
+- 可选的 Claude Code SessionStart 钩子：新会话开始时自动运行 `status`（`references/permissions.md`）。
+- 工作区查找结果在一次命令内缓存，`status` 少跑一次 git。
+- 未做：实验性技能 `experimental/` 是否拆到独立仓库、`dist/*.skill` 是否改为只随发布提供，留给维护者决定。
 
 ### 仓库一致性清理（不改变工作流契约）
-
-### 修复
 - `de.py review --verdict pass` 把同一批过期证据重复报告两次。
 - `de.py archive` 完成后的提示仍要求手动保存审计 JSON（v4.0.1 起 `sync` 会现场重跑审计）；`worked-example.md` 同样已更正。
 - `de.py preflight` 把重命名项的旧路径当成一条额外改动（且路径被截断）。
@@ -33,15 +43,16 @@
 - 新增 `.gitattributes`（LF 检出、`.skill` 按二进制处理），避免 Windows 克隆后 dist 与源码按字节比对失败。
 - 测试在 Windows 上的 3 处可移植性问题：只读 `.git` 对象无法删除、文件名含双引号、无权限创建符号链接（改为跳过）。
 
-### 变更
 - 把 SKILL.md、stage-2/stage-4、README 中以"v4.0.1 补充""R2 补充"追加在文末的段落并入正文对应位置（closing-out 自己的规则：就地改写，不追加"更新"段落）；README 命令表补上 `preflight`、`coverage`；闸门失效条件补上关键假设、计划名称、`first_step`、`if_then`。
 - 重新打包 `dist/deciding-and-executing.skill` 与 `dist/closing-out.skill`。
 
 ### 验证
-- Windows 10 + Python 3.13（2026-11-16）：清理前 `python -m unittest discover -s dev/tests` 为 83 项、3 项报错（均为上述测试可移植性问题）；清理后 84 项（新增 preflight 重命名回归）通过，1 项符号链接用例因权限跳过，约 150 秒。
-- 结构校验两个技能均通过；`dist/*.skill` 与源码逐文件一致（`dev/verify_integrated_delivery.py`）；自审计 error 0 / warn 0。
+- 环境：Windows 10 + Python 3.13 + Git for Windows（2026-11-16）。
+- 整改前基线：`python -m unittest discover -s dev/tests` 83 项、3 项报错（均为测试在 Windows 上的可移植性问题）。
+- 整改后：`dev/release_check.py --outer-zip <临时目录>/deciding-and-executing-v4.2.0.zip` 全部通过——两个技能结构校验、CHANGELOG 版本、`dist/*.skill` 与源码逐文件一致、回归与对抗测试 103 项通过（1 项符号链接用例因权限跳过，约 200 秒）、自审计 error 0 / warn 0、外层 ZIP 解压后 115 个文件逐一比对且静态审计 error 0。这是外层 ZIP 检查第一次在 git 检出里跑通（此前它把 `.git/` 算进应有文件，必然失败）。
+- 新增测试覆盖：方括号内容、`verify_argv`（含找不到程序、与 `verify_cmd` 冲突、旧计划批准不失效）、`state.json` 拆分（伪造字段被忽略、手改被发现、旧工作区迁移）、`gate AB`、`closeout`、多工作区指纹、`DE_WORKSPACE`、英文决策卡全流程、`just` 配方检查。
 - 实验性技能：`test_review_checks` 与 `test_v02_contract` 30 项通过（2 项符号链接用例跳过）；`test_paired_eval` 仍需操作者提供私有金标。
-- 未运行：`dev/release_check.py` 全流程（需要先在仓库外构建外层 ZIP）；macOS；真实 Agent 行为评测。
+- 未运行：macOS；Claude Code / Codex 上的真实触发与行为评测；宿主审批规则与 SessionStart 钩子的实机验证。
 
 ## [4.1.0] - 2026-10-14（R1→R2→R3 本地候选）
 
@@ -49,7 +60,7 @@
 - R1：保留 v4.0.1 三组实验合同和结果边界；只允许真实 Agent 日志进入比较统计。
 - R2：增加只读 `preflight` 和 `coverage` 命令；闸门 B 展示验证命令的已知风险提示；修复阶段②字段说明不一致。
 - R3：添加对新命令的对抗/边界回归及评测使用指南，维持简洁主 Skill 和现有 SOP。
-- 验证：83 项回归在 Linux 上通过（见 [R1-R2-R3 验收报告](docs/R1-R2-R3-验收报告.md)）。
+- 验证：83 项回归在 Linux 上通过（见 [R1-R2-R3 验收报告](docs/history/R1-R2-R3-验收报告.md)）。
 - 限制：尚无真实 Agent 三组实验成绩；新命令不能证明 shell 命令安全，也不能推断验收已充分。
 
 ## [4.0.1] - 2026-10-13（本地候选，待独立复审）
@@ -61,11 +72,11 @@
 - WP-04：review 与完成型 archive 重新验证文件证据的内容和路径状态，status 报告过期文件证据。
 - WP-05：`sync` 本次现场运行 closing-out/audit.py；预写 JSON 不再可信，也不能直接指定任意输出路径。
 - WP-06：独立的构建/发布检查检查外层 ZIP 的 Unicode 文件名、干净解压和 Markdown 链接；安装包核对源码。
-- 验证证据：见 docs/v4.0.1-独立验收记录.md；本条不预先宣称测试通过。
+- 验证证据：见 [docs/history/v4.0.1-独立验收记录.md](docs/history/v4.0.1-独立验收记录.md)；本条不预先宣称测试通过。
 
 ## [4.0.0] - 2026-10-12
 
-一句话：回应外部工程评审（结论 REWORK REQUIRED）。保留架构，把"文档要求 Agent 这样做"改成"脚本能验证就强制、不能验证就明说"。逐条回应见 [docs/内审报告-v4.0.0.md](docs/内审报告-v4.0.0.md)。
+一句话：回应外部工程评审（结论 REWORK REQUIRED）。保留架构，把"文档要求 Agent 这样做"改成"脚本能验证就强制、不能验证就明说"。逐条回应见 [docs/history/内审报告-v4.0.0.md](docs/history/内审报告-v4.0.0.md)。
 
 - deciding-and-executing 4.0.0
 - closing-out 2.0.0

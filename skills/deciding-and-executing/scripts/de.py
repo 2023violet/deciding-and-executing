@@ -56,7 +56,19 @@ import sys
 
 SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = os.path.join(SKILL_DIR, "assets")
-VERSION = "4.1.0"
+
+
+def skill_version():
+    """版本号的唯一来源是 SKILL.md 的 metadata.version。"""
+    try:
+        with open(os.path.join(SKILL_DIR, "SKILL.md"), encoding="utf-8") as f:
+            m = re.search(r'^\s*version:\s*"?([\w.-]+)"?', f.read(), re.M)
+        return m.group(1) if m else "unknown"
+    except OSError:
+        return "unknown"
+
+
+VERSION = skill_version()
 MARKER = ".de-workspace"
 WORKSPACE_FILES = {MARKER, "decision-card.md", "plan.json", "state.json", "events.jsonl", "progress.md",
                    "retro.md", "ARCHIVED", "closeout-audit.json", "closeout-report.md"}
@@ -173,8 +185,19 @@ class Ctx:
         return lang if lang in LANGS else "zh"
 
 
+_WORKSPACES = {}
+
+
 def find_workspaces(root, git):
-    """本仓库里所有带标记的工作区（相对路径）。跳过规则与 audit.py 相同，保证两边指纹一致。"""
+    """本仓库里所有带标记的工作区（相对路径）。跳过规则与 audit.py 相同，保证两边指纹一致。
+    一次命令里结果不变，缓存起来，避免每次算指纹都多跑一次 git。"""
+    key = (root, git)
+    if key not in _WORKSPACES:
+        _WORKSPACES[key] = _scan_workspaces(root, git)
+    return _WORKSPACES[key]
+
+
+def _scan_workspaces(root, git):
     found = set()
     if git:
         code, o = run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--",
@@ -794,7 +817,7 @@ def run_verify(ctx, step, timeout, fp_before=None):
     return ev
 
 
-# ---------------------------------------------------------------- R2：只读预检与验收覆盖
+# ---------------------------------------------------------------- 只读预检与验收覆盖
 # 这只是已知危险模式提示，绝不是 shell 安全解析器或沙箱。
 _VERIFY_HAZARDS = (
     (r"(?i)\b(?:rm|rmdir|del|erase|format|mkfs|shred)\b", "可能删除或破坏文件"),

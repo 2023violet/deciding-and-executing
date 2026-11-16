@@ -1,4 +1,4 @@
-> **状态：v4.1.0 本地候选，非稳定发布。** 真实 Agent 的对照评测尚未运行；各版本改了什么、验证到哪一层，见 [CHANGELOG](CHANGELOG.md)，阶段报告见 [R1-R2-R3 验收报告](docs/R1-R2-R3-验收报告.md)。
+> **状态：v4.2.0 本地候选，非稳定发布。** 真实 Agent 的对照评测尚未运行；各版本改了什么、验证到哪一层，见 [CHANGELOG](CHANGELOG.md)，历次评审与验收记录在 [docs/history/](docs/history/)。
 
 # deciding-and-executing · 从决策到执行，再到收拾干净
 
@@ -9,7 +9,7 @@
 > **closing-out** 负责整个仓库的知识：工作结束后，让 README、docs、规则文件、决策记录重新与代码现状一致。
 > 闸门由脚本把守。脚本只宣称它能验证的东西：能验证的就强制，不能验证的（比如"是不是真人同意的"）就明说，并交给宿主的审批机制。
 
-![version](https://img.shields.io/badge/version-4.1.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
+![version](https://img.shields.io/badge/version-4.2.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ---
 
@@ -28,6 +28,7 @@
 - [设计原则与依据](#设计原则与依据)
 - [已知局限](#已知局限)
 - [常见问题](#常见问题)
+- [从 4.1 升级](#从-41-升级)
 - [从 3.x 升级](#从-3x-升级)
 - [参与贡献](#参与贡献)
 - [许可证与致谢](#许可证与致谢)
@@ -141,30 +142,13 @@
 | ④ 审查与复盘 | `review --verdict pass`：步骤全部完成、命令证据对应当前代码、无阻断项；复盘三节有实质内容 |
 | ⑤ 收尾 | 5A `archive --apply`；5B `sync`；5C `purge` 两步确认 |
 
+标准档可以用 `gate AB` 一次确认闸门 A 与 B，收尾用 `closeout` 一次完成 5A 与 5B；高风险档仍需分别确认。
+
 决策卡的目标、成功标准、非目标、关键假设（状态列除外）、止损条件或结论被改动，闸门 A、B 都失效；计划名称、`first_step`、`if_then` 或步骤结构被改动，闸门 B 失效。失效后执行类命令会被拒绝，直到重新确认。
 
 **步骤状态机**：`todo → in_progress → implemented → done`，另有 `blocked` 和 `needs_replan`。`done` 不能直接改回去，只能 `reopen`（旧证据归档、审查结论作废）；`needs_replan` 只能通过 `replan` 解除。
 
-**`de.py` 命令**（用技能目录下脚本的完整路径调用；在项目任何子目录运行都使用同一个工作区）
-
-| 命令 | 作用 |
-|---|---|
-| `init [--name] [--risk standard\|high]` | 建工作区；已有不覆盖，非空的陌生目录拒绝 |
-| `check card` / `check plan` | 只校验 |
-| `gate A` / `gate B` [`--confirm TOKEN`] | 闸门两步确认 |
-| `status` | 阶段、闸门、当前步骤、过期证据、纯文字证据、升级提示、事件日志一致性 |
-| `preflight` | 只读：当前分支、未提交改动、将要执行的验证命令及已知风险提示（不是沙箱，没命中不等于安全） |
-| `coverage` | 只读：每条成功标准关联的步骤和证据状态（`READY_FOR_INDEPENDENT_REVIEW` 不等于验收通过） |
-| `step ID --status S [--evidence 文本 \| --artifact 文件] [--hours H]` | 状态转换；`done` 的证据规则见下 |
-| `verify ID` / `verify --all` | 脚本执行验证命令，记录退出码、输出摘要、代码指纹 |
-| `fail ID --note` | 记录失败；到上限自动 `needs_replan` |
-| `replan ID --note [--waive 理由 --confirm]` | 解除升级：步骤必须已修改，或两步确认记录豁免 |
-| `reopen ID --reason` | 重做已完成步骤 |
-| `review --verdict pass\|fix\|fail [--blocker …] [--confirm]` | 审查结论 |
-| `archive [--outcome 完成\|止损\|放弃] [--apply]` | 写决策记录；不删除任何东西 |
-| `sync --report`（可选 `--audit-json` 指定工作区固定输出） | 现场运行 closing-out 静态审计（需两个技能都已安装；不信任预先写好的 JSON），结果存为 `.decision/closeout-audit.json`，通过后登记知识同步 |
-| `purge [--confirm TOKEN]` | 删除工作区 |
-| `show` | 计划表 |
+**`de.py` 命令**：完整命令表与调用方式（Claude Code、其他宿主、Windows 的写法）只维护在 [SKILL.md 第 4 节](skills/deciding-and-executing/SKILL.md)，也可以运行 `de.py --help`。最常用的是：`init`、`status`、`gate AB`（或分开的 `gate A` / `gate B`）、`step`、`verify --all`、`coverage`、`review`、`closeout`、`purge`。需要确认的命令第一次只返回 `token` 与 `preview`，用户同意后带 `--confirm` 重跑。
 
 **验证命令**：优先写 `verify_argv`（参数数组，不经 shell，Windows / macOS / Linux 行为一致）；需要管道或重定向时才写 `verify_cmd`（交给系统 shell）。
 
@@ -193,7 +177,7 @@ python3 scripts/audit.py [--root .] [--base main] [--rename 旧=新 ...] [--excl
 | 检查项 | 发现什么 |
 |---|---|
 | `rules-chain` | 每个目录的有效规则链（仓库根到该目录，每层一个 AGENTS 文件）超过 Codex 默认 32 KiB；CLAUDE.md 与 AGENTS.md 并存却没有导入；CLAUDE.md 超过 200 行；AGENTS.override.md 存在；CLAUDE.local.md 未被忽略 |
-| `rule-refs` | 规则文件里的 `@导入`、路径、`npm` / `make` 命令不存在 |
+| `rule-refs` | 规则文件里的 `@导入`、路径、`npm` / `make` / `just` 命令不存在 |
 | `doc-commands` | README 与 docs 里的命令不存在 |
 | `dead-links` | 相对链接指向不存在的文件（忽略代码块与行内代码） |
 | `stale-names` | `--rename` 旧名字残留（跳过历史文件；正确处理新旧名互为前缀） |
@@ -242,7 +226,7 @@ python3 scripts/audit.py [--root .] [--base main] [--rename 旧=新 ...] [--excl
 ├── docs/
 │   ├── 教程-如何制作高质量Skill.md
 │   ├── Skill-愿景与演进路线.md
-│   └── 内审报告-v4.0.0.md、v4.0.1-*.md、R1-R2-R3-*.md   各版本的评审回应与验收记录（历史文件）
+│   └── history/                   各版本的评审回应与验收记录（历史文件，不再更新）
 └── dev/
     ├── release_check.py           发布前一次性检查
     ├── validate_skill.py          结构校验（有 PyYAML 时做真实 YAML 解析）
@@ -287,7 +271,7 @@ bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                      
 - **Agent 行为层尚未独立评测。** 回归测试证明脚本行为正确，但"Agent 是否会把 preview 展示给用户再确认"只能靠行为评测，目前未在真实 Agent 上运行；不能据单元测试宣称 Claude Code / Codex 上的触发、审批或长期任务效益已通过。
 - **两步确认不能证明确认者是人。** Agent 若违反流程自己确认，脚本发现不了；这一层依赖宿主审批规则，而宿主规则匹配的是命令文本，不是安全边界。
 - **静态审计不懂语义。** 文档行为描述是否正确，需要源码事实核查。
-- **命令检查只覆盖 npm 与 Make。** Poetry、Cargo、Go 等暂不校验。
+- **命令检查只覆盖 npm 系、Make 与 just。** Poetry、Cargo、Go 等暂不校验；新的任务运行器可以在 audit.py 的 `RUNNERS` 里加一行。
 - **macOS 未测试，Windows 只跑过回归测试。** 回归测试在 Linux 与 Windows 上通过（Windows 上符号链接用例因权限跳过，详见 CHANGELOG）；宿主审批规则在任何平台都未实测。
 - **非 git 项目能力降级**：无法判断证据是否对应当前代码，也不能删除工作区。
 
@@ -302,6 +286,10 @@ bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                      
 **它会改我的 Agent 记忆吗？** 默认不会。
 
 **为什么不直接用别人的收尾技能？** 可以用，思路相通。这里的 closing-out 与 deciding-and-executing 共享一套接口与约定，并把更多检查交给了脚本。
+
+## 从 4.1 升级
+
+进行中的工作区不需要手动迁移：4.2 起状态、证据与闸门记录存放在 `.decision/state.json`，下一次运行写入类命令时脚本会把它们从 `plan.json` 移过去，已有的闸门批准保持有效。之后 `plan.json` 里的 `status`、`evidence` 等字段会被忽略。
 
 ## 从 3.x 升级
 

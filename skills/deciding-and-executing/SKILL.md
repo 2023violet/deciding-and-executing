@@ -3,7 +3,7 @@ name: deciding-and-executing
 description: 当一项开发或工程任务要跨会话推进、做错了返工代价高、需要可复核的交付证据时使用：多日的迁移、重构、新子系统、上线发布；拿不定技术方向或要评审方案、说"先别急着回答"；方向定了问"接下来怎么排"；执行中同一处反复失败或怀疑跑偏；问"可以上线了吗"；项目结束要结案；或明确要决策卡、执行计划、钢人论证、事前验尸、止损、复盘。用户在做非代码的重要决定（如是否辞职创业）时也可使用，通常只走定方向阶段。不用于一次会话内能做完的普通开发任务、十分钟内能改完的小修复、一次性事实问答、纯闲聊或只要一段文案，也不用于单纯的文档同步与仓库整理（那是 closing-out）。
 license: MIT
 metadata:
-  version: "4.1.0"
+  version: "4.2.0"
   language: zh-CN
   companion: closing-out
 ---
@@ -125,7 +125,7 @@ metadata:
 - **成功标准不可验证或没被覆盖**：每条标准要能被观察，并被至少一个步骤的 `covers` 引用。
 - **为了过闸门改标准**：改成功标准、放宽判据、删测试都会让闸门失效并要求重新确认，这是故意的，要告诉用户为什么改。
 - **最危险的假设排在最后**：先做能证伪方向的那一步。
-- **新会话凭记忆续做**：先 `status`。
+- **新会话凭记忆续做**：先 `status`。也可以让宿主在会话开始时自动运行它（见 [references/permissions.md](references/permissions.md)）。
 - **项目结束不结案**：留在仓库里的 `.decision/` 会被下一个 Agent 当成现行目标。
 - **决策记录写成了系统说明**：决策记录只写"为什么"，现状写在 README 与 docs。
 
@@ -146,7 +146,7 @@ metadata:
 - [references/stage-2-plan.md](references/stage-2-plan.md) 中有 plan.json 字段说明
 - [references/stage-3-execute.md](references/stage-3-execute.md)：执行循环、问题分诊、求助格式
 - [references/stage-4-review.md](references/stage-4-review.md)、[references/stage-5-closeout.md](references/stage-5-closeout.md)
-- [references/permissions.md](references/permissions.md)：高风险档必读；配置宿主审批规则
+- [references/permissions.md](references/permissions.md)：高风险档必读；配置宿主审批规则，以及可选的会话开始钩子
 - [references/worked-example.md](references/worked-example.md)：第一次使用时读（一项多日的开发任务）
 - [references/example-decision.md](references/example-decision.md)：用户在做非代码的重要决定时读
 - [references/prompts-standalone.md](references/prompts-standalone.md)：用户要在没装技能的 AI 里用时读

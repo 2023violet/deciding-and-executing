@@ -3,7 +3,7 @@ name: closing-out
 description: 当一段工作告一段落，需要让项目里的文档、规则文件、决策记录跟上代码现状时使用：会话结束前收尾、里程碑或发布后整理、交接给别人或下一个 Agent、改名或删模块后担心文档过时、CLAUDE.md 和 AGENTS.md 冲突或引用失效、清理计划草稿和调试残留，或用户说"收尾""擦屁股""同步一下文档""整理仓库""clean handoff"。即使用户只说"今天先到这"，只要本次改动影响了别人会读的文档，也应使用。不用于写新功能、排查报错、整理一份数据或文案，也不用于复盘决策和做法本身。
 license: MIT
 metadata:
-  version: "2.0.1"
+  version: "2.1.0"
   language: zh-CN
   companion: deciding-and-executing
 ---

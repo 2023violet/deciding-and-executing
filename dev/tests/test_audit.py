@@ -95,6 +95,14 @@ class TestAudit(unittest.TestCase):
         _, d = self.audit()
         self.assertIn(("doc-commands", "README.md"), checks(d, "error"))
 
+    def test_just_recipes_checked(self):
+        write(self.d, "justfile", "set shell := [\"bash\", \"-c\"]\nversion := \"1\"\n\nbuild target='x':\n    echo {{target}}\n\n@lint:\n    echo lint\n")
+        write(self.d, "README.md", "# D\n构建：`just build`，检查：`just lint`，部署：`just deploy`\n")
+        commit_all(self.d)
+        _, d = self.audit()
+        errors = [f for f in d["findings"] if f["check"] == "doc-commands"]
+        self.assertEqual([f["message"].split(" ")[1] for f in errors], ["deploy"], errors)
+
     # ---- 规则链
     def test_rules_chain_requires_import(self):
         write(self.d, "CLAUDE.md", "# Claude\n- plan mode\n")

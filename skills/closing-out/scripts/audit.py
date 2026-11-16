@@ -24,8 +24,8 @@
   rules-chain      每个目录的有效规则链（Codex：从仓库根到该目录，每层一个 AGENTS 文件）是否超出
                    32 KiB；CLAUDE.md 与 AGENTS.md 并存却没有导入；CLAUDE.md 超过 200 行；
                    AGENTS.override.md 存在；CLAUDE.local.md 未被忽略
-  rule-refs        规则文件里的 @导入、路径、npm/make 命令是否存在
-  doc-commands     README 与 docs 里写的 npm/make 命令是否存在
+  rule-refs        规则文件里的 @导入、路径、npm/make/just 命令是否存在
+  doc-commands     README 与 docs 里写的 npm/make/just 命令是否存在
   dead-links       Markdown 相对链接指向不存在的文件（忽略代码块）
   stale-names      --rename 给出的旧名字残留（跳过 CHANGELOG、决策记录等历史文件）
   duplicate-lines  同一句较长的话出现在多个文档里
@@ -67,7 +67,7 @@ LIMITS = [
     "静态审计：只检查链接、路径、命令、旧名字、规则文件结构与残留文件",
     "不理解文档语义：文档描述的行为是否仍与代码一致，需要按路由表做源码事实核查",
     "不运行文档里的命令：命令能否真正跑通，需要运行验证",
-    "命令检查只覆盖 package.json 的 scripts 与 Makefile 目标",
+    "命令检查只覆盖 package.json 的 scripts、Makefile 目标与 justfile 配方（RUNNERS 里可以加新的）",
     "规则链大小只计算仓库内文件，不含 ~/.codex 等全局规则",
 ]
 
@@ -256,15 +256,33 @@ class Audit:
         t = self.read("Makefile")
         return set(re.findall(r"(?m)^([A-Za-z0-9_.-]+)\s*:(?!=)", t)) if t else None
 
-    def _check_commands(self, f, i, code, scripts, targets, check):
-        m = re.match(r"(?:npm run|pnpm run|pnpm|yarn|bun run)\s+([\w:.-]+)", code)
-        if m and scripts is not None and m.group(1) not in scripts | {"install", "add", "dlx", "exec", "i"}:
-            self.add(check, "error", "引用的脚本 %s 不在 package.json 的 scripts 里" % m.group(1), f, i)
-        elif re.match(r"npm (test|t)\b", code) and scripts is not None and "test" not in scripts:
+    def _just_recipes(self):
+        for name in ("justfile", "Justfile", ".justfile"):
+            t = self.read(name)
+            if t:
+                return set(re.findall(r"(?m)^@?([A-Za-z0-9_-]+)(?:[ \t]+[^:\n]*)?:(?!=)", t))
+        return None
+
+    # 任务运行器：(说明, 读取已定义目标的方法, 匹配命令中目标名的正则, 不需要定义就能用的内置子命令)。
+    # 要支持新的运行器，在这里加一行并补一个读取方法。
+    RUNNERS = [
+        ("package.json 的 scripts", "_package_scripts", r"(?:npm run|pnpm run|pnpm|yarn|bun run)\s+([\w:.-]+)",
+         {"install", "add", "dlx", "exec", "i"}),
+        ("Makefile 的目标", "_make_targets", r"make\s+([\w.-]+)", set()),
+        ("justfile 的配方", "_just_recipes", r"just\s+([\w-]+)", set()),
+    ]
+
+    def _runners(self):
+        return [(label, getattr(self, method)(), pattern, builtin) for label, method, pattern, builtin in self.RUNNERS]
+
+    def _check_commands(self, f, i, code, runners, check):
+        for label, defined, pattern, builtin in runners:
+            m = re.match(pattern, code)
+            if m and defined is not None and m.group(1) not in defined | builtin:
+                self.add(check, "error", "引用的 %s 不在 %s 里" % (m.group(1), label), f, i)
+        scripts = runners[0][1]
+        if re.match(r"npm (test|t)\b", code) and scripts is not None and "test" not in scripts:
             self.add(check, "error", "引用了 npm test，但 package.json 没有 test 脚本", f, i)
-        m = re.match(r"make\s+([\w.-]+)", code)
-        if m and targets is not None and m.group(1) not in targets:
-            self.add(check, "error", "引用的 make 目标 %s 在 Makefile 里不存在" % m.group(1), f, i)
 
     @staticmethod
     def _code_spans(text):
@@ -273,7 +291,7 @@ class Audit:
             yield i, line, [c.strip() for c in re.findall(r"`([^`]+)`", line)]
 
     def check_rule_refs(self):
-        scripts, targets = self._package_scripts(), self._make_targets()
+        runners = self._runners()
         for f in self.rule_files:
             t = self.read(f)
             if t is None:
@@ -284,7 +302,7 @@ class Audit:
                     if not imp.startswith("~") and not os.path.exists(os.path.join(self.root, base, imp)):
                         self.add("rule-refs", "error", "@导入的文件不存在：%s" % imp, f, i)
                 for code in codes:
-                    self._check_commands(f, i, code, scripts, targets, "rule-refs")
+                    self._check_commands(f, i, code, runners, "rule-refs")
                     if " " in code or "/" not in code or not re.search(r"\.\w{1,5}$|/$", code) \
                             or re.match(r"[a-z]+://", code) or any(ch in code for ch in "*<>{}$"):
                         continue
@@ -294,8 +312,8 @@ class Audit:
                                  suggestion="更新为现在的路径，或删除这条已失效的规则")
 
     def check_doc_commands(self):
-        scripts, targets = self._package_scripts(), self._make_targets()
-        if scripts is None and targets is None:
+        runners = self._runners()
+        if all(defined is None for _, defined, _, _ in runners):
             return
         rules = set(self.rule_files)
         for f in self.md:
@@ -303,7 +321,7 @@ class Audit:
                 continue
             for i, _, codes in self._code_spans(self.read(f) or ""):
                 for code in codes:
-                    self._check_commands(f, i, code, scripts, targets, "doc-commands")
+                    self._check_commands(f, i, code, runners, "doc-commands")
 
     def check_dead_links(self):
         for f in self.md:

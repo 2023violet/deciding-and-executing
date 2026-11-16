@@ -28,7 +28,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(ROOT, "dev", "tests"))
 from helpers import ENV  # noqa: E402
 sys.path.insert(0, os.path.join(ROOT, "dev"))
-from build_release import walk_files  # noqa: E402  与打包使用同一套排除规则
+from build_release import RELEASE_NAME, walk_files  # noqa: E402  与打包使用同一套排除规则与版本号
 
 # 历史评测记录与实验性技能故意埋了缺陷的评测夹具，不参与自审计
 AUDIT_EXCLUDES = ["--exclude", "dev/eval-runs/*", "--exclude", "experimental/independent-verification/cases/*"]
@@ -58,7 +58,7 @@ def validate_outer(archive):
     expected = {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in walk_files(pathlib.Path(ROOT))}
     with zipfile.ZipFile(archive) as z, tempfile.TemporaryDirectory(prefix="skill-release-") as td:
-        rootname = "deciding-and-executing-v4.1.0"
+        rootname = RELEASE_NAME
         actual = {}
         for obj in z.infolist():
             name = obj.filename
@@ -74,8 +74,8 @@ def validate_outer(archive):
             return {"ok": False, "reason": "外层 ZIP 与源码不一致", "paths": sorted(set(actual.items()) ^ set(expected.items()))[:6]}
         z.extractall(td)
         base = pathlib.Path(td, rootname)
-        for required in ["docs/教程-如何制作高质量Skill.md", "docs/内审报告-v4.0.0.md",
-                         "docs/v4.0.1-独立验收记录.md", "docs/Skill-愿景与演进路线.md"]:
+        for required in ["docs/教程-如何制作高质量Skill.md", "docs/history/内审报告-v4.0.0.md",
+                         "docs/history/v4.0.1-独立验收记录.md", "docs/Skill-愿景与演进路线.md"]:
             if not (base / required).is_file():
                 return {"ok": False, "reason": "Unicode 路径解压后缺失", "file": required}
         run = subprocess.run([sys.executable, str(base / "skills/closing-out/scripts/audit.py"),
@@ -93,8 +93,8 @@ def validate_outer(archive):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--outer-zip", default=os.path.join(os.path.dirname(ROOT), "deciding-and-executing-v4.1.0.zip"),
-                    help="最终交付 ZIP；必查，默认使用仓库同级 deciding-and-executing-v4.1.0.zip")
+    ap.add_argument("--outer-zip", default=os.path.join(os.path.dirname(ROOT), RELEASE_NAME + ".zip"),
+                    help="最终交付 ZIP；必查，默认使用仓库同级 %s.zip（先运行 build_release.py）" % RELEASE_NAME)
     a = ap.parse_args()
     results, ok = [], True
     skills = sorted(x for x in os.listdir(os.path.join(ROOT, "skills"))
