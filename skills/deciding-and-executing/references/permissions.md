@@ -11,7 +11,7 @@
 | `de.py purge --confirm …` | 删除工作区 |
 | `de.py step … --confirm …` | 开始一个标记为不可逆的步骤 |
 | `de.py replan … --waive …` | 不改计划就继续一个反复失败的步骤 |
-| `de.py gate … --confirm …` | 确认方向或计划（计划里含将要执行的 verify_cmd） |
+| `de.py gate … --confirm …` | 确认方向或计划（计划里含将要执行的验证命令） |
 | `de.py review … --confirm …` | 确认交付结论 |
 
 只读命令（`status`、`check`、`show`、`preflight`、`coverage`）和不带 `--confirm` 的预览不需要审批。
@@ -57,6 +57,7 @@ prefix_rule(
 - 可以用 `codex execpolicy check --pretty --rules <文件> -- <命令>` 检查规则是否生效。
 - rules 功能标注为实验性；文档没有说明在 never 审批策略下 prompt 是否仍然生效，请在你的配置下实测。
 - 上面的前缀会让这几个子命令的预览调用也弹出审批。嫌打扰的话，只保留 `purge`。
+- 前缀里的解释器名必须和实际调用一致：Windows 上通常是 `python` 或 `py`，需要为实际使用的写法各加一条规则。
 
 ## 配好之后怎么验证
 

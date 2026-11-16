@@ -19,7 +19,7 @@
 - [ ] 2 从成功标准倒推里程碑
 - [ ] 3 拆成可验证的小步，写 covers 对应成功标准
 - [ ] 4 排序：验证 A1 的步骤放最前；写 depends_on
-- [ ] 5 每步写完成判据、验证方法，能写命令的写 verify_cmd
+- [ ] 5 每步写完成判据、验证方法，能写命令的写验证命令（verify_argv / verify_cmd）
 - [ ] 6 标出不可逆步骤
 - [ ] 7 写 if-then 预案
 - [ ] 8 快速事前验尸 → 早期信号
@@ -34,7 +34,7 @@
 
 **4 排序**：先做验证 A1 的最小实验（`tests_assumption: "A1"`），再做确定性高的工作。有先后关系的写 `depends_on`，脚本会阻止提前开始。
 
-**5 验证**：根据 [verification-strategy.md](verification-strategy.md) 的交付类型选择验证手段。运行命令前先查看 `de.py preflight` 的只读报告。`verify_cmd` 按 Shell 运行，不是沙箱；即便只写 `test`/`pytest` 也可能有副作用。高风险命令需宿主审批和隔离执行，不得因 Gate B token 存在便假定授权安全。`done_when` 写完成时世界的样子；`verify` 写怎么证明。**能用命令证明的，一定写 `verify_cmd`**（测试、构建、lint、`curl -f` 检查、`test -f 文件`），这是可由脚本检查退出状态的一类证据，但不能证明命令完全无副作用或验收充分。不能写命令的（访谈、用户确认、截图），完成时用 `--artifact` 指向证据文件。对真实 GUI、硬件、安全和外部 API，写明验收工具、人工观察方式，以及哪些项只能标 `NOT_VERIFIED`。`covers` 是否真的对应需求，脚本识别不了，由审查者把关（见 stage-4-review.md）。
+**5 验证**：根据 [verification-strategy.md](verification-strategy.md) 的交付类型选择验证手段。运行命令前先查看 `de.py preflight` 的只读报告。验证命令不是沙箱，即便只写 `pytest` 也可能有副作用。高风险命令需宿主审批和隔离执行，不得因 Gate B token 存在便假定授权安全。`done_when` 写完成时世界的样子；`verify` 写怎么证明。**能用命令证明的，一定写验证命令**（测试、构建、lint、`curl -f` 检查），这是可由脚本检查退出状态的一类证据，但不能证明命令完全无副作用或验收充分。优先写 `verify_argv`（参数数组，不经 shell，Windows / macOS / Linux 行为一致），例如 `["python", "-m", "pytest", "tests/test_order.py"]`；确实需要管道、重定向时才写 `verify_cmd`，它交给系统 shell（Windows 上是 cmd.exe，`test -f`、`> /dev/null` 这类写法跑不通）。验证命令不要往项目里写未被 Git 忽略的文件（报告、`.pytest_cache` 等缓存要么已被忽略，要么输出到项目外）：执行期间代码指纹一变，这次结果就不算通过证据。不能写命令的（访谈、用户确认、截图），完成时用 `--artifact` 指向证据文件。对真实 GUI、硬件、安全和外部 API，写明验收工具、人工观察方式，以及哪些项只能标 `NOT_VERIFIED`。`covers` 是否真的对应需求，脚本识别不了，由审查者把关（见 stage-4-review.md）。
 
 **6 不可逆步骤**：删数据、迁移、发布到生产、改权限、对外发送……标 `"irreversible": true`。开始这一步时脚本会要求两步确认；高风险档还要配宿主审批（见 permissions.md）。
 
@@ -51,7 +51,8 @@
 | `risk` | `standard` / `high` | 由 init 设定 | 是 |
 | `steps[].id` | 整数或字符串 | 唯一 | 是 |
 | `title` / `done_when` / `verify` | 字符串 | 必填 | 是 |
-| `verify_cmd` | 字符串 | 在项目根目录用 shell 执行；退出码 0 为通过 | 是 |
+| `verify_argv` | 字符串数组 | 推荐。在项目根目录直接执行（不经 shell，按 PATH 查找程序）；退出码 0 为通过 | 是 |
+| `verify_cmd` | 字符串 | 在项目根目录交给系统 shell 执行；与 `verify_argv` 二选一 | 是 |
 | `depends_on` | 数组 | 前置步骤 id | 是 |
 | `covers` | 数组 | 成功标准编号 | 是 |
 | `tests_assumption` | 字符串 | 如 `A1` | 是 |
@@ -62,13 +63,13 @@
 | `name` | 字符串 | 计划名称 | 是 |
 | `early_signals` / `milestones` | — | 辅助说明，不绑定批准 | 否 |
 
-`verify_cmd` 会被脚本执行，所以闸门 B 的 preview 会把每条命令列出来请用户确认；之后任何人改了命令，闸门 B 都会失效。
+验证命令会被脚本执行，所以闸门 B 的 preview 会把每条命令列出来（`runs_via_shell` 标出是否经过 shell）请用户确认；之后任何人改了命令，闸门 B 都会失效。
 
 ## 闸门 B
 
-1. `python3 scripts/de.py check plan`：`errors` 清零；`warnings` 逐条向用户说明或修正。
-2. `python3 scripts/de.py show` 把计划表给用户看。
-3. `python3 scripts/de.py gate B` 得到 token 和 preview，**展示给用户，等用户回复同意**，再带 `--confirm` 重跑。
+1. `de.py check plan`：`errors` 清零；`warnings` 逐条向用户说明或修正。
+2. `de.py show` 把计划表给用户看。
+3. `de.py gate B` 得到 token 和 preview，**展示给用户，等用户回复同意**，再带 `--confirm` 重跑。
 
 **人工闸门清单**（无代码执行时）：每步有判据和验证方法；没有超过一个工作时段的步骤；每条成功标准被覆盖；验证 A1 的步骤在前两步；不可逆步骤已标出；至少 2 条具体的 if-then；第一步今天能开始。
 
@@ -81,7 +82,7 @@
 - 一天内的小任务：计划可只有 3 步，省略里程碑和事前验尸；判据与验证不能省。
 - 第一步是"搭建项目框架"这类无法证伪方向的准备工作。
 - 验证方法写成"自测通过"——谁测、测什么、看到什么算通过？
-- 能写 `verify_cmd` 却只写了文字验证方法。
+- 能写验证命令却只写了文字验证方法。
 - 计划里悄悄混进了决策卡"非目标"里的东西。
 
 完整示例见 [worked-example.md](worked-example.md)。

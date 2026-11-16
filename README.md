@@ -70,7 +70,7 @@
 | 能保证（脚本强制） | 不能保证（明说，并交给别的机制） |
 |---|---|
 | 计划没过闸门 B、或过了之后被改过，就不能开始执行 | 确认 token 是人给的还是 Agent 自己取的 → 宿主审批规则 |
-| 有 `verify_cmd` 的步骤，只有命令当场跑通才算完成，任何文字都替代不了 | 文件证据的内容是否属实 → 人工审查 |
+| 有验证命令（`verify_argv` / `verify_cmd`）的步骤，只有命令当场跑通才算完成，任何文字都替代不了 | 文件证据的内容是否属实 → 人工审查 |
 | 代码一变，旧的命令证据自动过期，审查前必须重跑 | 文档描述的行为是否仍与代码一致 → 源码事实核查 |
 | 同一步失败到上限，状态变为待重新规划，不改计划不能继续 | 用宿主的 bypass 模式绕过一切 → 不要在重要项目里用 |
 | 审查结论绑定代码和计划，任一变化即失效 | 被 Git 忽略的文件变化 → 代码指纹不覆盖，依赖它们的步骤要另给证据 |
@@ -153,10 +153,10 @@
 | `check card` / `check plan` | 只校验 |
 | `gate A` / `gate B` [`--confirm TOKEN`] | 闸门两步确认 |
 | `status` | 阶段、闸门、当前步骤、过期证据、纯文字证据、升级提示、事件日志一致性 |
-| `preflight` | 只读：当前分支、未提交改动、将要执行的 `verify_cmd` 及已知风险提示（不是沙箱，没命中不等于安全） |
+| `preflight` | 只读：当前分支、未提交改动、将要执行的验证命令及已知风险提示（不是沙箱，没命中不等于安全） |
 | `coverage` | 只读：每条成功标准关联的步骤和证据状态（`READY_FOR_INDEPENDENT_REVIEW` 不等于验收通过） |
 | `step ID --status S [--evidence 文本 \| --artifact 文件] [--hours H]` | 状态转换；`done` 的证据规则见下 |
-| `verify ID` / `verify --all` | 脚本执行 `verify_cmd`，记录退出码、输出摘要、代码指纹 |
+| `verify ID` / `verify --all` | 脚本执行验证命令，记录退出码、输出摘要、代码指纹 |
 | `fail ID --note` | 记录失败；到上限自动 `needs_replan` |
 | `replan ID --note [--waive 理由 --confirm]` | 解除升级：步骤必须已修改，或两步确认记录豁免 |
 | `reopen ID --reason` | 重做已完成步骤 |
@@ -166,7 +166,9 @@
 | `purge [--confirm TOKEN]` | 删除工作区 |
 | `show` | 计划表 |
 
-**`done` 的证据规则**：有 `verify_cmd` → 脚本当场执行，退出码 0 且执行期间代码未变才算；否则 `--artifact` 文件（记录哈希，review 与完成型 archive 时重新核对）；标准档可用 `--evidence` 文字，记为"未验证"并在状态、审查、决策记录中单独标出；高风险档不接受文字。
+**验证命令**：优先写 `verify_argv`（参数数组，不经 shell，Windows / macOS / Linux 行为一致）；需要管道或重定向时才写 `verify_cmd`（交给系统 shell）。
+
+**`done` 的证据规则**：有验证命令 → 脚本当场执行，退出码 0 且执行期间代码未变才算；否则 `--artifact` 文件（记录哈希，review 与完成型 archive 时重新核对）；标准档可用 `--evidence` 文字，记为"未验证"并在状态、审查、决策记录中单独标出；高风险档不接受文字。
 
 **代码指纹**包含 Git 已跟踪的改动与未跟踪文件的内容（单文件 32 MiB、总量 128 MiB 上限），**不包含 Git 忽略文件**。证据是否可靠，还取决于验证命令是否覆盖了正确的需求。
 
@@ -292,7 +294,7 @@ bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                      
 
 **每件事都要走流程吗？** 不用。见档位表；十分钟能改完的小修复不走流程。
 
-**脚本会执行 plan.json 里的命令，安全吗？** 只执行 `verify_cmd`，且这些命令在 `gate B` 的 preview 里逐条列出、经你确认；之后任何人改了命令，闸门 B 失效，脚本拒绝执行。
+**脚本会执行 plan.json 里的命令，安全吗？** 只执行步骤里的验证命令，且这些命令在 `gate B` 的 preview 里逐条列出、经你确认；之后任何人改了命令，闸门 B 失效，脚本拒绝执行。
 
 **closing-out 会不会乱删文件？** 不会。审计只读；删除只出候选清单。
 
@@ -304,7 +306,7 @@ bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                      
 
 4.0.0 有不兼容变更，进行中的 3.x 工作区需要迁移：
 1. 决策卡：结论改为以"做 / 改后做 / 放弃"开头；成功标准编号；止损条件改为"触发状态 / 期限 / 动作"三行。
-2. 计划：给步骤补 `covers`；能用命令验证的补 `verify_cmd`。
+2. 计划：给步骤补 `covers`；能用命令验证的补 `verify_argv`（或 `verify_cmd`）。
 3. 在工作区里新建 `.de-workspace` 标记（或重新 `init` 到新目录后搬运内容）。
 4. 依次运行 `gate A`、`gate B` 重新确认。
 5. `archive --remove-workspace` 已移除，改用 `archive --apply` → `sync` → `purge`。

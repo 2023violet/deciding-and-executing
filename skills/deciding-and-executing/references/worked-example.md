@@ -87,10 +87,10 @@
     {"id": 2, "title": "用表单+收款码做假门测试", "done_when": "至少 1 家店扫码预付 99 元",
      "verify": "收款记录截图", "covers": [1], "tests_assumption": "A1", "depends_on": [1], "estimate_h": 4},
     {"id": 3, "title": "部署静态点单页", "done_when": "店主手机能打开点单页",
-     "verify": "页面返回 200", "verify_cmd": "curl -fsS https://demo.example.com/menu > /dev/null",
+     "verify": "页面返回 200", "verify_argv": ["curl", "-fsS", "https://demo.example.com/menu"],
      "covers": [1], "estimate_h": 4},
     {"id": 4, "title": "接入下单接口", "done_when": "测试下单成功", "verify": "接口测试",
-     "verify_cmd": "npm test -- order", "covers": [1], "depends_on": [3], "estimate_h": 6}
+     "verify_argv": ["npm", "test", "--", "order"], "covers": [1], "depends_on": [3], "estimate_h": 6}
   ],
   "if_then": [
     {"if": "约不到店主", "then": "去常吃的 3 家店午市后当面问"},
@@ -101,18 +101,18 @@
 }
 ```
 
-注意三点：前两步都在验证 A1，部署这种"确定能做成"的工作排在后面；第一版里部署是一个 12 小时的步骤，`check plan` 提示拆分，拆成了第 3、4 步；能用命令证明的第 3、4 步都写了 `verify_cmd`，访谈和收款只能用文件证据（`--artifact`）。
+注意三点：前两步都在验证 A1，部署这种"确定能做成"的工作排在后面；第一版里部署是一个 12 小时的步骤，`check plan` 提示拆分，拆成了第 3、4 步；能用命令证明的第 3、4 步都写了 `verify_argv`（不经 shell，换到 Windows 上也能跑），访谈和收款只能用文件证据（`--artifact`）。
 
-`gate B` 的 preview 会列出这两条 `verify_cmd`，用户同意即表示允许脚本执行它们。
+`gate B` 的 preview 会列出这两条验证命令，用户同意即表示允许脚本执行它们。
 
 ## ③ 执行：一次一级升级
 
 第 3 步部署后页面 502，按诊断法列了三个独立原因（端口未监听 / 反向代理配置 / 防火墙），排除了前两个后仍失败：
 
 ```
-$ python3 scripts/de.py fail 3 --note "改完 nginx 配置后仍 502"
+$ de.py fail 3 --note "改完 nginx 配置后仍 502"
 {"fails": 2, "max_fails": 2, "escalate": true, "status": "needs_replan", ...}
-$ python3 scripts/de.py step 3 --status in_progress
+$ de.py step 3 --status in_progress
 拒绝：步骤 3 已触发升级，待重新规划
 ```
 
@@ -142,7 +142,7 @@ $ python3 scripts/de.py step 3 --status in_progress
 **5A**：
 
 ```
-$ python3 scripts/de.py archive
+$ de.py archive
 {"ok": true, "dry_run": true, "outcome": "完成",
  "would_write": "docs/decisions/2027-01-12-餐馆点单小程序验证.md", "problems": []}
 ```
@@ -152,7 +152,7 @@ $ python3 scripts/de.py archive
 **5B**：交给 closing-out 完整档，告诉它本次把 `getUser` 改成了 `fetchUser`：
 
 ```
-$ python3 <closing-out>/scripts/audit.py --rename getUser=fetchUser
+$ audit.py --rename getUser=fetchUser
 ```
 
 审计报出：README 的测试命令仍是旧的 `npm run e2e`；AGENTS.md 引用了已删除的 `src/legacy/`；`PLAN.md` 是残留。修好前两项，`PLAN.md` 列入删除候选，再跑一次审计确认 error 0。报告存为 `.decision/closeout-report.md`，运行 `sync --report .decision/closeout-report.md`：它现场重跑审计并把结果存为 `.decision/closeout-audit.json`，代码在审计后又被改过也会被发现。

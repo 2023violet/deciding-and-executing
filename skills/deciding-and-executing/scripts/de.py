@@ -12,7 +12,7 @@
   de.py preflight                         # 只读：环境/Git/验证命令检查
   de.py coverage                          # 只读：成功标准与证据对应关系
   de.py step     ID --status STATUS [--evidence 文本 | --artifact 路径] [--hours H] [--note 文本] [--confirm TOKEN]
-  de.py verify   ID | --all [--timeout 秒]      # 由脚本执行 verify_cmd 并记录退出码
+  de.py verify   ID | --all [--timeout 秒]      # 由脚本执行验证命令（verify_argv 或 verify_cmd）并记录退出码
   de.py fail     ID --note 文本 [--hours H]
   de.py replan   ID --note 文本 [--waive 理由 [--confirm TOKEN]]
   de.py reopen   ID --reason 文本
@@ -44,6 +44,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -258,6 +259,10 @@ def schema_errors(plan):
         for k in ("title", "done_when", "verify", "verify_cmd", "tests_assumption"):
             if k in s and s[k] is not None and not isinstance(s[k], str):
                 e.append("步骤 %r 的 %s 必须是字符串" % (sid, k))
+        argv = s.get("verify_argv")
+        if argv is not None and (not isinstance(argv, list)
+                                 or not all(isinstance(x, str) and x for x in argv)):
+            e.append("步骤 %r 的 verify_argv 必须是非空字符串组成的数组" % (sid,))
         for k in ("depends_on", "covers", "evidence", "evidence_history"):
             if k in s and not isinstance(s[k], list):
                 e.append("步骤 %r 的 %s 必须是数组" % (sid, k))
@@ -281,7 +286,10 @@ def find_step(plan, sid):
 
 
 def struct_of(step):
-    return {k: step.get(k) for k in STRUCT_FIELDS}
+    d = {k: step.get(k) for k in STRUCT_FIELDS}
+    if "verify_argv" in step:       # 只在出现时纳入，旧计划的批准哈希保持不变
+        d["verify_argv"] = step.get("verify_argv")
+    return d
 
 
 def plan_hash(plan):
@@ -308,13 +316,53 @@ def read_card(ctx):
     return text, sec
 
 
+_PLACEHOLDERS = None
+
+
+def placeholders():
+    """模板里原样出现的方括号占位符（如「[名称]」）。只有它们算"没填"；用户写的 [400]、[P1] 是正常内容。"""
+    global _PLACEHOLDERS
+    if _PLACEHOLDERS is None:
+        found = {"[名称]", "[YYYY-MM-DD]"}
+
+        def strings(x):
+            if isinstance(x, str):
+                yield x
+            elif isinstance(x, list):
+                for v in x:
+                    yield from strings(v)
+            elif isinstance(x, dict):
+                for v in x.values():
+                    yield from strings(v)
+
+        for base, _, names in os.walk(ASSETS):
+            for name in names:
+                try:
+                    with open(os.path.join(base, name), encoding="utf-8") as f:
+                        text = f.read()
+                except (OSError, UnicodeDecodeError):
+                    continue
+                if name.endswith(".json"):
+                    try:
+                        text = "\n".join(strings(json.loads(text)))
+                    except ValueError:
+                        continue
+                found |= set(re.findall(r"\[[^\[\]\n]+\](?!\()", text))
+        _PLACEHOLDERS = found
+    return _PLACEHOLDERS
+
+
+def is_placeholder(text):
+    return any(p in text for p in placeholders())
+
+
 def meaningful(lines):
     keep = []
     for l in lines:
         s = l.strip()
         if not s or re.fullmatch(r"[-*|:\s]+", s) or re.fullmatch(r"(\d+[.、]|[-*])\s*", s):
             continue
-        if re.search(r"\[[^\]]+\](?!\()", s) or s.startswith("| #") or s.startswith("|---"):
+        if is_placeholder(s) or s.startswith("| #") or s.startswith("|---"):
             continue
         keep.append(s)
     return keep
@@ -323,7 +371,7 @@ def meaningful(lines):
 def field(lines, name):
     for l in lines:
         m = re.match(r"^\s*[-*]?\s*%s[:：]\s*(.*?)\s*$" % re.escape(name), l)
-        if m and m.group(1) and not re.search(r"\[[^\]]+\]", m.group(1)):
+        if m and m.group(1) and not is_placeholder(m.group(1)):
             return m.group(1)
     return None
 
@@ -416,7 +464,7 @@ def plan_errors(plan, ci):
         sid = sid_key(s.get("id"))
         for k, zh in [("title", "步骤名"), ("done_when", "完成判据"), ("verify", "验证方法")]:
             v = str(s.get(k) or "").strip()
-            if not v or re.search(r"\[[^\]]+\]", v):
+            if not v or is_placeholder(v):
                 errors.append("步骤 %s 缺少%s（%s）" % (sid, zh, k))
         for d in s.get("depends_on", []):
             if sid_key(d) not in idset:
@@ -426,8 +474,10 @@ def plan_errors(plan, ci):
         est = s.get("estimate_h")
         if isinstance(est, (int, float)) and est > 8:
             warnings.append("步骤 %s 预计 %sh，超过一个工作时段，建议继续拆分" % (sid, est))
-        if risk == "high" and not str(s.get("verify_cmd") or "").strip():
-            warnings.append("高风险计划中步骤 %s 没有 verify_cmd：只能用文件证据完成" % sid)
+        if str(s.get("verify_cmd") or "").strip() and s.get("verify_argv"):
+            errors.append("步骤 %s 同时写了 verify_cmd 和 verify_argv，只能保留一种" % sid)
+        if risk == "high" and not has_verify(s):
+            warnings.append("高风险计划中步骤 %s 没有验证命令（verify_argv / verify_cmd）：只能用文件证据完成" % sid)
     graph = {sid_key(s.get("id")): [sid_key(d) for d in s.get("depends_on", [])] for s in steps}
     seen, stack = set(), set()
 
@@ -461,7 +511,7 @@ def plan_errors(plan, ci):
     elif tested and steps.index(tested[0]) > 1:
         warnings.append("第一个验证假设的步骤排在第 %d 位；通常应放在前两步" % (steps.index(tested[0]) + 1))
     real_if = [x for x in plan.get("if_then", []) if isinstance(x, dict) and str(x.get("if", "")).strip()
-               and not re.search(r"\[[^\]]+\]", str(x.get("if")))]
+               and not is_placeholder(str(x.get("if")))]
     if len(real_if) < 2:
         warnings.append("if_then 预案少于 2 条")
     if steps and sid_key(plan.get("first_step")) not in idset:
@@ -534,26 +584,45 @@ def artifact_issues(ctx, step, fp):
     return None
 
 
+def verify_spec(step):
+    """返回 (argv, 显示用命令)。verify_argv 不经 shell 直接执行（跨平台）；verify_cmd 交给系统 shell。"""
+    argv = step.get("verify_argv")
+    if isinstance(argv, list) and argv:
+        return list(argv), shlex.join(argv)
+    return None, str(step.get("verify_cmd") or "").strip()
+
+
+def has_verify(step):
+    return bool(verify_spec(step)[1])
+
+
 def stale_verified_step(ctx, step, fp):
     """只对命令和文件型的可验证证据检查；文字证据维持显式未验证状态。"""
-    if step.get("verify_cmd"):
+    if has_verify(step):
         return None if fresh_command_pass(step, fp) else "命令验证已失效或未通过"
     if any(isinstance(e, dict) and e.get("kind") == "artifact" for e in step.get("evidence", [])):
         return artifact_issues(ctx, step, fp)
     return None
 
 
-def run_verify(ctx, step, timeout):
-    cmd = str(step.get("verify_cmd") or "").strip()
+def run_verify(ctx, step, timeout, fp_before=None):
+    argv, cmd = verify_spec(step)
     if not cmd:
-        raise Refuse("步骤 %s 没有 verify_cmd，无法由脚本执行验证" % step.get("id"), 2)
-    fp_before = fingerprint(ctx)
+        raise Refuse("步骤 %s 没有验证命令（verify_argv / verify_cmd），无法由脚本执行验证" % step.get("id"), 2)
+    if fp_before is None:
+        fp_before = fingerprint(ctx)
     started = dt.datetime.now()
     try:
-        r = subprocess.run(cmd, shell=True, cwd=ctx.root, capture_output=True, timeout=timeout)
+        if argv:
+            exe = shutil.which(argv[0]) or argv[0]     # Windows 上 npm 等是 .cmd，需按 PATHEXT 解析
+            r = subprocess.run([exe] + argv[1:], cwd=ctx.root, capture_output=True, timeout=timeout)
+        else:
+            r = subprocess.run(cmd, shell=True, cwd=ctx.root, capture_output=True, timeout=timeout)
         code, output = r.returncode, (r.stdout + r.stderr)
     except subprocess.TimeoutExpired as e:
         code, output = 124, (e.stdout or b"") + (e.stderr or b"") + b"\n[timeout]"
+    except OSError as e:
+        code, output = 127, ("无法启动验证命令：%s" % e).encode("utf-8")
     text = output.decode("utf-8", "replace")
     fp_after = fingerprint(ctx)
     ev = {"kind": "command", "cmd": cmd, "exit_code": code, "ok": code == 0 and fp_before == fp_after,
@@ -608,7 +677,7 @@ def cmd_preflight(a, ctx):
         try:
             plan = load_plan(ctx)
             for step in plan["steps"]:
-                cmd = str(step.get("verify_cmd") or "").strip()
+                cmd = verify_spec(step)[1]
                 if not cmd:
                     continue
                 checks.append({"step": step["id"], "command": cmd,
@@ -646,7 +715,7 @@ def cmd_coverage(a, ctx):
                 quality = "PENDING"
             elif failure:
                 quality = "STALE"
-            elif step.get("verify_cmd") and fresh_command_pass(step, fp):
+            elif has_verify(step) and fresh_command_pass(step, fp):
                 quality = "COMMAND_PASS"
             elif any(isinstance(e, dict) and e.get("kind") == "artifact" for e in evidence):
                 quality = "ARTIFACT_INTACT"
@@ -737,12 +806,13 @@ def cmd_gate(a, ctx):
         out({"ok": False, "gate": "B", "errors": errors, "warnings": warnings}, 1)
     h = plan_hash(plan)
     preview = {"risk": plan.get("risk"), "first_step": plan.get("first_step"),
-               "steps": [{"id": s.get("id"), "title": s.get("title"), "verify_cmd": s.get("verify_cmd"),
+               "steps": [{"id": s.get("id"), "title": s.get("title"), "verify_command": verify_spec(s)[1],
+                          "runs_via_shell": bool(verify_spec(s)[1]) and not verify_spec(s)[0],
                           "irreversible": s.get("irreversible", False),
-                          "verify_command_review_required": bool(s.get("verify_cmd")),
-                          "verify_command_risk_hints": verify_command_review(str(s.get("verify_cmd") or ""))}
+                          "verify_command_review_required": has_verify(s),
+                          "verify_command_risk_hints": verify_command_review(verify_spec(s)[1])}
                          for s in plan["steps"]],
-               "说明": "确认计划即同意脚本在验证时执行上面列出的 verify_cmd", "warnings": warnings}
+               "说明": "确认计划即同意脚本在验证时执行上面列出的验证命令", "warnings": warnings}
     two_step("gate-B", h, a.confirm, preview)
     plan["gates"]["B"] = {"hash": h, "a_hash": plan["gates"]["A"]["hash"], "at": now(), "confirmed_via": "token"}
     commit(ctx, plan, "gate", "闸门 B 通过（计划已确认）", gate="B", hash=h)
@@ -806,7 +876,7 @@ def cmd_status(a, ctx):
     if fp is None:
         warnings.append("非 git 项目：无法判断证据是否对应当前代码")
     out({"stage": stage, "gates": gs, "risk": plan.get("risk", "standard"),
-         "current_step": {k: current.get(k) for k in ("id", "title", "done_when", "verify", "verify_cmd", "status")}
+         "current_step": {k: current.get(k) for k in ("id", "title", "done_when", "verify", "verify_cmd", "verify_argv", "status")}
          if current else None,
          "counts": counts, "total": len(steps),
          "unverified_steps": [sid_key(s.get("id")) for s in steps if s.get("status") == "implemented"],
@@ -840,13 +910,13 @@ def cmd_step(a, ctx):
         s["spent_h"] = round(float(s.get("spent_h", 0)) + a.hours, 2)
     if new == "done":
         fp = fingerprint(ctx)
-        if str(s.get("verify_cmd") or "").strip():
+        if has_verify(s):
             if not fresh_command_pass(s, fp):
                 ev = run_verify(ctx, s, a.timeout)
                 if not ev["ok"]:
                     commit(ctx, plan, "verify", "步骤 #%s 验证未通过（退出码 %s）" % (s.get("id"), ev["exit_code"]),
                            step=s.get("id"), ok=False, exit_code=ev["exit_code"])
-                    raise Refuse("verify_cmd 未通过（退出码 %s）：%s。未标记完成；如属一次失败，运行 fail 记录"
+                    raise Refuse("验证命令未通过（退出码 %s）：%s。未标记完成；如属一次失败，运行 fail 记录"
                                  % (ev["exit_code"], ev.get("note") or ev["output_tail"][-300:]))
         elif a.artifact:
             path = a.artifact if os.path.isabs(a.artifact) else os.path.join(ctx.root, a.artifact)
@@ -859,11 +929,11 @@ def cmd_step(a, ctx):
                                                  "text": a.evidence or ""})
         elif (a.evidence or "").strip():
             if plan.get("risk") == "high":
-                raise Refuse("高风险计划不接受纯文字证据：给步骤加 verify_cmd，或用 --artifact 指向证据文件")
+                raise Refuse("高风险计划不接受纯文字证据：给步骤加验证命令（verify_argv / verify_cmd），或用 --artifact 指向证据文件")
             s.setdefault("evidence", []).append({"kind": "note", "text": a.evidence.strip(), "at": now(),
                                                  "fingerprint": fp, "verified": False})
         else:
-            raise Refuse("没有证据不能标记完成。可用：verify_cmd（脚本执行）、--artifact 文件、"
+            raise Refuse("没有证据不能标记完成。可用：验证命令 verify_argv / verify_cmd（脚本执行）、--artifact 文件、"
                          "或 --evidence 文字（仅标准档，记为未验证）；尚未验证就用 implemented")
         s["finished_at"] = now()
     s["status"] = new
@@ -882,17 +952,18 @@ def cmd_verify(a, ctx):
     if not a.all and not a.id:
         raise Refuse("给出步骤 ID 或 --all", 2)
     require_gate_b(plan, ci)
-    targets = [s for s in plan["steps"] if str(s.get("verify_cmd") or "").strip()] if a.all \
+    targets = [s for s in plan["steps"] if has_verify(s)] if a.all \
         else [find_step(plan, a.id)]
-    results = []
+    results, fp = [], fingerprint(ctx)
     for s in targets:
-        ev = run_verify(ctx, s, a.timeout)
+        ev = run_verify(ctx, s, a.timeout, fp_before=fp)
+        fp = ev["fingerprint"]           # 本步结束时的指纹就是下一步开始时的指纹
         results.append({"step": s.get("id"), "ok": ev["ok"], "exit_code": ev["exit_code"],
                         "seconds": ev["seconds"], "note": ev.get("note")})
     commit(ctx, plan, "verify", "执行验证：%s" % (", ".join("#%s %s" % (r["step"], "通过" if r["ok"] else "失败")
                                                           for r in results) or "无"), results=results)
     ok = all(r["ok"] for r in results)
-    out({"ok": ok, "results": results, "fingerprint": fingerprint(ctx)}, 0 if ok else 1)
+    out({"ok": ok, "results": results, "fingerprint": fp}, 0 if ok else 1)
 
 
 def cmd_fail(a, ctx):
@@ -1229,7 +1300,7 @@ def cmd_show(a, ctx):
     for s in plan["steps"]:
         print("| %s |" % " | ".join(cell(x) for x in (
             s.get("id"), ("[不可逆] " if s.get("irreversible") else "") + str(s.get("title", "")),
-            s.get("done_when"), s.get("verify"), s.get("verify_cmd") or "",
+            s.get("done_when"), s.get("verify"), verify_spec(s)[1],
             ",".join(map(str, s.get("depends_on", []))), ",".join(map(str, s.get("covers", []))),
             "%s/%s" % (s.get("estimate_h", ""), s.get("spent_h", 0)),
             STATUS_ZH.get(s.get("status", "todo")), s.get("fails", 0))))
@@ -1269,8 +1340,8 @@ def main():
     s.add_argument("--hours", type=float, help="本次投入的小时数（累计到 spent_h）")
     s.add_argument("--note")
     s.add_argument("--confirm", help="不可逆步骤开始时的确认 token")
-    s.add_argument("--timeout", type=int, default=600, help="verify_cmd 超时秒数（默认 600）")
-    s = add("verify", "由脚本执行 verify_cmd 并记录结果")
+    s.add_argument("--timeout", type=int, default=600, help="验证命令超时秒数（默认 600）")
+    s = add("verify", "由脚本执行验证命令（verify_argv / verify_cmd）并记录结果")
     s.add_argument("id", nargs="?")
     s.add_argument("--all", action="store_true")
     s.add_argument("--timeout", type=int, default=600)

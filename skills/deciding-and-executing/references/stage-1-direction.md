@@ -43,7 +43,7 @@
 - 今天能做的最小一步
 - 置信度及依据
 
-然后 `python3 scripts/de.py init --name 名称 [--risk high]`（如未初始化；档位见 SKILL.md 第 1 节），填写决策卡。注意三处格式，脚本会检查：
+然后 `de.py init --name 名称 [--risk high]`（如未初始化；档位见 SKILL.md 第 1 节），填写决策卡。注意三处格式，脚本会检查：
 - `- 结论：` 后以 **做 / 改后做 / 放弃** 之一开头，补充说明放在括号里；
 - 成功标准用 `1.` `2.` 编号，计划会按编号对应；
 - 止损条件写成三行：`- 触发状态：…`、`- 期限：YYYY-MM-DD`、`- 动作：…`。
@@ -52,8 +52,8 @@
 
 ## 闸门 A
 
-1. `python3 scripts/de.py check card`：`errors` 非空就补齐后重跑；`warnings` 逐条向用户说明，要么修正，要么让用户明确接受。
-2. `python3 scripts/de.py gate A`：返回 token 和 preview（结论、成功标准、止损）。**把 preview 展示给用户，等用户回复同意**，再带 `--confirm TOKEN` 重跑。不要在同一次回复里自己确认。
+1. `de.py check card`：`errors` 非空就补齐后重跑；`warnings` 逐条向用户说明，要么修正，要么让用户明确接受。
+2. `de.py gate A`：返回 token 和 preview（结论、成功标准、止损）。**把 preview 展示给用户，等用户回复同意**，再带 `--confirm TOKEN` 重跑。不要在同一次回复里自己确认。
 
 之后只要目标、成功标准、非目标、关键假设的内容、止损条件或结论被改动，闸门 A 和 B 都会失效，需要重新确认；只更新关键假设表的"状态"列或修订记录不会失效。
 

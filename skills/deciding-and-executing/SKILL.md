@@ -48,20 +48,27 @@ metadata:
 | 阶段 | 先读 | 退出闸门（脚本检查） |
 |---|---|---|
 | ① 定方向 | [references/stage-1-direction.md](references/stage-1-direction.md) | **A**：`check card` 无 error → `gate A` 两步确认 |
-| ② 计划 | [references/stage-2-plan.md](references/stage-2-plan.md) | **B**：`check plan` 无 error → `gate B` 两步确认（同时确认将要执行的 `verify_cmd`） |
+| ② 计划 | [references/stage-2-plan.md](references/stage-2-plan.md) | **B**：`check plan` 无 error → `gate B` 两步确认（同时确认将要执行的验证命令） |
 | ③ 执行 | [references/stage-3-execute.md](references/stage-3-execute.md) | **C**：全部步骤 done，命令证据对应当前代码 |
 | ④ 审查与复盘 | [references/stage-4-review.md](references/stage-4-review.md) | **D**：`review --verdict pass` 两步确认；`retro.md` 有实质内容 |
 | ⑤ 收尾 | [references/stage-5-closeout.md](references/stage-5-closeout.md) | 5A `archive --apply`；5B `sync`（审计无 error、对应当前代码）；5C `purge` 两步确认 |
 
 **闸门会自动失效**：决策卡的目标、成功标准、非目标、关键假设（只更新"状态"列除外）、止损条件、结论一改，A 和 B 都失效；计划的名称、`first_step`、`if_then` 或步骤结构（标题、判据、验证、命令、依赖、覆盖、验证的假设、不可逆标记、估时）一改，B 失效。失效后执行类命令会被拒绝，直到重新确认。这正是"改方向/改计划要重新确认"的落地方式。
 
-**定位阶段**：有 `.decision/` 时先运行 `python3 scripts/de.py status`，按 `stage`（direction / plan / replan / execute / review / closeout / archived / ready-to-purge）和 `escalations` 继续。没有工作区时按用户信号判断；仍判断不了，只问："你现在是在**决定做什么**，还是在**做已经决定的事**？"
+**定位阶段**：有 `.decision/` 时先运行 `de.py status`，按 `stage`（direction / plan / replan / execute / review / closeout / archived / ready-to-purge）和 `escalations` 继续。没有工作区时按用户信号判断；仍判断不了，只问："你现在是在**决定做什么**，还是在**做已经决定的事**？"
 
 用户跳过前一阶段时不拒绝推进：从对话里提炼最小版本的决策卡或计划，推测项标"假设"，请用户一次性确认（这次确认就是对应的闸门）。
 
 ## 4. 脚本
 
-`scripts/de.py` 指本技能目录下的脚本，用它的完整路径调用；在项目里任何子目录运行都会定位到同一个工作区（git 仓库根目录的 `.decision/`）。只用 Python 标准库。完整参数见 `--help`。
+**怎么调用**：本技能所有文档里的 `de.py …` 都是 `python <本技能目录>/scripts/de.py …` 的简写，从项目里任何目录运行，都会定位到同一个工作区（git 仓库根目录的 `.decision/`）。
+- Claude Code：`python "${CLAUDE_SKILL_DIR}/scripts/de.py" status`；变量没被替换时，用技能安装位置的绝对路径（如 `~/.claude/skills/deciding-and-executing/scripts/de.py`）。
+- 其他宿主：同样用绝对路径（如 `~/.agents/skills/deciding-and-executing/scripts/de.py`）。
+- macOS / Linux 用 `python3`，Windows 用 `python` 或 `py -3`。
+- **不要**在项目根目录直接运行 `scripts/de.py`：那是项目自己的目录，找不到脚本。
+- 文档里的 `audit.py` 指 closing-out 技能目录下的 `scripts/audit.py`（两个技能装在同一目录时，即 `<本技能目录>/../closing-out/scripts/audit.py`）。
+
+只用 Python 标准库（3.8+）。完整参数见 `de.py --help`。
 
 | 命令 | 用途 |
 |---|---|
@@ -72,7 +79,7 @@ metadata:
 | `preflight` | 只读预检：仓库/分支/未提交改动/验证命令潜在副作用 |
 | `coverage` | 只读列出成功标准与步骤证据对应关系（不自动宣称满足） |
 | `step ID --status …` | 状态转换受状态机约束；`done` 的证据规则见下 |
-| `verify ID` / `verify --all` | 脚本执行 `verify_cmd`，记录退出码与代码指纹 |
+| `verify ID` / `verify --all` | 脚本执行验证命令，记录退出码与代码指纹 |
 | `fail ID --note` | 记录失败；到上限自动变为 `needs_replan` |
 | `replan ID --note [--waive 理由]` | 解除升级：步骤必须已修改，或经两步确认记录豁免 |
 | `reopen ID --reason` | 重做已完成的步骤；旧证据归档，审查结论作废 |
@@ -81,11 +88,13 @@ metadata:
 | `sync --report`（可选 `--audit-json` 指定工作区固定输出） | 现场运行 closing-out 静态审计（不信任任何预先写好的审计 JSON），通过后登记知识同步 |
 | `purge` [`--confirm`] | 删除工作区：要求已同步、已提交到 git、只含已知文件 |
 
-**`done` 的证据规则**：步骤有 `verify_cmd` → 脚本当场执行，退出码 0 且执行期间代码未变才算数，任何文字都不能替代；否则用 `--artifact 文件`（记录哈希；review 和完成型 archive 时会重新核对文件、哈希与代码指纹）；标准档还可以用 `--evidence 文字`，记为"未验证"，在 status、审查和决策记录里单独标出。高风险档不接受文字证据。
+**验证命令**：优先写 `verify_argv`（参数数组，不经 shell，跨平台一致）；需要管道或重定向时才写 `verify_cmd`（交给系统 shell，Windows 上是 cmd.exe）。二者只能写一种。
+
+**`done` 的证据规则**：步骤有验证命令 → 脚本当场执行，退出码 0 且执行期间代码未变才算数，任何文字都不能替代；否则用 `--artifact 文件`（记录哈希；review 和完成型 archive 时会重新核对文件、哈希与代码指纹）；标准档还可以用 `--evidence 文字`，记为"未验证"，在 status、审查和决策记录里单独标出。高风险档不接受文字证据。
 
 **代码指纹覆盖什么**：Git 已跟踪的改动，加上未跟踪文件的路径和内容（单文件 32 MiB、总量 128 MiB 上限，超限拒绝验证）；**不含被 Git 忽略的文件**。步骤依赖忽略文件（本地配置、外部设备、环境变量）时，另给可验证的证据，不要宣称"仓库全部文件均已验证"。
 
-**只读检查**：执行前运行 `preflight`，报告当前分支、未提交改动和将要执行的 `verify_cmd`，不得自动清理用户改动；④审查时运行 `coverage`，把编号成功标准逐条与实际证据比对，缺少 GUI、硬件或人工观察时保留 `NOT_VERIFIED`。`verify_cmd` 是普通 Shell 命令，不是安全的验证语言：gate B 和 `preflight` 的风险提示是非穷尽的模式匹配，没命中不等于安全；高风险操作仍需宿主授权与隔离环境。
+**只读检查**：执行前运行 `preflight`，报告当前分支、未提交改动和将要执行的验证命令，不得自动清理用户改动；④审查时运行 `coverage`，把编号成功标准逐条与实际证据比对，缺少 GUI、硬件或人工观察时保留 `NOT_VERIFIED`。验证命令不是安全的验证语言：gate B 和 `preflight` 的风险提示是非穷尽的模式匹配，没命中不等于安全；高风险操作仍需宿主授权与隔离环境。
 
 退出码：0 成功；1 检查未通过；2 用法或数据错误；3 闸门拒绝或需要确认（看 `reason`，需要确认时有 `token` 和 `preview`）。
 
@@ -101,7 +110,9 @@ metadata:
 
 - **自己取 token 自己确认**：把 preview 展示给用户、等用户回复，是这套授权唯一不靠脚本的一环，也是最容易被省掉的一环。
 - **把活动当步骤**："研究竞品"不是步骤，"列出 5 个竞品的价格与功能对比表"才是。写不出完成判据，说明还没拆好。
-- **能写 `verify_cmd` 却不写**：命令证据是唯一能被脚本复核的证据。测试、构建、lint、curl 检查都应该写成 `verify_cmd`。
+- **能写验证命令却不写**：命令证据是唯一能被脚本复核的证据。测试、构建、lint、curl 检查都应该写成 `verify_argv`。
+- **验证命令往项目里写文件**：生成未被 Git 忽略的报告或缓存会改变代码指纹，结果不算数。先确认 `.gitignore` 覆盖了它们。
+- **在 `verify_cmd` 里写 POSIX 专用语法**：`test -f`、`> /dev/null`、`&&` 在 Windows 的 cmd.exe 上行为不同或不可用；写成 `verify_argv`。
 - **用旧证据交付**：代码改过之后，以前的命令证据就不对应当前代码了。审查前先 `verify --all`。
 - **成功标准不可验证或没被覆盖**：每条标准要能被观察，并被至少一个步骤的 `covers` 引用。
 - **为了过闸门改标准**：改成功标准、放宽判据、删测试都会让闸门失效并要求重新确认，这是故意的，要告诉用户为什么改。

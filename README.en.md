@@ -72,7 +72,7 @@ The two skills hand off at 5B. After closing-out prepares the report, `de.py syn
 | Guaranteed (enforced by script) | Not guaranteed (stated, handed to something else) |
 |---|---|
 | Execution can't start until gate B has passed, and an approved plan that is then edited must be re-approved | Whether a confirmation token came from a human or the agent → host approval rules |
-| A step with a `verify_cmd` is done only when the command runs and passes right then; no text can substitute | Whether file evidence is truthful → human review |
+| A step with a verification command (`verify_argv` / `verify_cmd`) is done only when the command runs and passes right then; no text can substitute | Whether file evidence is truthful → human review |
 | When the code changes, old command evidence expires and must be re-run before review | Whether docs still describe behavior correctly → source fact-checking |
 | After the failure limit, the step becomes `needs_replan` and can't continue unless the plan changes | A host in bypass mode skips everything → don't use it on important projects |
 | A review verdict is tied to the code and plan; either changing voids it | Changes to git-ignored files → not in the code fingerprint; steps that depend on them need separate evidence |
@@ -160,10 +160,10 @@ Changing the decision card's goal, success criteria, non-goals, key assumptions 
 | `check card` / `check plan` | Validate only |
 | `gate A` / `gate B` [`--confirm TOKEN`] | Two-step gate confirmation |
 | `status` | Stage, gates, current step, stale evidence, text-only evidence, escalations, event-log consistency |
-| `preflight` | Read-only: current branch, uncommitted changes, the `verify_cmd`s that will run and known risk hints (not a sandbox; no hit doesn't mean safe) |
+| `preflight` | Read-only: current branch, uncommitted changes, the verification commands that will run and known risk hints (not a sandbox; no hit doesn't mean safe) |
 | `coverage` | Read-only: steps and evidence status linked to each success criterion (`READY_FOR_INDEPENDENT_REVIEW` is not acceptance) |
 | `step ID --status S [--evidence TEXT \| --artifact FILE] [--hours H]` | State transition; see evidence rules below |
-| `verify ID` / `verify --all` | The script runs `verify_cmd` and records the exit code, an output digest and the code fingerprint |
+| `verify ID` / `verify --all` | The script runs the verification command and records the exit code, an output digest and the code fingerprint |
 | `fail ID --note` | Records a failure; at the limit the step becomes `needs_replan` |
 | `replan ID --note [--waive REASON --confirm]` | Clears escalation. The step must have changed, or a waiver is recorded with two-step confirmation |
 | `reopen ID --reason` | Redo a finished step |
@@ -174,7 +174,7 @@ Changing the decision card's goal, success criteria, non-goals, key assumptions 
 | `show` | Prints the plan table |
 
 **Evidence rules for `done`:**
-- **Step has a `verify_cmd`:** the script runs it on the spot. It counts only if it exits 0 and the code didn't change while it ran.
+- **Step has a verification command:** the script runs it on the spot. Prefer `verify_argv` (an argument array, no shell, same behavior on every OS); use `verify_cmd` (system shell) only when you need pipes or redirection. It counts only if it exits 0 and the code didn't change while it ran.
 - **Otherwise:** `--artifact FILE`, recorded with its hash.
 - **Standard tier only:** `--evidence TEXT` is accepted but recorded as unverified, and flagged separately in status, review and the decision record.
 - **High-risk tier:** text evidence is rejected.
@@ -301,7 +301,7 @@ Full rationale: [evidence.md](skills/deciding-and-executing/references/evidence.
 
 **Does everything go through the process?** No — see the tier table. A ten-minute fix gets no process.
 
-**The script runs commands from plan.json — is that safe?** It only runs `verify_cmd`, and each command is listed in the `gate B` preview for you to approve. If anyone edits a command afterwards, gate B is invalidated and the script refuses to run it.
+**The script runs commands from plan.json — is that safe?** It only runs the steps' verification commands, and each command is listed in the `gate B` preview for you to approve. If anyone edits a command afterwards, gate B is invalidated and the script refuses to run it.
 
 **Will closing-out delete my files?** No. The audit is read-only; deletions are only proposed.
 
@@ -313,7 +313,7 @@ Full rationale: [evidence.md](skills/deciding-and-executing/references/evidence.
 
 4.0.0 has breaking changes. To migrate an in-progress 3.x workspace:
 1. **Decision card:** start the verdict with 做 / 改后做 / 放弃 (do / do-with-changes / abandon). Number the success criteria. Rewrite the stop-loss as three lines: trigger state / deadline / action.
-2. **Plan:** add `covers` to each step, and `verify_cmd` where a command can verify it.
+2. **Plan:** add `covers` to each step, and `verify_argv` (or `verify_cmd`) where a command can verify it.
 3. **Marker:** create a `.de-workspace` marker in the workspace, or `init` a new one and move the content over.
 4. **Gates:** run `gate A` and then `gate B` to re-confirm.
 5. **Close-out:** `archive --remove-workspace` is gone; use `archive --apply` → `sync` → `purge`.

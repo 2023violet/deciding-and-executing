@@ -28,7 +28,7 @@
 
 ## 5A 归档
 
-`python3 scripts/de.py archive --outcome 完成`（止损或放弃时相应改）。预览会列出写入位置和问题；脚本检查：
+`de.py archive --outcome 完成`（止损或放弃时相应改）。预览会列出写入位置和问题；脚本检查：
 - 决策卡通过检查；复盘三节有实质内容；
 - 以"完成"归档时：审查结论为 pass，且审查之后代码和计划都没有变；所有步骤 done；
 - 写入位置在项目内、不在工作区里、文件不存在（不覆盖）。
@@ -40,9 +40,9 @@
 安装了 closing-out 时，按它的完整档执行，并告诉它本次改过的名字（用于 `--rename`）。审计和报告保存到工作区：
 
 ```
-python3 <closing-out>/scripts/audit.py [--rename 旧=新 ...]  # 可先独立预审
+audit.py [--rename 旧=新 ...]  # 可先独立预审
 （按 closing-out 的模板写报告）→ .decision/closeout-report.md
-python3 scripts/de.py sync --report .decision/closeout-report.md  # 本次现场重跑可信审计并保存 JSON
+de.py sync --report .decision/closeout-report.md  # 本次现场重跑可信审计并保存 JSON
 ```
 
 `sync` 不信任先前存放的审计 JSON，它会现场执行配套的审计脚本。拒绝的情况：本次审计退出异常、有 error、输出被截断、代码指纹不一致、项目根不一致，或报告缺失/几乎为空。通过后，报告并入决策记录，记录里的"知识同步"一行更新为已完成。
@@ -56,7 +56,7 @@ python3 scripts/de.py sync --report .decision/closeout-report.md  # 本次现场
 ## 5C 删除工作区
 
 1. 提交所有改动（包括 `.decision/` 和决策记录）。工作区有未提交内容时脚本拒绝删除，因为删了就无法从 git 恢复。
-2. `python3 scripts/de.py purge`：返回将要删除的文件清单和 token。**把清单展示给用户，等用户回复同意。**
+2. `de.py purge`：返回将要删除的文件清单和 token。**把清单展示给用户，等用户回复同意。**
 3. 用户同意后 `purge --confirm TOKEN`。清单一变（例如有人往工作区里放了文件），token 就失效。工作区里有 de.py 不认识的文件或目录时，脚本拒绝删除，交给用户处理。
 
 高风险档位要求为 `purge --confirm` 配置宿主审批规则，见 [permissions.md](permissions.md)。
