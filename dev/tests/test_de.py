@@ -43,6 +43,16 @@ CARD = """# 决策卡：测试项目
 RETRO = "# 复盘\n\n## 原本预期\n3 家付费\n\n## 实际发生\n2 家付费\n\n## 差异的原因\n价格偏高\n"
 
 
+def write_json(path, obj):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False)
+
+
+def read_json(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def steps(over=None):
     over = over or {}
     base = [
@@ -85,6 +95,10 @@ class Base(unittest.TestCase):
 
     def plan(self):
         with open(self.p("plan.json"), encoding="utf-8") as f:
+            return json.load(f)
+
+    def state(self):
+        with open(self.p("state.json"), encoding="utf-8") as f:
             return json.load(f)
 
     def confirm(self, *args):
@@ -185,7 +199,7 @@ class TestWorkspaceSafety(Base):
         write(self.d, ".decision/retro.md", RETRO)
         self.assertEqual(self.de("archive", "--apply")[0], 0)
         code, audit = call(AUDIT, self.d)
-        json.dump(audit, open(self.p("closeout-audit.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        write_json(self.p("closeout-audit.json"), audit)
         write(self.d, ".decision/closeout-report.md", "# 收尾报告\n\n文档与代码一致，静态审计 error 0，无需修改。\n")
         return audit
 
@@ -222,7 +236,7 @@ class TestWorkspaceSafety(Base):
         code, d = self.de("sync", "--audit-json", self.p("closeout-audit.json"),
                           "--report", self.p("closeout-report.md"))
         self.assertEqual(code, 0, d)
-        saved = json.load(open(self.p("closeout-audit.json"), encoding="utf-8"))
+        saved = read_json(self.p("closeout-audit.json"))
         self.assertTrue(saved["complete"])
         self.assertEqual(saved["summary"]["error"], 0)
         self.assertIn("README.md", saved["inventory"]["changed_files"])
@@ -249,7 +263,7 @@ class TestStateMachine(Base):
         self.ready()
         plan = self.plan()
         plan["steps"][0]["verify"] = "换了验证方法"
-        json.dump(plan, open(self.p("plan.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        write_json(self.p("plan.json"), plan)
         self.assertEqual(self.de("step", "1", "--status", "in_progress")[0], 3)
         self.assertEqual(self.de("status")[1]["stage"], "plan")
 
@@ -277,7 +291,7 @@ class TestStateMachine(Base):
         self.assertEqual(self.de("replan", "1", "--note", "没改")[0], 3)       # 未修改步骤
         plan = self.plan()
         plan["steps"][0]["title"] = "访谈（改为当面）"
-        json.dump(plan, open(self.p("plan.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        write_json(self.p("plan.json"), plan)
         code, d = self.de("replan", "1", "--note", "改为当面访谈")
         self.assertEqual(code, 0, d)
         self.assertEqual(d["gates"]["B"], "stale")
@@ -306,10 +320,10 @@ class TestStateMachine(Base):
         self.confirm("review", "--verdict", "pass")
         code, d = self.de("reopen", "1", "--reason", "发现访谈样本有偏差")
         self.assertEqual(code, 0)
-        s = self.plan()["steps"][0]
+        s = self.state()["steps"]["1"]
         self.assertEqual(s["evidence"], [])
         self.assertEqual(s["evidence_history"][0]["evidence"][0]["text"], "访谈记录")
-        self.assertNotIn("review", self.plan())
+        self.assertNotIn("review", self.state())
 
     def test_dependencies_enforced(self):
         self.ready()
@@ -345,7 +359,7 @@ class TestEvidenceAndReview(Base):
         os.remove(os.path.join(self.d, "ok.flag"))
         code, d = self.de("step", "2", "--status", "done", "--evidence", "应该已经通过了")
         self.assertEqual(code, 3)
-        self.assertEqual(self.plan()["steps"][1]["status"], "in_progress")
+        self.assertEqual(self.state()["steps"]["2"]["status"], "in_progress")
         write(self.d, "ok.flag", "1")
         code, d = self.de("step", "2", "--status", "done")
         self.assertEqual((code, d["evidence_kind"]), (0, "command"))

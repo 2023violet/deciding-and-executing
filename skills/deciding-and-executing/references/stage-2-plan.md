@@ -58,7 +58,7 @@
 | `tests_assumption` | 字符串 | 如 `A1` | 是 |
 | `irreversible` | 布尔 | 不可逆步骤 | 是 |
 | `estimate_h` | 数字 | 预计小时 | 是 |
-| `status` / `fails` / `spent_h` / `evidence` 等 | — | 由脚本维护，不要手改 | 否 |
+| `status` / `fails` / `spent_h` / `evidence` / `gates` / `review` 等 | — | 不写在 plan.json：它们在 `state.json`，只由脚本写入；写进 plan.json 会被忽略 | 否 |
 | `if_then` / `first_step` | — | 执行预案与第一步（属于批准过的计划） | **是** |
 | `name` | 字符串 | 计划名称 | 是 |
 | `early_signals` / `milestones` | — | 辅助说明，不绑定批准 | 否 |
@@ -70,6 +70,8 @@
 1. `de.py check plan`：`errors` 清零；`warnings` 逐条向用户说明或修正。
 2. `de.py show` 把计划表给用户看。
 3. `de.py gate B` 得到 token 和 preview，**展示给用户，等用户回复同意**，再带 `--confirm` 重跑。
+
+标准档在方向已经清楚、决策卡和计划一起写好时，可以用 `de.py gate AB` 一次确认两者（preview 同时包含两边内容）；高风险档必须分别确认。
 
 **人工闸门清单**（无代码执行时）：每步有判据和验证方法；没有超过一个工作时段的步骤；每条成功标准被覆盖；验证 A1 的步骤在前两步；不可逆步骤已标出；至少 2 条具体的 if-then；第一步今天能开始。
 

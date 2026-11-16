@@ -4,6 +4,15 @@
 
 ## [未发布]
 
+### 变更：可信度与易用性（P1）
+- **运行时状态与计划分离**：`plan.json` 只放 Agent 编写的计划结构；状态、证据、闸门、审查结论移到只由脚本写入的 `state.json`，每次写入的摘要记在 `events.jsonl`。`plan.json` 里的运行时字段被忽略并在 `status` 中提示；`state.json` 在脚本之外被修改时 `status` 报警。旧工作区在下一次写入命令时自动迁移，已有的闸门批准保持有效。README 的"不能保证"表补上"不防有意同时伪造两份文件"。
+- **收窄触发、减少确认**：description 改为面向跨会话、返工代价高、需要交付证据的开发任务，排除一次会话内能做完的普通开发；标准档新增 `gate AB`（一次确认决策卡与计划，高风险档拒绝）；新增 `closeout`（archive + sync 一步完成，先预览后 `--apply`）。
+- **以开发任务为主线**：新的端到端示例改为"订单服务从 SQLite 迁到 PostgreSQL"（`verify_argv`、`gate AB`、一级升级、不可逆步骤、`coverage`、`closeout`）；原"辞职做点单小程序"示例改名为 `example-decision.md`，用于非代码的重要决定。
+- **英文支持**：`init --lang en` 生成英文模板；决策卡与复盘的章节、字段、结论（go / go with changes / drop）、归档结局（done / stopped / abandoned）接受英文；英文工作区生成英文决策记录。脚本提示信息仍是中文。
+- **多工作区**：新增 `list`；`--dir` 可由环境变量 `DE_WORKSPACE` 提供；`status` 列出其他工作区；代码指纹排除所有工作区（与 `audit.py` 一致），并行的两件事互不让对方的证据过期。
+- `audit.py` 从 `state.json` 读取步骤进度（兼容旧工作区）。
+- **未完成**：真实 Agent 的触发与行为评测仍未运行——它需要把技能安装到全局目录并发起上百次 Claude Code 调用，留给维护者决定何时运行（`dev/run_trigger_eval.sh`）。
+
 ### 新增与修复：落地阻断项（P0）
 - 统一脚本调用说明：文档里的 `de.py …` / `audit.py …` 是简写，SKILL.md 写明 Claude Code（`${CLAUDE_SKILL_DIR}`）、其他宿主与 Windows（`python` / `py -3`）下的实际写法；原先 14 处 `python3 scripts/de.py` 在项目根目录执行会找不到脚本。
 - 占位符改为白名单识别：只有模板里原样出现的 `[…]` 才算"未填写"。此前任何含方括号的内容都会被当成占位符——成功标准"返回 [400]"被静默丢弃、步骤标题"修复 [P1] …"被判缺少标题。

@@ -22,6 +22,8 @@
 - [ ] 5B-2 收尾报告存为 .decision/closeout-report.md
 - [ ] 5B-3 sync
 - [ ] 5C-1 提交所有改动
+
+（标准档可以先做 5B-1、5B-2，再用 closeout 一次完成 5A 与 5B-3，见下方"一步完成 5A + 5B"。）
 - [ ] 5C-2 purge 预览，展示文件清单给用户
 - [ ] 5C-3 用户同意后 purge --confirm
 ```
@@ -46,6 +48,17 @@ de.py sync --report .decision/closeout-report.md  # 本次现场重跑可信审�
 ```
 
 `sync` 不信任先前存放的审计 JSON，它会现场执行配套的审计脚本。拒绝的情况：本次审计退出异常、有 error、输出被截断、代码指纹不一致、项目根不一致，或报告缺失/几乎为空。通过后，报告并入决策记录，记录里的"知识同步"一行更新为已完成。
+
+### 一步完成 5A + 5B
+
+报告写好之后，可以把归档和同步合成一次确认：
+
+```
+de.py closeout --report .decision/closeout-report.md           # 预览：决策记录写到哪、有什么问题、报告是否就绪
+de.py closeout --report .decision/closeout-report.md --apply   # 用户同意后：写决策记录 + 现场重跑审计
+```
+
+审计没通过时，决策记录已经写入，状态停在 `archived`；修复后运行 `sync --report …` 即可，不用重新归档。
 
 **没有安装 closing-out 时**不能运行 `sync`。至少做完下面的最小清单，并在回复中如实说明"未做脚本化的知识同步"，工作区保留不删：
 - [ ] README 的功能、命令、路径与现状一致（实际运行过启动和测试命令）

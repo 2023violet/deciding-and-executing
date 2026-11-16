@@ -74,7 +74,7 @@
 | 代码一变，旧的命令证据自动过期，审查前必须重跑 | 文档描述的行为是否仍与代码一致 → 源码事实核查 |
 | 同一步失败到上限，状态变为待重新规划，不改计划不能继续 | 用宿主的 bypass 模式绕过一切 → 不要在重要项目里用 |
 | 审查结论绑定代码和计划，任一变化即失效 | 被 Git 忽略的文件变化 → 代码指纹不覆盖，依赖它们的步骤要另给证据 |
-| 删除只针对项目内、带标记、只含已知文件、已提交到 git 的工作区 | |
+| 删除只针对项目内、带标记、只含已知文件、已提交到 git 的工作区 | 有意同时伪造 state.json 与事件日志 → 脚本只防疏忽和随手修改，不防故意篡改 |
 
 **授权分三层**：脚本的两步确认（防误操作、防确认过期内容）→ 流程规则（Agent 必须把 preview 展示给你，等你回复后才能确认）→ 宿主审批（Claude Code `permissions.ask` / Codex `prompt` 规则，唯一能让真人介入的一层）。高风险档位必须配置第三层，见 [permissions.md](skills/deciding-and-executing/references/permissions.md)。
 
@@ -209,8 +209,9 @@ python3 scripts/audit.py [--root .] [--base main] [--rename 旧=新 ...] [--excl
 |---|---|---|
 | `.decision/.de-workspace` | 进行中 | 工作区标记；删除时只认带标记的目录 |
 | `.decision/decision-card.md` | 进行中 | 结论、目标、编号的成功标准、非目标、编号假设、结构化止损条件 |
-| `.decision/plan.json` | 进行中 | 步骤、闸门记录、证据、审查结论 |
-| `.decision/events.jsonl` | 进行中 | 只追加的机器事件日志；先写事件再写计划，中断可被发现 |
+| `.decision/plan.json` | 进行中 | 计划结构（步骤、判据、验证命令、依赖），由 Agent 编写 |
+| `.decision/state.json` | 进行中 | 状态、证据、闸门记录、审查结论，只由脚本写入 |
+| `.decision/events.jsonl` | 进行中 | 只追加的机器事件日志，含每次写入 state.json 的摘要；中断或在脚本之外的修改可被发现 |
 | `.decision/progress.md` | 进行中 | 给人读的进度记录与"待办/观察" |
 | `.decision/retro.md` | 进行中 | 复盘与教训去向 |
 | `.decision/closeout-*.{json,md}` | 5B | 知识同步的审计结果与报告 |

@@ -392,12 +392,17 @@ class Audit:
             try:
                 plan = self._load_json(os.path.join(d, "plan.json"))
                 steps = plan.get("steps", []) if isinstance(plan, dict) else []
+                state_path = os.path.join(d, "state.json")       # de.py 4.2+：状态在 state.json
+                if os.path.exists(state_path):
+                    rt = self._load_json(state_path).get("steps", {})
+                    steps = [dict(s, status=(rt.get(str(s.get("id"))) or {}).get("status", "todo"))
+                             for s in steps if isinstance(s, dict)]
                 if steps and all(isinstance(s, dict) and s.get("status") == "done" for s in steps):
                     self.add("decision", "warn", "%s 的计划已全部完成但尚未归档：决策卡会被当成现行事实读到" % w, w,
                              suggestion="走完 deciding-and-executing 的 review → archive")
                 else:
                     self.add("decision", "info", "%s 是进行中的决策工作区，不属于残留" % w, w)
-            except (OSError, ValueError):
+            except (OSError, ValueError, AttributeError):
                 self.add("decision", "warn", "%s 存在但 plan.json 无法读取" % w, w)
 
     def run(self):

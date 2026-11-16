@@ -5,9 +5,10 @@
 路径边界、内容是否变化）；不能验证的（是不是真人批准）只做防误操作，并在输出里说明。
 
 用法（在项目任意目录运行；工作区默认位于 git 仓库根目录的 .decision/）:
-  de.py init     [--name 名称] [--risk standard|high]
+  de.py init     [--name 名称] [--risk standard|high] [--lang zh|en]
+  de.py list                              # 列出本仓库所有工作区
   de.py check    card|plan
-  de.py gate     A|B [--confirm TOKEN]          # 闸门 A=决策卡，B=计划；两步确认
+  de.py gate     A|B|AB [--confirm TOKEN]       # 闸门 A=决策卡，B=计划，AB=标准档一次确认两者；两步确认
   de.py status
   de.py preflight                         # 只读：环境/Git/验证命令检查
   de.py coverage                          # 只读：成功标准与证据对应关系
@@ -19,9 +20,13 @@
   de.py review   --verdict pass|fix|fail [--blocker 文本 ...] [--confirm TOKEN]
   de.py archive  [--outcome 完成|止损|放弃] [--docs-dir docs/decisions] [--apply]
   de.py sync     --report 文件 [--audit-json 工作区/closeout-audit.json]
+  de.py closeout --report 文件 [--outcome …] [--apply]   # archive + sync 一步完成（先预览）
   de.py purge    [--confirm TOKEN]
   de.py show
-  公共参数: --dir 工作区目录（必须位于项目内）
+  公共参数: --dir 工作区目录（必须位于项目内；也可用环境变量 DE_WORKSPACE）
+
+文件归属: plan.json 是 Agent 编写的计划结构；state.json（状态、证据、闸门、审查）只由本脚本写入，
+  每次写入的摘要记在 events.jsonl，status 会发现在脚本之外对它的修改。
 
 步骤状态: todo | in_progress | implemented | done | blocked | needs_replan
   合法转换: todo→in_progress|blocked；in_progress→implemented|done|blocked|todo；
@@ -53,8 +58,8 @@ SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = os.path.join(SKILL_DIR, "assets")
 VERSION = "4.1.0"
 MARKER = ".de-workspace"
-WORKSPACE_FILES = {MARKER, "decision-card.md", "plan.json", "events.jsonl", "progress.md", "retro.md",
-                   "ARCHIVED", "closeout-audit.json", "closeout-report.md"}
+WORKSPACE_FILES = {MARKER, "decision-card.md", "plan.json", "state.json", "events.jsonl", "progress.md",
+                   "retro.md", "ARCHIVED", "closeout-audit.json", "closeout-report.md"}
 STATUSES = ["todo", "in_progress", "implemented", "done", "blocked", "needs_replan"]
 STATUS_ZH = {"todo": "待做", "in_progress": "进行中", "implemented": "已实现未验证", "done": "完成",
              "blocked": "阻塞", "needs_replan": "待重新规划"}
@@ -63,13 +68,29 @@ TRANSITIONS = {"todo": {"in_progress", "blocked"},
                "implemented": {"done", "in_progress"},
                "blocked": {"todo", "in_progress"},
                "done": set(), "needs_replan": set()}
+STATUS_EN = {"todo": "todo", "in_progress": "in progress", "implemented": "implemented, unverified",
+             "done": "done", "blocked": "blocked", "needs_replan": "needs replan"}
 RISKS = ["standard", "high"]
+LANGS = ["zh", "en"]
 OUTCOMES = ["完成", "止损", "放弃"]
+OUTCOME_ALIASES = {"done": "完成", "stopped": "止损", "abandoned": "放弃"}
+VERDICT_EN = (("go with changes", "改后做"), ("go", "做"), ("drop", "放弃"))
+# 章节与字段的英文别名：英文决策卡 / 复盘按同一套规则解析，内部统一用中文名
+SECTION_ALIASES = {"目标": ("goal",), "成功标准": ("success criteria",), "非目标": ("non-goals", "non goals"),
+                   "关键假设": ("key assumptions", "assumptions"), "止损条件": ("stop-loss", "stop loss"),
+                   "升级阈值": ("escalation",), "最大风险": ("biggest risk",), "修订记录": ("revision history",),
+                   "原本预期": ("expected",), "实际发生": ("what happened",), "差异的原因": ("why it differed",)}
+FIELD_ALIASES = {"结论": ("verdict",), "置信度及依据": ("confidence",), "期限": ("deadline",),
+                 "触发状态": ("trigger",), "动作": ("action",), "日期": ("date",)}
+_SECTION_LOOKUP = {alias: zh for zh, aliases in SECTION_ALIASES.items() for alias in aliases}
+SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next",
+             "vendor", "target", ".tox", ".mypy_cache", ".pytest_cache", "coverage"}   # 与 audit.py 一致
 CARD_SECTIONS = ["目标", "成功标准", "非目标", "关键假设", "止损条件"]
 GATE_A_SECTIONS = CARD_SECTIONS.copy()   # 改动这些即"方向变了"，闸门 A 失效
 STRUCT_FIELDS = ["id", "title", "done_when", "verify", "verify_cmd", "depends_on", "tests_assumption",
                  "covers", "irreversible", "estimate_h"]          # 改动这些即"计划变了"，闸门 B 失效
-VAGUE_WORDS = ["更好", "优秀", "满意", "提升", "改善", "尽量", "体验好", "高质量", "顺利"]
+VAGUE_WORDS = ["更好", "优秀", "满意", "提升", "改善", "尽量", "体验好", "高质量", "顺利",
+               "better", "great", "improve", "smooth", "high quality", "user-friendly"]
 RETRO_SECTIONS = ["原本预期", "实际发生", "差异的原因"]
 DEFAULT_MAX_FAILS = 2       # 第三次盲试的成功率通常不高于前两次，此时更可能是计划或假设有问题
 OUTPUT_TAIL = 2000          # 命令输出只保留末尾，防止计划文件膨胀
@@ -125,6 +146,7 @@ class Ctx:
 
     def __init__(self, dir_arg):
         self.root, self.git = project_root(os.getcwd())
+        dir_arg = dir_arg or os.environ.get("DE_WORKSPACE")
         raw = dir_arg if dir_arg else os.path.join(self.root, ".decision")
         raw = raw if os.path.isabs(raw) else os.path.join(os.getcwd(), raw)
         self.dir_raw = os.path.normpath(raw)
@@ -142,6 +164,29 @@ class Ctx:
         if not os.path.isfile(self.p(MARKER)):
             raise Refuse("%s 不是由 de.py init 创建的工作区（缺少 %s）" % (self.dir, MARKER), 2)
 
+    def lang(self):
+        try:
+            with open(self.p(MARKER), encoding="utf-8") as f:
+                lang = json.load(f).get("lang", "zh")
+        except (OSError, ValueError, AttributeError):
+            lang = "zh"
+        return lang if lang in LANGS else "zh"
+
+
+def find_workspaces(root, git):
+    """本仓库里所有带标记的工作区（相对路径）。跳过规则与 audit.py 相同，保证两边指纹一致。"""
+    found = set()
+    if git:
+        code, o = run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--",
+                       ":(glob)**/" + MARKER], root)
+        for n in (o.split(b"\0") if code == 0 else []):
+            d = os.path.dirname(os.fsdecode(n)).replace(os.sep, "/") if n else ""
+            if d and not set(d.split("/")) & SKIP_DIRS and os.path.isfile(os.path.join(root, d, MARKER)):
+                found.add(d)
+    if os.path.isfile(os.path.join(root, ".decision", MARKER)):
+        found.add(".decision")
+    return sorted(found)
+
 
 # ---------------------------------------------------------------- 指纹：代码当前状态
 MAX_UNTRACKED_BYTES = 32 * 1024 * 1024  # 单文件上限
@@ -154,11 +199,12 @@ def fingerprint(ctx):
         return None
     code, head = run(["git", "rev-parse", "HEAD"], ctx.root)
     head = head.decode().strip() if code == 0 else "NO_COMMIT"
-    excl = ":(exclude)%s" % ctx.rel.replace(os.sep, "/")
+    spaces = set(find_workspaces(ctx.root, True)) | {ctx.rel.replace(os.sep, "/")}
+    excl = [":(exclude)%s" % w for w in sorted(spaces)]
     commands = [
-        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ".", excl],
-        ["git", "diff", "HEAD", "--binary", "--", ".", excl],
-        ["git", "ls-files", "--others", "--exclude-standard", "-z", "--", ".", excl],
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", "."] + excl,
+        ["git", "diff", "HEAD", "--binary", "--", "."] + excl,
+        ["git", "ls-files", "--others", "--exclude-standard", "-z", "--", "."] + excl,
     ]
     results = [run(c, ctx.root) for c in commands]
     if any(code != 0 for code, _ in results):
@@ -189,52 +235,155 @@ def fingerprint(ctx):
 
 
 # ---------------------------------------------------------------- 事件与读写
+# plan.json 归 Agent（计划结构）；state.json 归脚本（状态、证据、闸门、审查）。Agent 照常编辑 plan.json
+# 动不到运行时状态；plan.json 里出现的运行时字段一律忽略，并在 status 中提示。
+RUNTIME_STEP_KEYS = ("status", "fails", "spent_h", "evidence", "evidence_history", "started_at", "finished_at",
+                     "escalation", "escalation_history", "waivers")
+RUNTIME_TOP_KEYS = ("gates", "review", "last_event")
+
+
+def step_defaults():
+    return {"status": "todo", "fails": 0, "spent_h": 0, "evidence": []}
+
+
+def read_json(path, what):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except ValueError as e:
+        raise Refuse("%s 不是合法 JSON：%s" % (what, e), 2)
+
+
+def state_of(plan):
+    st = {"schema": 1, "steps": {}}
+    for k in RUNTIME_TOP_KEYS:
+        if plan.get(k) is not None:
+            st[k] = plan[k]
+    for step in plan.get("steps", []):
+        if isinstance(step, dict):
+            st["steps"][sid_key(step.get("id"))] = {k: step[k] for k in RUNTIME_STEP_KEYS if k in step}
+    return st
+
+
 def load_plan(ctx):
+    """读取 plan.json（结构）并合并 state.json（运行时状态），返回与旧版相同形状的计划对象。"""
     path = ctx.p("plan.json")
     if not os.path.exists(path):
         raise Refuse("找不到 %s，先运行 init" % path, 2)
-    try:
-        with open(path, encoding="utf-8") as f:
-            plan = json.load(f)
-    except ValueError as e:
-        raise Refuse("plan.json 不是合法 JSON：%s" % e, 2)
+    plan = read_json(path, "plan.json")
     errs = schema_errors(plan)
     if errs:
         raise Refuse("plan.json 结构错误：" + "；".join(errs), 2, errors=errs)
+    legacy = not os.path.exists(ctx.p("state.json"))
+    if legacy:      # 4.2 之前的工作区：运行时状态还在 plan.json 里，下一次写入时迁移
+        state = state_of(plan)
+    else:
+        state = read_json(ctx.p("state.json"), "state.json")
+        if not isinstance(state, dict) or not isinstance(state.get("steps", {}), dict):
+            raise Refuse("state.json 结构错误：顶层与 steps 都必须是对象", 2)
+    had_runtime, ignored = False, []
+    for step in plan["steps"]:
+        sid = sid_key(step.get("id"))
+        rt = state.get("steps", {}).get(sid) or {}
+        expected = dict(step_defaults(), **(rt if isinstance(rt, dict) else {}))
+        for k in RUNTIME_STEP_KEYS:
+            if k in step:
+                had_runtime = True
+                if not legacy and step[k] != expected.get(k):
+                    ignored.append("步骤 %s 的 %s" % (sid, k))
+                del step[k]
+        step.update(expected)
+    defaults = {"gates": {}, "last_event": 0, "review": None}
+    for k in RUNTIME_TOP_KEYS:
+        if k in plan:
+            had_runtime = True
+            if not legacy and plan[k] != state.get(k, defaults[k]):
+                ignored.append(k)
+            del plan[k]
+        if state.get(k) is not None:
+            plan[k] = state[k]
+    plan.setdefault("gates", {})
+    plan.setdefault("last_event", 0)
+    errs = schema_errors(plan)
+    if errs:
+        raise Refuse("state.json 内容不合法：" + "；".join(errs), 2, errors=errs)
+    plan["_meta"] = {"legacy": legacy, "had_runtime": had_runtime, "ignored": ignored}
     return plan
 
 
-def save_plan(ctx, plan):
-    tmp = ctx.p("plan.json.tmp")
+def write_atomic(path, obj):
+    tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(plan, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, ctx.p("plan.json"))
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, path)
 
 
-def last_event_seq(ctx):
-    path, seq = ctx.p("events.jsonl"), 0
+def save_plan(ctx, plan, state=None):
+    write_atomic(ctx.p("state.json"), state if state is not None else state_of(plan))
+    meta = plan.get("_meta") or {}
+    if meta.get("legacy") and meta.get("had_runtime"):     # 迁移：把运行时字段从 plan.json 中移走
+        structure = {k: v for k, v in plan.items() if k not in RUNTIME_TOP_KEYS and not k.startswith("_")}
+        structure["steps"] = [{k: v for k, v in st.items() if k not in RUNTIME_STEP_KEYS} for st in plan["steps"]]
+        write_atomic(ctx.p("plan.json"), structure)
+    plan["_meta"] = dict(meta, legacy=False, had_runtime=False)
+
+
+def read_events(ctx):
+    path, events = ctx.p("events.jsonl"), []
     if os.path.exists(path):
         with open(path, encoding="utf-8") as f:
             for line in f:
                 try:
-                    seq = max(seq, int(json.loads(line).get("seq", 0)))
+                    ev = json.loads(line)
                 except ValueError:
-                    pass
+                    continue
+                if isinstance(ev, dict):
+                    events.append(ev)
+    return events
+
+
+def last_event_seq(ctx):
+    seq = 0
+    for ev in read_events(ctx):
+        try:
+            seq = max(seq, int(ev.get("seq", 0)))
+        except (TypeError, ValueError):
+            pass
     return seq
 
 
 def commit(ctx, plan, etype, human, **data):
-    """先追加事件，再原子替换 plan.json；中断时 status 能发现两者不一致。"""
+    """先追加事件（含即将写入的 state.json 摘要），再原子替换 state.json；中断或手改时 status 能发现。"""
     seq = last_event_seq(ctx) + 1
+    state = None
+    if plan is not None:
+        plan["last_event"] = seq
+        state = state_of(plan)
+        data["state_sha"] = sha(state, 16)
     ev = dict(seq=seq, at=now(), type=etype, **data)
     with open(ctx.p("events.jsonl"), "a", encoding="utf-8") as f:
         f.write(json.dumps(ev, ensure_ascii=False) + "\n")
     if plan is not None:
-        plan["last_event"] = seq
-        save_plan(ctx, plan)
+        save_plan(ctx, plan, state)
     with open(ctx.p("progress.md"), "a", encoding="utf-8") as f:
         f.write("\n- %s %s\n" % (ev["at"], human))
     return seq
+
+
+def state_warnings(ctx, plan):
+    """state.json 是否由 de.py 最后一次写入；plan.json 里是否混入了会被忽略的运行时字段。"""
+    w, meta = [], plan.get("_meta") or {}
+    if meta.get("legacy"):
+        w.append("工作区来自 4.2 之前的版本：运行时状态仍在 plan.json，下一次写入命令会自动迁移到 state.json")
+    if meta.get("ignored"):
+        w.append("plan.json 里的运行时字段由脚本维护（实际值在 state.json），以下内容与实际状态不同，已忽略：%s"
+                 % "、".join(meta["ignored"][:10]))
+    if os.path.exists(ctx.p("state.json")):
+        st = read_json(ctx.p("state.json"), "state.json")
+        ev = next((e for e in read_events(ctx) if e.get("seq") == st.get("last_event")), {})
+        if ev.get("state_sha") and ev["state_sha"] != sha(st, 16):
+            w.append("state.json 与事件日志记录的摘要不一致：它在 de.py 之外被修改过，状态与证据不可信，请对照 events.jsonl 检查")
+    return w
 
 
 # ---------------------------------------------------------------- 结构校验
@@ -299,6 +448,11 @@ def plan_hash(plan):
 
 
 # ---------------------------------------------------------------- 决策卡
+def canonical_section(title):
+    t = re.sub(r"[（(].*$", "", title).strip()
+    return _SECTION_LOOKUP.get(t.lower(), t)
+
+
 def read_card(ctx):
     path = ctx.p("decision-card.md")
     if not os.path.exists(path):
@@ -309,7 +463,7 @@ def read_card(ctx):
     for line in text.splitlines():
         m = re.match(r"^##\s+(.+?)\s*$", line)
         if m:
-            cur = re.sub(r"[（(].*$", "", m.group(1)).strip()
+            cur = canonical_section(m.group(1))
             sec[cur] = []
         elif cur is not None:
             sec[cur].append(line)
@@ -369,8 +523,9 @@ def meaningful(lines):
 
 
 def field(lines, name):
+    names = "|".join(re.escape(n) for n in (name,) + FIELD_ALIASES.get(name, ()))
     for l in lines:
-        m = re.match(r"^\s*[-*]?\s*%s[:：]\s*(.*?)\s*$" % re.escape(name), l)
+        m = re.match(r"^\s*[-*]?\s*(?:%s)[:：]\s*(.*?)\s*$" % names, l, re.I)
         if m and m.group(1) and not is_placeholder(m.group(1)):
             return m.group(1)
     return None
@@ -384,6 +539,10 @@ def card_info(ctx):
     if verdict_raw:
         m = re.match(r"^(改后做|放弃|做)(?=$|[\s（(：:,，—-])", verdict_raw)
         verdict = m.group(1) if m else None
+        for en, zh in VERDICT_EN if verdict is None else ():
+            if re.match(r"^%s(?=$|[\s(:,—-])" % re.escape(en), verdict_raw.lower()):
+                verdict = zh
+                break
     kill = sec.get("止损条件", [])
     deadline_raw = field(kill, "期限")
     deadline = None
@@ -393,7 +552,7 @@ def card_info(ctx):
         except ValueError:
             deadline = "invalid"
     criteria = [l for l in meaningful(sec.get("成功标准", [])) if re.match(r"^\d+[.、]", l)]
-    mf = re.search(r"修复失败次数上限[:：]\s*(\d+)", text)
+    mf = re.search(r"(?:修复失败次数上限|max fails)[:：]\s*(\d+)", text, re.I)
     return {"text": text, "sec": sec, "verdict_raw": verdict_raw, "verdict": verdict, "deadline": deadline,
             "trigger": field(kill, "触发状态"), "action": field(kill, "动作"), "criteria": criteria,
             "max_fails": max(1, int(mf.group(1))) if mf else DEFAULT_MAX_FAILS,
@@ -408,12 +567,13 @@ def card_errors(ci):
         elif not meaningful(ci["sec"][s]):
             errors.append("章节「%s」是空的或只有占位符" % s)
     if ci["verdict"] is None:
-        errors.append("「结论：」必须以 做 / 改后做 / 放弃 之一开头，收到：%r" % ci["verdict_raw"])
+        errors.append("「结论：」必须以 做 / 改后做 / 放弃 之一开头（英文卡片：go / go with changes / drop），收到：%r"
+                      % ci["verdict_raw"])
     if not ci["criteria"]:
         errors.append("成功标准需要编号条目（1. 2. …），计划用编号建立覆盖关系")
     for c in ci["criteria"]:
         body = re.sub(r"^\d+[.、]\s*", "", c)
-        if any(w in body for w in VAGUE_WORDS) and not re.search(r"\d", body):
+        if any(w in body.lower() for w in VAGUE_WORDS) and not re.search(r"\d", body):
             warnings.append("成功标准可能无法验证（含模糊词且没有数字）：「%s」" % c)
     if "关键假设" in ci["sec"] and not ci["assumptions"]:
         errors.append("关键假设表里没有编号为 A1、A2… 的假设")
@@ -426,7 +586,7 @@ def card_errors(ci):
     conf = field(ci["text"].split("\n## ", 1)[0].splitlines(), "置信度及依据")
     if not conf:
         warnings.append("置信度为空，或只写了数字没有依据")
-    elif not re.search(r"[，,。；;：:]|依据", conf):
+    elif not re.search(r"[，,。；;：:]|依据|because|based on", conf, re.I):
         warnings.append("置信度似乎没有写依据：%s" % conf)
     return errors, warnings
 
@@ -747,14 +907,15 @@ def cmd_init(a, ctx):
         raise Refuse("%s 已存在且非空，但不是 de.py 工作区；为避免覆盖，拒绝初始化" % ctx.dir, 2)
     os.makedirs(ctx.dir, exist_ok=True)
     created = []
+    tpl = ASSETS if a.lang == "zh" else os.path.join(ASSETS, a.lang)
     for name in ["decision-card.md", "plan.json", "progress.md", "retro.md"]:
-        src = os.path.join(ASSETS, name)
+        src = os.path.join(tpl, name)
         if not os.path.exists(src):
             raise Refuse("找不到模板 %s，技能目录可能不完整" % src, 2)
         with open(src, encoding="utf-8") as f:
             txt = f.read()
         if a.name:
-            txt = txt.replace("[名称]", a.name)
+            txt = txt.replace("[名称]", a.name).replace("[name]", a.name)
         if name == "plan.json":
             d = json.loads(txt)
             d["risk"] = a.risk
@@ -763,8 +924,10 @@ def cmd_init(a, ctx):
             f.write(txt)
         created.append(os.path.join(ctx.rel, name))
     with open(ctx.p(MARKER), "w", encoding="utf-8") as f:
-        json.dump({"tool": "deciding-and-executing", "version": VERSION, "created": now(), "risk": a.risk}, f)
-    commit(ctx, None, "init", "初始化工作区（风险档位：%s）" % a.risk, risk=a.risk)
+        json.dump({"tool": "deciding-and-executing", "version": VERSION, "created": now(), "risk": a.risk,
+                   "lang": a.lang}, f)
+    commit(ctx, load_plan(ctx), "init", "初始化工作区（风险档位：%s）" % a.risk, risk=a.risk)
+    created.append(os.path.join(ctx.rel, "state.json"))
     out({"ok": True, "dir": ctx.dir, "risk": a.risk, "created": created,
          "next": "填写 decision-card.md，然后 check card → gate A"})
 
@@ -782,41 +945,61 @@ def cmd_check(a, ctx):
          "risk": plan.get("risk", "standard")}, 0 if not errors else 1)
 
 
+def gate_a_preview(ci, warnings):
+    return {"结论": ci["verdict_raw"], "成功标准": ci["criteria"],
+            "止损": {"触发状态": ci["trigger"], "期限": str(ci["deadline"]), "动作": ci["action"]},
+            "warnings": warnings}
+
+
+def gate_b_preview(plan, warnings):
+    return {"risk": plan.get("risk"), "first_step": plan.get("first_step"),
+            "steps": [{"id": s.get("id"), "title": s.get("title"), "verify_command": verify_spec(s)[1],
+                       "runs_via_shell": bool(verify_spec(s)[1]) and not verify_spec(s)[0],
+                       "irreversible": s.get("irreversible", False),
+                       "verify_command_review_required": has_verify(s),
+                       "verify_command_risk_hints": verify_command_review(verify_spec(s)[1])}
+                      for s in plan["steps"]],
+            "说明": "确认计划即同意脚本在验证时执行上面列出的验证命令", "warnings": warnings}
+
+
 def cmd_gate(a, ctx):
     ctx.require()
     ci, plan = card_info(ctx), load_plan(ctx)
-    if a.which == "A":
-        errors, warnings = card_errors(ci)
+    gates = plan.setdefault("gates", {})
+    if a.which in ("A", "AB"):
+        errors, warnings_a = card_errors(ci)
         if errors:
-            out({"ok": False, "gate": "A", "errors": errors, "warnings": warnings}, 1)
-        h = gate_a_hash(ci)
-        preview = {"结论": ci["verdict_raw"], "成功标准": ci["criteria"],
-                   "止损": {"触发状态": ci["trigger"], "期限": str(ci["deadline"]), "动作": ci["action"]},
-                   "warnings": warnings}
-        two_step("gate-A", h, a.confirm, preview)
-        plan.setdefault("gates", {})["A"] = {"hash": h, "at": now(), "confirmed_via": "token"}
-        plan["gates"].pop("B", None)
-        commit(ctx, plan, "gate", "闸门 A 通过（决策卡已确认）", gate="A", hash=h)
+            out({"ok": False, "gate": "A", "errors": errors, "warnings": warnings_a}, 1)
+        ha = gate_a_hash(ci)
+    if a.which == "A":
+        two_step("gate-A", ha, a.confirm, gate_a_preview(ci, warnings_a))
+        gates["A"] = {"hash": ha, "at": now(), "confirmed_via": "token"}
+        gates.pop("B", None)
+        commit(ctx, plan, "gate", "闸门 A 通过（决策卡已确认）", gate="A", hash=ha)
         out({"ok": True, "gate": "A", "next": "制定计划，然后 check plan → gate B"})
-    gs = gate_state(plan, ci)
-    if gs["A"] != "valid":
-        raise Refuse("闸门 A 未通过或决策卡核心内容已改变，先运行 gate A", gates=gs)
-    errors, warnings = plan_errors(plan, ci)
+    if a.which == "B":
+        gs = gate_state(plan, ci)
+        if gs["A"] != "valid":
+            raise Refuse("闸门 A 未通过或决策卡核心内容已改变，先运行 gate A", gates=gs)
+        ha = gates["A"]["hash"]
+    elif plan.get("risk") == "high":
+        raise Refuse("高风险档必须分别确认 gate A 与 gate B：方向和计划各自需要用户看清后同意", 2)
+    errors, warnings_b = plan_errors(plan, ci)
     if errors:
-        out({"ok": False, "gate": "B", "errors": errors, "warnings": warnings}, 1)
-    h = plan_hash(plan)
-    preview = {"risk": plan.get("risk"), "first_step": plan.get("first_step"),
-               "steps": [{"id": s.get("id"), "title": s.get("title"), "verify_command": verify_spec(s)[1],
-                          "runs_via_shell": bool(verify_spec(s)[1]) and not verify_spec(s)[0],
-                          "irreversible": s.get("irreversible", False),
-                          "verify_command_review_required": has_verify(s),
-                          "verify_command_risk_hints": verify_command_review(verify_spec(s)[1])}
-                         for s in plan["steps"]],
-               "说明": "确认计划即同意脚本在验证时执行上面列出的验证命令", "warnings": warnings}
-    two_step("gate-B", h, a.confirm, preview)
-    plan["gates"]["B"] = {"hash": h, "a_hash": plan["gates"]["A"]["hash"], "at": now(), "confirmed_via": "token"}
-    commit(ctx, plan, "gate", "闸门 B 通过（计划已确认）", gate="B", hash=h)
-    out({"ok": True, "gate": "B", "first_step": plan.get("first_step")})
+        out({"ok": False, "gate": "B", "errors": errors, "warnings": warnings_b}, 1)
+    hb = plan_hash(plan)
+    if a.which == "B":
+        two_step("gate-B", hb, a.confirm, gate_b_preview(plan, warnings_b))
+        msg = "闸门 B 通过（计划已确认）"
+    else:
+        two_step("gate-AB", {"a": ha, "b": hb}, a.confirm,
+                 {"决策卡": gate_a_preview(ci, warnings_a), "计划": gate_b_preview(plan, warnings_b),
+                  "说明": "一次确认同时通过闸门 A（方向）与闸门 B（计划），并同意执行计划里的验证命令"})
+        gates["A"] = {"hash": ha, "at": now(), "confirmed_via": "token"}
+        msg = "闸门 A、B 一次确认通过（决策卡与计划）"
+    gates["B"] = {"hash": hb, "a_hash": ha, "at": now(), "confirmed_via": "token"}
+    commit(ctx, plan, "gate", msg, gate=a.which, hash=hb)
+    out({"ok": True, "gate": a.which, "first_step": plan.get("first_step")})
 
 
 def cmd_status(a, ctx):
@@ -826,7 +1009,7 @@ def cmd_status(a, ctx):
     fp = fingerprint(ctx)
     gs = gate_state(plan, ci)
     counts = {k: sum(1 for s in steps if s.get("status", "todo") == k) for k in STATUSES}
-    warnings, escalations = [], []
+    warnings, escalations = state_warnings(ctx, plan), []
     seq = last_event_seq(ctx)
     if plan.get("last_event", 0) < seq:
         warnings.append("plan.json 落后于事件日志（最后事件 #%d，计划记录 #%d）：上次写入可能中断，请检查 events.jsonl"
@@ -883,7 +1066,9 @@ def cmd_status(a, ctx):
          "stale_evidence_steps": stale, "note_only_done_steps": note_only,
          "review": {"verdict": review.get("verdict"), "valid_for_current_code": review_valid} if review else None,
          "escalations": escalations, "warnings": warnings, "fingerprint": fp,
-         "kill_deadline": str(ci["deadline"]) if ci["deadline"] else None})
+         "kill_deadline": str(ci["deadline"]) if ci["deadline"] else None,
+         "other_workspaces": [w for w in find_workspaces(ctx.root, ctx.git)
+                              if os.path.realpath(os.path.join(ctx.root, w)) != ctx.dir]})
 
 
 def cmd_step(a, ctx):
@@ -1047,7 +1232,7 @@ def retro_problems(ctx):
     for line in text.splitlines():
         m = re.match(r"^##\s+(.+?)\s*$", line)
         if m:
-            cur = m.group(1).strip()
+            cur = canonical_section(m.group(1))
             sec[cur] = []
         elif cur is not None:
             sec[cur].append(line)
@@ -1097,7 +1282,7 @@ def cell(x):
 
 
 def card_title(ci):
-    m = re.search(r"^#\s*决策卡[:：]\s*(.+)$", ci["text"], re.M)
+    m = re.search(r"^#\s*(?:决策卡|decision card)[:：]\s*(.+)$", ci["text"], re.M | re.I)
     return m.group(1).strip() if m else "未命名决策"
 
 
@@ -1105,12 +1290,47 @@ def strip_h1(text):
     return re.sub(r"\A\s*#\s[^\n]*\n", "", text, count=1).strip()
 
 
-def cmd_archive(a, ctx):
-    ctx.require()
+LABELS = {
+    "zh": {"title": "# 决策记录：%s", "outcome": "- 结局：%s", "date": "- 归档日期：%s", "sync_pending": "- 知识同步：待完成",
+           "review": "- 审查结论：%s", "none": "无",
+           "note": "- 说明：本文件是历史记录，描述当时为什么这样决定；系统现状以 README 与 docs 为准。",
+           "card": "## 决策卡（归档时版本）", "exec": "## 执行摘要", "retro": "## 复盘",
+           "table": ["| # | 步骤 | 状态 | 证据类型 | 证据 |", "|---|---|---|---|---|"],
+           "cmd_ev": "`%s` 退出码 %s（代码 %s）", "art_ev": "%s（sha %s）", "note_ev": "%s（未验证）",
+           "sync": "- 知识同步：", "sync_done": "已完成（%s；本次执行静态审计 error 0、warn %s；其他证据层级见下方报告）",
+           "sync_report": "## 知识同步报告", "purged": "- 工作区：已于 %s 删除（可从 git 历史恢复）",
+           "outcomes": {"完成": "完成", "止损": "止损", "放弃": "放弃"}, "status": STATUS_ZH},
+    "en": {"title": "# Decision record: %s", "outcome": "- Outcome: %s", "date": "- Archived: %s",
+           "sync_pending": "- Knowledge sync: pending", "review": "- Review verdict: %s", "none": "none",
+           "note": "- Note: this is a historical record of why the decision was made; README and docs describe the "
+                   "current system.",
+           "card": "## Decision card (as archived)", "exec": "## Execution summary", "retro": "## Retro",
+           "table": ["| # | Step | Status | Evidence kind | Evidence |", "|---|---|---|---|---|"],
+           "cmd_ev": "`%s` exit code %s (code %s)", "art_ev": "%s (sha %s)", "note_ev": "%s (unverified)",
+           "sync": "- Knowledge sync: ",
+           "sync_done": "done (%s; static audit run by sync: error 0, warn %s; other evidence levels in the report below)",
+           "sync_report": "## Knowledge sync report", "purged": "- Workspace: deleted on %s (recoverable from git history)",
+           "outcomes": {"完成": "done", "止损": "stopped", "放弃": "abandoned"}, "status": STATUS_EN},
+}
+RECORD_HEADERS = ("# 决策记录", "# Decision record")
+SYNC_LINE = r"^- (?:知识同步|Knowledge sync)[:：].*$"
+NOTE_LINE = r"^(- (?:说明|Note)[:：].*)$"
+REPORT_MIN_BYTES = 50
+
+
+def report_problem(ctx, report):
+    if not os.path.isfile(report) or not inside(report, ctx.root) or os.path.getsize(report) < REPORT_MIN_BYTES:
+        return "收尾报告不存在、位于项目外或内容不足 %d 字节：%s" % (REPORT_MIN_BYTES, report)
+    return None
+
+
+def archive_core(a, ctx, apply):
+    """归档为决策记录；返回 (结果, 退出码)。apply=False 只预览。不删除任何文件。"""
     if os.path.exists(ctx.p("ARCHIVED")):
-        out({"ok": True, "already_archived": True,
-             "next": "交给 closing-out 完成知识同步，然后运行 sync"})
+        return {"ok": True, "already_archived": True,
+                "next": "交给 closing-out 完整档完成知识同步，然后运行 sync"}, 0
     plan, ci = load_plan(ctx), card_info(ctx)
+    outcome = OUTCOME_ALIASES.get(a.outcome, a.outcome)
     fp = fingerprint(ctx)
     docs_dir = os.path.realpath(a.docs_dir if os.path.isabs(a.docs_dir) else os.path.join(ctx.root, a.docs_dir))
     problems = []
@@ -1121,7 +1341,7 @@ def cmd_archive(a, ctx):
         problems.append("决策卡未通过检查：" + "；".join(errors))
     problems += retro_problems(ctx)
     review = plan.get("review") or {}
-    if a.outcome == "完成":
+    if outcome == "完成":
         if review.get("verdict") != "pass":
             problems.append("以「完成」归档需要交付审查结论为 pass（当前：%s）" % (review.get("verdict") or "无"))
         elif review.get("plan_hash") != plan_hash(plan) or (fp is not None and review.get("fingerprint") != fp):
@@ -1137,44 +1357,50 @@ def cmd_archive(a, ctx):
     target = os.path.join(docs_dir, "%s-%s.md" % (dt.date.today().isoformat(), slug))
     if os.path.exists(target):
         problems.append("%s 已存在，不覆盖" % os.path.relpath(target, ctx.root))
-    preview = {"ok": not problems, "dry_run": not a.apply, "outcome": a.outcome,
+    preview = {"ok": not problems, "dry_run": not apply, "outcome": outcome,
                "would_write": os.path.relpath(target, ctx.root), "problems": problems}
     if problems:
-        out(preview, 3 if a.apply else 1)
-    if not a.apply:
+        return preview, (3 if apply else 1)
+    if not apply:
         preview["next"] = "向用户展示预览；同意后加 --apply 写入（不会删除任何文件）"
-        out(preview)
-    rows = ["| # | 步骤 | 状态 | 证据类型 | 证据 |", "|---|---|---|---|---|"]
+        return preview, 0
+    L = LABELS[ctx.lang()]
+    rows = list(L["table"])
     for s in plan["steps"]:
         ev = s["evidence"][-1] if s.get("evidence") else {}
         k = ev.get("kind")
-        desc = ("`%s` 退出码 %s（代码 %s）" % (ev.get("cmd"), ev.get("exit_code"), ev.get("fingerprint")) if k == "command"
-                else "%s（sha %s）" % (ev.get("path"), ev.get("sha")) if k == "artifact"
-                else "%s（未验证）" % ev.get("text") if k == "note" else "")
+        desc = (L["cmd_ev"] % (ev.get("cmd"), ev.get("exit_code"), ev.get("fingerprint")) if k == "command"
+                else L["art_ev"] % (ev.get("path"), ev.get("sha")) if k == "artifact"
+                else L["note_ev"] % ev.get("text") if k == "note" else "")
         rows.append("| %s |" % " | ".join(cell(x) for x in (s.get("id"), s.get("title"),
-                                                           STATUS_ZH.get(s.get("status", "todo")), k or "", desc)))
+                                                           L["status"].get(s.get("status", "todo")), k or "", desc)))
     with open(ctx.p("retro.md"), encoding="utf-8") as f:
         retro = f.read()
     body = "\n".join([
-        "# 决策记录：%s" % card_title(ci), "",
-        "- 结局：%s" % a.outcome,
-        "- 归档日期：%s" % dt.date.today().isoformat(),
-        "- 知识同步：待完成",
-        "- 审查结论：%s" % (review.get("verdict") or "无"),
-        "- 说明：本文件是历史记录，描述当时为什么这样决定；系统现状以 README 与 docs 为准。", "",
-        "## 决策卡（归档时版本）", "", strip_h1(ci["text"]).replace("\n## ", "\n### "), "",
-        "## 执行摘要", "", "\n".join(rows), "",
-        "## 复盘", "", strip_h1(retro).replace("\n## ", "\n### "), ""])
+        L["title"] % card_title(ci), "",
+        L["outcome"] % L["outcomes"][outcome],
+        L["date"] % dt.date.today().isoformat(),
+        L["sync_pending"],
+        L["review"] % (review.get("verdict") or L["none"]),
+        L["note"], "",
+        L["card"], "", strip_h1(ci["text"]).replace("\n## ", "\n### "), "",
+        L["exec"], "", "\n".join(rows), "",
+        L["retro"], "", strip_h1(retro).replace("\n## ", "\n### "), ""])
     os.makedirs(docs_dir, exist_ok=True)
     with open(target, "w", encoding="utf-8") as f:
         f.write(body)
     rel = os.path.relpath(target, ctx.root).replace(os.sep, "/")
     with open(ctx.p("ARCHIVED"), "w", encoding="utf-8") as f:
-        json.dump({"record": rel, "at": now(), "outcome": a.outcome, "synced": False}, f, ensure_ascii=False)
-    commit(ctx, plan, "archive", "归档为决策记录 %s（%s）" % (rel, a.outcome), record=rel, outcome=a.outcome)
-    out({"ok": True, "archived_to": rel, "outcome": a.outcome,
-         "next": "交给 closing-out 完整档：报告存为 %s/closeout-report.md，再运行 sync --report %s/closeout-report.md"
-                 "（sync 会现场重跑审计）" % (ctx.rel, ctx.rel)})
+        json.dump({"record": rel, "at": now(), "outcome": outcome, "synced": False}, f, ensure_ascii=False)
+    commit(ctx, plan, "archive", "归档为决策记录 %s（%s）" % (rel, outcome), record=rel, outcome=outcome)
+    return {"ok": True, "archived_to": rel, "outcome": outcome,
+            "next": "交给 closing-out 完整档：报告存为 %s/closeout-report.md，再运行 sync --report %s/closeout-report.md"
+                    "（sync 会现场重跑审计）" % (ctx.rel, ctx.rel)}, 0
+
+
+def cmd_archive(a, ctx):
+    ctx.require()
+    out(*archive_core(a, ctx, a.apply))
 
 
 def load_marker(ctx):
@@ -1193,13 +1419,13 @@ def load_marker(ctx):
             or not path.endswith(".md"):
         raise Refuse("ARCHIVED 记录的决策记录路径不可信或不存在：%r" % rec, 3)
     with open(path, encoding="utf-8") as f:
-        if not f.read(200).startswith("# 决策记录"):
+        if not f.read(200).startswith(RECORD_HEADERS):
             raise Refuse("ARCHIVED 指向的文件不是 de.py 生成的决策记录：%s" % rec, 3)
     return m, path
 
 
-def cmd_sync(a, ctx):
-    """必须在本次调用真实运行 closing-out 静态审计；外部 JSON 不构成信任依据。"""
+def sync_core(a, ctx):
+    """必须在本次调用真实运行 closing-out 静态审计；外部 JSON 不构成信任依据。返回 (结果, 退出码)。"""
     m, record = load_marker(ctx)
     trusted = os.path.realpath(os.path.join(os.path.dirname(SKILL_DIR), "closing-out", "scripts", "audit.py"))
     if not os.path.isfile(trusted):
@@ -1207,8 +1433,9 @@ def cmd_sync(a, ctx):
     audit_path = ctx.p("closeout-audit.json")
     if a.audit_json and os.path.realpath(a.audit_json) != os.path.realpath(audit_path):
         raise Refuse("--audit-json 仅允许指向工作区 closeout-audit.json；此参数是本次审计的输出位置，不再读取第三方报告", 2)
-    if not os.path.isfile(a.report) or not inside(a.report, ctx.root) or os.path.getsize(a.report) < 50:
-        out({"ok": False, "problems": ["收尾报告不存在、位于项目外或内容不足 50 字节"]}, 3)
+    problem = report_problem(ctx, a.report)
+    if problem:
+        return {"ok": False, "problems": [problem]}, 3
     try:
         proc = subprocess.run([sys.executable, trusted, "--root", ctx.root], cwd=ctx.root,
                               capture_output=True, text=True, encoding="utf-8", timeout=180,
@@ -1230,24 +1457,56 @@ def cmd_sync(a, ctx):
     if os.path.realpath(audit.get("inventory", {}).get("root", "")) != ctx.root:
         problems.append("本次审计目标不是当前项目根目录")
     if problems:
-        out({"ok": False, "problems": problems, "audit_summary": summ}, 3)
+        return {"ok": False, "problems": problems, "audit_summary": summ}, 3
     with open(audit_path, "w", encoding="utf-8") as f:
         json.dump(audit, f, ensure_ascii=False, indent=2)
     with open(a.report, encoding="utf-8") as f:
         report = f.read()
     with open(record, encoding="utf-8") as f:
         body = f.read()
-    stamp = "已完成（%s；本次执行静态审计 error 0、warn %s；其他证据层级见下方报告）" % (dt.date.today().isoformat(), summ.get("warn", "?"))
-    body = re.sub(r"^- 知识同步：.*$", lambda _: "- 知识同步：" + stamp, body, count=1, flags=re.M)
-    body += "\n## 知识同步报告\n\n" + strip_h1(report).replace("\n## ", "\n### ") + "\n"
+    L = LABELS[ctx.lang()]
+    stamp = L["sync"] + L["sync_done"] % (dt.date.today().isoformat(), summ.get("warn", "?"))
+    body = re.sub(SYNC_LINE, lambda _: stamp, body, count=1, flags=re.M)
+    body += "\n%s\n\n" % L["sync_report"] + strip_h1(report).replace("\n## ", "\n### ") + "\n"
     with open(record, "w", encoding="utf-8") as f:
         f.write(body)
     m.update(synced=True, synced_at=now(), audit_fingerprint=audit["fingerprint"])
     with open(ctx.p("ARCHIVED"), "w", encoding="utf-8") as f:
         json.dump(m, f, ensure_ascii=False)
     commit(ctx, None, "sync", "本次真实静态审计完成，知识同步报告已并入 %s" % m["record"])
-    out({"ok": True, "record": m["record"], "audit_summary": summ,
-         "next": "提交所有改动（含工作区），然后运行 purge 预览删除"})
+    return {"ok": True, "record": m["record"], "audit_summary": summ,
+            "next": "提交所有改动（含工作区），然后运行 purge 预览删除"}, 0
+
+
+def cmd_sync(a, ctx):
+    out(*sync_core(a, ctx))
+
+
+def cmd_closeout(a, ctx):
+    """5A 归档 + 5B 知识同步一步完成：不带 --apply 只预览；带 --apply 写入决策记录并现场重跑审计。"""
+    ctx.require()
+    problem = report_problem(ctx, a.report)
+    if not a.apply:
+        res, code = archive_core(a, ctx, False)
+        if problem:
+            res = dict(res, ok=False, problems=res.get("problems", []) + [problem + "；先按 closing-out 完整档写好报告"])
+            code = code or 1
+        res.update(closeout_preview=True, report=a.report)
+        if code == 0:
+            res["next"] = "向用户展示预览；同意后加 --apply：写入决策记录，并现场重跑审计完成知识同步"
+        out(res, code)
+    if problem:
+        out({"ok": False, "problems": [problem]}, 3)
+    res, code = archive_core(a, ctx, True)
+    if code != 0:
+        out(res, code)
+    try:
+        sres, scode = sync_core(a, ctx)
+    except Refuse as r:
+        sres, scode = {"ok": False, "problems": [r.reason]}, r.code
+    out({"ok": scode == 0, "archive": res, "sync": sres,
+         "next": sres.get("next") if scode == 0
+         else "决策记录已写入；修复上面的问题后运行 sync --report %s" % a.report}, scode)
 
 
 def cmd_purge(a, ctx):
@@ -1280,15 +1539,26 @@ def cmd_purge(a, ctx):
     two_step("purge", payload, a.confirm,
              {"将删除目录": ctx.rel, "文件": [f for f, _ in sorted(files)],
               "可恢复": "这些文件均已提交，可用 git 恢复", "决策记录保留在": m.get("record")})
+    lang = ctx.lang()
     shutil.rmtree(ctx.dir)
     with open(record, encoding="utf-8") as f:
         body = f.read()
-    body = re.sub(r"^(- 说明：.*)$", lambda mm: "- 工作区：已于 %s 删除（可从 git 历史恢复）\n%s"
-                  % (dt.date.today().isoformat(), mm.group(1)), body, count=1, flags=re.M)
+    body = re.sub(NOTE_LINE, lambda mm: "%s\n%s" % (LABELS[lang]["purged"] % dt.date.today().isoformat(), mm.group(1)),
+                  body, count=1, flags=re.M)
     with open(record, "w", encoding="utf-8") as f:
         f.write(body)
     out({"ok": True, "removed": ctx.rel, "record": m.get("record"),
          "next": "提交删除；如安装了 closing-out，再审计一次"})
+
+
+def cmd_list(a, ctx):
+    items = []
+    for rel in find_workspaces(ctx.root, ctx.git):
+        d = os.path.join(ctx.root, rel)
+        items.append({"dir": rel, "selected": os.path.realpath(d) == ctx.dir,
+                      "archived": os.path.exists(os.path.join(d, "ARCHIVED"))})
+    out({"ok": True, "workspaces": items,
+         "note": "同一仓库并行推进多件事时，每件事一个工作区（如 .decision-<名称>），所有命令带 --dir 或设置 DE_WORKSPACE"})
 
 
 def cmd_show(a, ctx):
@@ -1318,16 +1588,18 @@ def main():
 
     def add(name, h):
         sp = sub.add_parser(name, help=h)
-        sp.add_argument("--dir", help="工作区目录（默认 <项目根>/.decision，必须位于项目内）")
+        sp.add_argument("--dir", help="工作区目录（默认 $DE_WORKSPACE 或 <项目根>/.decision，必须位于项目内）")
         return sp
 
     s = add("init", "创建工作区（已有工作区不会被覆盖）")
     s.add_argument("--name")
     s.add_argument("--risk", choices=RISKS, default="standard")
+    s.add_argument("--lang", choices=LANGS, default="zh", help="模板语言（决策卡、计划、复盘、决策记录）")
+    add("list", "列出本仓库所有工作区")
     s = add("check", "只校验，不改状态")
     s.add_argument("target", choices=["card", "plan"])
-    s = add("gate", "闸门 A（决策卡）/ B（计划）的两步确认")
-    s.add_argument("which", choices=["A", "B"])
+    s = add("gate", "闸门 A（决策卡）/ B（计划）/ AB（标准档一次确认两者）的两步确认")
+    s.add_argument("which", choices=["A", "B", "AB"])
     s.add_argument("--confirm")
     add("status", "当前阶段、闸门、升级与证据状态")
     add("preflight", "只读环境/Git/命令副作用预检")
@@ -1362,12 +1634,18 @@ def main():
     s.add_argument("--blocker", action="append", default=[])
     s.add_argument("--confirm")
     s = add("archive", "归档为决策记录（默认只预览；不删除任何文件）")
-    s.add_argument("--outcome", choices=OUTCOMES, default="完成")
+    s.add_argument("--outcome", choices=OUTCOMES + list(OUTCOME_ALIASES), default="完成")
     s.add_argument("--docs-dir", default=os.path.join("docs", "decisions"))
     s.add_argument("--apply", action="store_true")
     s = add("sync", "登记 closing-out 的审计与报告，完成知识同步")
     s.add_argument("--audit-json", help="本次真实审计输出文件，仅允许使用工作区 closeout-audit.json")
     s.add_argument("--report", required=True)
+    s = add("closeout", "archive + sync 一步完成（默认只预览；--apply 执行）")
+    s.add_argument("--report", required=True)
+    s.add_argument("--outcome", choices=OUTCOMES + list(OUTCOME_ALIASES), default="完成")
+    s.add_argument("--docs-dir", default=os.path.join("docs", "decisions"))
+    s.add_argument("--apply", action="store_true")
+    s.set_defaults(audit_json=None)
     s = add("purge", "删除已归档且已同步的工作区（两步确认；要求已提交到 git）")
     s.add_argument("--confirm")
     add("show", "把计划渲染成 Markdown 表格")
@@ -1381,7 +1659,7 @@ def main():
         {"init": cmd_init, "check": cmd_check, "gate": cmd_gate, "status": cmd_status, "step": cmd_step,
          "verify": cmd_verify, "preflight": cmd_preflight, "coverage": cmd_coverage, "fail": cmd_fail, "replan": cmd_replan, "reopen": cmd_reopen,
          "review": cmd_review, "archive": cmd_archive, "sync": cmd_sync, "purge": cmd_purge,
-         "show": cmd_show}[a.cmd](a, ctx)
+         "closeout": cmd_closeout, "list": cmd_list, "show": cmd_show}[a.cmd](a, ctx)
     except Refuse as r:
         print(("需要确认：" if r.extra.get("needs_confirmation") else "拒绝：") + r.reason, file=sys.stderr)
         out(dict({"ok": False, "refused": r.code == 3, "reason": r.reason}, **r.extra), r.code)

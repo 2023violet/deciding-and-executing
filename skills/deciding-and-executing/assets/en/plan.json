@@ -1,0 +1,34 @@
+{
+  "schema": 2,
+  "name": "[name]",
+  "risk": "standard",
+  "milestones": [
+    "[a checkable state, not a stretch of work]"
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "title": "[smallest experiment that tests A1]",
+      "done_when": "[observable completion criterion]",
+      "verify": "[how it is proven: what runs, what is checked, who confirms]",
+      "verify_argv": [],
+      "depends_on": [],
+      "covers": [
+        1
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 2
+    }
+  ],
+  "if_then": [
+    {
+      "if": "[most likely obstacle]",
+      "then": "[concrete action]"
+    }
+  ],
+  "early_signals": [
+    "[early warning sign from the pre-mortem]"
+  ],
+  "first_step": 1
+}

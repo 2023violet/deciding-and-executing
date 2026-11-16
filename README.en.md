@@ -76,7 +76,7 @@ The two skills hand off at 5B. After closing-out prepares the report, `de.py syn
 | When the code changes, old command evidence expires and must be re-run before review | Whether docs still describe behavior correctly → source fact-checking |
 | After the failure limit, the step becomes `needs_replan` and can't continue unless the plan changes | A host in bypass mode skips everything → don't use it on important projects |
 | A review verdict is tied to the code and plan; either changing voids it | Changes to git-ignored files → not in the code fingerprint; steps that depend on them need separate evidence |
-| Deletion only touches a marked workspace inside the project that contains only known files and is committed to git | |
+| Deletion only touches a marked workspace inside the project that contains only known files and is committed to git | Deliberately forging both state.json and the event log → the script guards against carelessness and casual edits, not deliberate tampering |
 
 **Three layers of authorization:**
 1. **Script.** Two-step confirmation prevents one-shot mistakes and confirmations of content that has since changed.
@@ -218,8 +218,9 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 |---|---|---|
 | `.decision/.de-workspace` | While active | Workspace marker; deletion only acts on marked directories |
 | `.decision/decision-card.md` | While active | Verdict, goal, numbered success criteria, non-goals, numbered assumptions, structured stop-loss |
-| `.decision/plan.json` | While active | Steps, gate records, evidence, review verdict |
-| `.decision/events.jsonl` | While active | Append-only machine log. The event is written before the plan, so an interrupted write is detected |
+| `.decision/plan.json` | While active | Plan structure (steps, criteria, verification commands, dependencies), written by the agent |
+| `.decision/state.json` | While active | Status, evidence, gate records, review verdict; written only by the script |
+| `.decision/events.jsonl` | While active | Append-only machine log, including a digest of every state.json write, so an interrupted write or an edit outside the script is detected |
 | `.decision/progress.md` | While active | Human-readable progress and to-dos |
 | `.decision/retro.md` | While active | Retro and where each lesson goes |
 | `.decision/closeout-*.{json,md}` | 5B | Audit result and report for the knowledge sync |

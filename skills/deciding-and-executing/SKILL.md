@@ -1,6 +1,6 @@
 ---
 name: deciding-and-executing
-description: 当用户要把一件有返工成本的事从"想清楚"推进到"做出来"时使用：做项目或重要决定、拿不定方向或要评审方案、说"先别急着回答"、方向定了问"接下来怎么做"、要排执行计划、执行中报错卡住或怀疑跑偏、准备交付上线、项目结束要结案，或提到钢人论证、事前验尸、决策卡、止损、复盘、SOP。即使用户没说"计划"或"决策"，只要事情跨多个步骤且做错了代价不小，也应使用。不用于一次性事实问答、十分钟内能改完的小修复、纯闲聊、只要一段文案，也不用于单纯的文档同步与仓库整理。
+description: 当一项开发或工程任务要跨会话推进、做错了返工代价高、需要可复核的交付证据时使用：多日的迁移、重构、新子系统、上线发布；拿不定技术方向或要评审方案、说"先别急着回答"；方向定了问"接下来怎么排"；执行中同一处反复失败或怀疑跑偏；问"可以上线了吗"；项目结束要结案；或明确要决策卡、执行计划、钢人论证、事前验尸、止损、复盘。用户在做非代码的重要决定（如是否辞职创业）时也可使用，通常只走定方向阶段。不用于一次会话内能做完的普通开发任务、十分钟内能改完的小修复、一次性事实问答、纯闲聊或只要一段文案，也不用于单纯的文档同步与仓库整理（那是 closing-out）。
 license: MIT
 metadata:
   version: "4.1.0"
@@ -18,7 +18,7 @@ metadata:
 |---|---|---|
 | **不走流程** | 一步能完成、可逆、需求明确 | 说一句"这个不用走流程"，直接做 |
 | **轻量** | 一次会话内能完成、可逆、只影响自己 | 不建工作区，在回复里用一张最小清单：目标、完成判据、验证方法、做完后的证据 |
-| **标准** | 跨会话、跨多个步骤、返工有成本 | `de.py init`，走完整五阶段 |
+| **标准** | 跨会话、跨多个步骤、返工有成本 | `de.py init`，走完整五阶段；方向已清楚时可用 `gate AB` 一次确认决策卡与计划，收尾用 `closeout` 一步完成归档与同步 |
 | **高风险** | 含不可逆操作（删数据、迁移、发布到生产、改权限）、影响他人或花钱 | `de.py init --risk high`：每步必须有命令或文件证据，成功标准必须全覆盖；先配置宿主审批规则（见 [references/permissions.md](references/permissions.md)） |
 
 拿不准时选低一档并说明理由；执行中发现低估了，就升档。
@@ -48,10 +48,10 @@ metadata:
 | 阶段 | 先读 | 退出闸门（脚本检查） |
 |---|---|---|
 | ① 定方向 | [references/stage-1-direction.md](references/stage-1-direction.md) | **A**：`check card` 无 error → `gate A` 两步确认 |
-| ② 计划 | [references/stage-2-plan.md](references/stage-2-plan.md) | **B**：`check plan` 无 error → `gate B` 两步确认（同时确认将要执行的验证命令） |
+| ② 计划 | [references/stage-2-plan.md](references/stage-2-plan.md) | **B**：`check plan` 无 error → `gate B` 两步确认（同时确认将要执行的验证命令）；标准档可用 `gate AB` 与 A 一次确认 |
 | ③ 执行 | [references/stage-3-execute.md](references/stage-3-execute.md) | **C**：全部步骤 done，命令证据对应当前代码 |
 | ④ 审查与复盘 | [references/stage-4-review.md](references/stage-4-review.md) | **D**：`review --verdict pass` 两步确认；`retro.md` 有实质内容 |
-| ⑤ 收尾 | [references/stage-5-closeout.md](references/stage-5-closeout.md) | 5A `archive --apply`；5B `sync`（审计无 error、对应当前代码）；5C `purge` 两步确认 |
+| ⑤ 收尾 | [references/stage-5-closeout.md](references/stage-5-closeout.md) | 5A `archive --apply`；5B `sync`（审计无 error、对应当前代码）——或 `closeout --apply` 一步完成两者；5C `purge` 两步确认 |
 
 **闸门会自动失效**：决策卡的目标、成功标准、非目标、关键假设（只更新"状态"列除外）、止损条件、结论一改，A 和 B 都失效；计划的名称、`first_step`、`if_then` 或步骤结构（标题、判据、验证、命令、依赖、覆盖、验证的假设、不可逆标记、估时）一改，B 失效。失效后执行类命令会被拒绝，直到重新确认。这正是"改方向/改计划要重新确认"的落地方式。
 
@@ -72,9 +72,10 @@ metadata:
 
 | 命令 | 用途 |
 |---|---|
-| `init [--name] [--risk standard\|high]` | 建工作区 |
+| `init [--name] [--risk standard\|high] [--lang zh\|en]` | 建工作区；`--lang en` 生成英文模板（决策卡、计划、复盘、决策记录） |
+| `list` | 列出本仓库所有工作区 |
 | `check card` / `check plan` | 只校验，不改状态 |
-| `gate A` / `gate B` [`--confirm`] | 闸门确认 |
+| `gate A` / `gate B` / `gate AB` [`--confirm`] | 闸门确认；`AB` 一次确认两者，仅标准档 |
 | `status` | 每次开工、每个新会话先运行 |
 | `preflight` | 只读预检：仓库/分支/未提交改动/验证命令潜在副作用 |
 | `coverage` | 只读列出成功标准与步骤证据对应关系（不自动宣称满足） |
@@ -84,9 +85,16 @@ metadata:
 | `replan ID --note [--waive 理由]` | 解除升级：步骤必须已修改，或经两步确认记录豁免 |
 | `reopen ID --reason` | 重做已完成的步骤；旧证据归档，审查结论作废 |
 | `review --verdict pass\|fix\|fail [--blocker]` | 交付审查结论 |
-| `archive [--outcome 完成\|止损\|放弃] [--apply]` | 归档为决策记录；**不删除任何文件** |
+| `archive [--outcome 完成\|止损\|放弃] [--apply]` | 归档为决策记录；**不删除任何文件**（英文工作区可写 `done\|stopped\|abandoned`） |
 | `sync --report`（可选 `--audit-json` 指定工作区固定输出） | 现场运行 closing-out 静态审计（不信任任何预先写好的审计 JSON），通过后登记知识同步 |
+| `closeout --report 文件 [--outcome] [--apply]` | archive + sync 一步完成：先预览，用户同意后 `--apply` |
 | `purge` [`--confirm`] | 删除工作区：要求已同步、已提交到 git、只含已知文件 |
+
+**文件归属**：`plan.json` 是你编写的计划结构；状态、证据、闸门和审查结论在 `state.json`，只由脚本写入，每次写入的摘要记在 `events.jsonl`。`plan.json` 里出现的运行时字段会被忽略，`state.json` 在脚本之外被改动时 `status` 会报警。这能挡住疏忽和随手修改，挡不住有意同时伪造两份文件的人或 Agent。
+
+**一个仓库多件事**：每件事一个工作区（如 `init --dir .decision-<名称>`），之后每条命令都带同一个 `--dir`（或设置环境变量 `DE_WORKSPACE`）；`list` 列出全部。代码指纹排除所有工作区，互不影响。
+
+**英文用户**：`init --lang en` 生成英文模板；决策卡的章节、字段和结论接受英文写法（Goal、Success criteria、Verdict: go / go with changes / drop 等）。脚本的提示信息仍是中文。
 
 **验证命令**：优先写 `verify_argv`（参数数组，不经 shell，跨平台一致）；需要管道或重定向时才写 `verify_cmd`（交给系统 shell，Windows 上是 cmd.exe）。二者只能写一种。
 
@@ -139,7 +147,8 @@ metadata:
 - [references/stage-3-execute.md](references/stage-3-execute.md)：执行循环、问题分诊、求助格式
 - [references/stage-4-review.md](references/stage-4-review.md)、[references/stage-5-closeout.md](references/stage-5-closeout.md)
 - [references/permissions.md](references/permissions.md)：高风险档必读；配置宿主审批规则
-- [references/worked-example.md](references/worked-example.md)：第一次使用时读
+- [references/worked-example.md](references/worked-example.md)：第一次使用时读（一项多日的开发任务）
+- [references/example-decision.md](references/example-decision.md)：用户在做非代码的重要决定时读
 - [references/prompts-standalone.md](references/prompts-standalone.md)：用户要在没装技能的 AI 里用时读
 - [references/evidence.md](references/evidence.md)：用户问"为什么这样设计"时读
 - [references/verification-strategy.md](references/verification-strategy.md)：②规划验证方法或④判断验收充分性时读（按交付类型选择证据）
