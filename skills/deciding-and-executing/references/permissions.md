@@ -14,7 +14,7 @@
 | `de.py gate … --confirm …` | 确认方向或计划（计划里含将要执行的 verify_cmd） |
 | `de.py review … --confirm …` | 确认交付结论 |
 
-只读命令（`status`、`check`、`show`）和不带 `--confirm` 的预览不需要审批。
+只读命令（`status`、`check`、`show`、`preflight`、`coverage`）和不带 `--confirm` 的预览不需要审批。
 
 ## Claude Code
 

@@ -36,7 +36,7 @@ cat > docs/arch.md <<'EOF'
 src/legacy/ 存放旧的用户模块；新代码在 src/app.ts。
 EOF
 echo 'export function fetchUser(id: string) { return id }' > src/app.ts
-echo '- [x] 把 getUser 改名\n- [x] 删除 legacy' > PLAN.md
+printf '%s\n' '- [x] 把 getUser 改名' '- [x] 删除 legacy' > PLAN.md
 git add -A && git commit -qm "fixture: state after rename and legacy removal"
 echo 'console.log(1)' > debug_rename.js
 echo "fixture ready: $D"

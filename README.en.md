@@ -1,4 +1,4 @@
-> **v4.1.0 local candidate (not a stable release).** R1 paired real-agent trials are not yet run. R2 adds read-only `preflight` and `coverage`; R3 strengthens regression checks. See [validation report](docs/R1-R2-R3-验收报告.md).
+> **Status: v4.1.0 local candidate, not a stable release.** Paired real-agent evaluations haven't been run. What changed in each version and how far it was verified is in the [CHANGELOG](CHANGELOG.md); the stage report is [R1-R2-R3 验收报告](docs/R1-R2-R3-验收报告.md) (Chinese).
 
 # deciding-and-executing · From decision to delivery to a clean repo
 
@@ -75,7 +75,7 @@ The two skills hand off at 5B. After closing-out prepares the report, `de.py syn
 | A step with a `verify_cmd` is done only when the command runs and passes right then; no text can substitute | Whether file evidence is truthful → human review |
 | When the code changes, old command evidence expires and must be re-run before review | Whether docs still describe behavior correctly → source fact-checking |
 | After the failure limit, the step becomes `needs_replan` and can't continue unless the plan changes | A host in bypass mode skips everything → don't use it on important projects |
-| A review verdict is tied to the code and plan; either changing voids it | |
+| A review verdict is tied to the code and plan; either changing voids it | Changes to git-ignored files → not in the code fingerprint; steps that depend on them need separate evidence |
 | Deletion only touches a marked workspace inside the project that contains only known files and is committed to git | |
 
 **Three layers of authorization:**
@@ -148,7 +148,7 @@ Full walkthroughs: the [deciding-and-executing example](skills/deciding-and-exec
 | ④ Review & retro | `review --verdict pass` requires: all steps done, command evidence that matches the current code, and no blockers. The retro's three sections must have real content |
 | ⑤ Close-out | 5A `archive --apply`; 5B `sync`; 5C `purge` two-step confirmation |
 
-Changing the decision card's goal, success criteria, non-goals, stop-loss or verdict invalidates gates A and B. Changing a plan step's structure invalidates gate B. Until you re-confirm, execution commands are refused.
+Changing the decision card's goal, success criteria, non-goals, key assumptions (except their status column), stop-loss or verdict invalidates gates A and B. Changing the plan's name, `first_step`, `if_then` or a step's structure invalidates gate B. Until you re-confirm, execution commands are refused.
 
 **Step state machine.** `todo → in_progress → implemented → done`, plus `blocked` and `needs_replan`. A `done` step can't be moved back directly; use `reopen`, which archives the old evidence and voids the review. `needs_replan` is cleared only by `replan`.
 
@@ -160,6 +160,8 @@ Changing the decision card's goal, success criteria, non-goals, stop-loss or ver
 | `check card` / `check plan` | Validate only |
 | `gate A` / `gate B` [`--confirm TOKEN`] | Two-step gate confirmation |
 | `status` | Stage, gates, current step, stale evidence, text-only evidence, escalations, event-log consistency |
+| `preflight` | Read-only: current branch, uncommitted changes, the `verify_cmd`s that will run and known risk hints (not a sandbox; no hit doesn't mean safe) |
+| `coverage` | Read-only: steps and evidence status linked to each success criterion (`READY_FOR_INDEPENDENT_REVIEW` is not acceptance) |
 | `step ID --status S [--evidence TEXT \| --artifact FILE] [--hours H]` | State transition; see evidence rules below |
 | `verify ID` / `verify --all` | The script runs `verify_cmd` and records the exit code, an output digest and the code fingerprint |
 | `fail ID --note` | Records a failure; at the limit the step becomes `needs_replan` |
@@ -167,7 +169,7 @@ Changing the decision card's goal, success criteria, non-goals, stop-loss or ver
 | `reopen ID --reason` | Redo a finished step |
 | `review --verdict pass\|fix\|fail [--blocker …] [--confirm]` | Records the review verdict |
 | `archive [--outcome 完成\|止损\|放弃] [--apply]` | Writes the decision record (completed / stop-loss / abandoned). Deletes nothing |
-| `sync --report` (`--audit-json` optional, fixed workspace output only) | Runs a fresh static audit, then records the knowledge sync |
+| `sync --report` (`--audit-json` optional, fixed workspace output only) | Runs a fresh static audit (both skills must be installed; pre-written JSON is never trusted), saves it as `.decision/closeout-audit.json`, then records the knowledge sync |
 | `purge [--confirm TOKEN]` | Deletes the workspace |
 | `show` | Prints the plan table |
 
@@ -176,6 +178,8 @@ Changing the decision card's goal, success criteria, non-goals, stop-loss or ver
 - **Otherwise:** `--artifact FILE`, recorded with its hash.
 - **Standard tier only:** `--evidence TEXT` is accepted but recorded as unverified, and flagged separately in status, review and the decision record.
 - **High-risk tier:** text evidence is rejected.
+
+Artifact evidence is re-checked (path, hash, code fingerprint) by `review --verdict pass` and a completed `archive`. The **code fingerprint** covers tracked git changes plus the contents of untracked files (32 MiB per file, 128 MiB total), but **not git-ignored files**. Evidence is only as good as the verification command's coverage of the real requirement.
 
 Exit codes: `0` success; `1` check failed; `2` usage or data error; `3` refused by a gate or confirmation needed (returns `token` and `preview`).
 
@@ -234,9 +238,11 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 │   └── closing-out/              SKILL.md, references/ (routing, placement, example),
 │                                  scripts/audit.py, assets/report.md, agents/openai.yaml
 ├── dist/                          Packaged .skill files (release_check verifies they match skills/)
+├── experimental/                  Experimental third skill independent-verification (not installed by default; see README-完整交付说明.md)
 ├── docs/
-│   ├── 内审报告-v4.0.0.md          Point-by-point response to the external review, plus self-audit findings (Chinese)
-│   └── 教程-如何制作高质量Skill.md  Guide to building high-quality skills (Chinese)
+│   ├── 教程-如何制作高质量Skill.md  Guide to building high-quality skills (Chinese)
+│   ├── Skill-愿景与演进路线.md      Vision and roadmap (Chinese)
+│   └── 内审报告-v4.0.0.md, v4.0.1-*.md, R1-R2-R3-*.md   Review responses and validation records per version (historical, Chinese)
 └── dev/                           release_check.py, validate_skill.py, run_trigger_eval.sh,
                                    tests/ (hermetic regression + adversarial), evals/<skill>/, eval-runs/
 ```
@@ -284,11 +290,11 @@ Full rationale: [evidence.md](skills/deciding-and-executing/references/evidence.
 
 ## Known limitations
 
-- **Agent-level behavior hasn't been independently evaluated.** The regression tests prove the scripts behave correctly. Whether an agent actually shows you the preview before confirming can only be measured by behavior evals, and those haven't been run on a real agent yet.
+- **Agent-level behavior hasn't been independently evaluated.** The regression tests prove the scripts behave correctly. Whether an agent actually shows you the preview before confirming can only be measured by behavior evals, and those haven't been run on a real agent yet. Unit tests can't show that triggering, approval or long-task benefits hold in Claude Code or Codex.
 - **Two-step confirmation can't prove a human confirmed.** If an agent breaks the process and confirms by itself, the script can't tell. That layer relies on host approval rules, which match command text and are not a security boundary.
 - **Static audit doesn't understand meaning.** Whether docs describe behavior correctly needs source fact-checking.
 - **Command checks cover npm and Make only.** Poetry, Cargo, Go and others aren't validated yet.
-- **Tested on Linux only.** Path and symlink handling is written to be portable, but Windows and macOS are unverified.
+- **macOS untested; Windows has regression tests only.** The regression suite passes on Linux and Windows (on Windows the symlink cases are skipped for lack of privilege; see the CHANGELOG). Host approval rules haven't been tested on any platform.
 - **Non-git projects get less.** There's no way to tell whether evidence matches the current code, and workspaces can't be deleted.
 
 ## FAQ
@@ -332,8 +338,3 @@ Released under the [MIT License](LICENSE). The methodology draws on several sour
 - Open-source skill libraries including [anthropics/skills](https://github.com/anthropics/skills), [openai/skills](https://github.com/openai/skills), [obra/superpowers](https://github.com/obra/superpowers) and [KKKKhazix/khazix-skills](https://github.com/KKKKhazix/khazix-skills).
 
 Most of the 4.0.0 changes came from an external engineering review. The full source list is in [the guide](docs/教程-如何制作高质量Skill.md).
-
-
-## R2 validation visibility
-
-Run `de.py preflight` to inspect Git state and planned shell commands, and `de.py coverage` to see criterion-to-evidence mappings. Neither command proves shell commands are safe or that acceptance requirements are satisfied. R1 agent-level comparisons remain NOT_RUN.

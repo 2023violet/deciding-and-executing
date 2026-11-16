@@ -90,7 +90,8 @@ class ContractV02Test(unittest.TestCase):
     def test_symlink_escape_in_markdown_blocked(self):
         with tempfile.TemporaryDirectory() as outside:
             p=Path(outside)/'file.md';p.write_text('private')
-            (self.root/'leak.md').symlink_to(p)
+            try:(self.root/'leak.md').symlink_to(p)
+            except OSError as e:self.skipTest('cannot create symlink: %s'%e)  # Windows without privilege
             (self.root/'README.md').write_text('[leak](leak.md)')
             c=contract(requirements=[{'id':'D','text':'No out-of-root refs'}],checks=[
                 {'id':'d1','requirement_id':'D','probe':{'type':'markdown_links','path':'README.md'}}])

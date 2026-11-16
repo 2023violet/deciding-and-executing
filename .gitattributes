@@ -1,0 +1,4 @@
+# 源码一律以 LF 检出：dist/*.skill 与 skills/ 按字节比对，Windows 上的 CRLF 转换会让发布检查失败。
+* text=auto eol=lf
+*.skill binary
+*.zip binary

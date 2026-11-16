@@ -8,7 +8,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from helpers import DE, AUDIT, call, commit_all, init_repo, write  # noqa: E402
+from helpers import DE, AUDIT, call, commit_all, init_repo, rmtree, write  # noqa: E402
 
 CARD = """# 决策卡：测试项目
 
@@ -64,7 +64,7 @@ class Base(unittest.TestCase):
         self.de("init", "--name", "测试项目")
 
     def tearDown(self):
-        shutil.rmtree(self.d, ignore_errors=True)
+        rmtree(self.d, ignore_errors=True)
 
     def de(self, *args, cwd=None):
         return call(DE, cwd or self.d, *args)
@@ -77,13 +77,15 @@ class Base(unittest.TestCase):
 
     def set_plan(self, risk="standard", st=None):
         path = self.p("plan.json")
-        plan = json.load(open(path, encoding="utf-8"))
+        plan = self.plan()
         plan.update(risk=risk, steps=st or steps(), first_step=1,
                     if_then=[{"if": "a", "then": "b"}, {"if": "c", "then": "d"}])
-        json.dump(plan, open(path, "w", encoding="utf-8"), ensure_ascii=False)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(plan, f, ensure_ascii=False)
 
     def plan(self):
-        return json.load(open(self.p("plan.json"), encoding="utf-8"))
+        with open(self.p("plan.json"), encoding="utf-8") as f:
+            return json.load(f)
 
     def confirm(self, *args):
         code, d = self.de(*args)
@@ -128,7 +130,10 @@ class TestWorkspaceSafety(Base):
     def test_symlink_workspace_refused(self):
         outside = tempfile.mkdtemp()
         try:
-            os.symlink(outside, os.path.join(self.d, "ws"))
+            try:
+                os.symlink(outside, os.path.join(self.d, "ws"))
+            except OSError as e:  # Windows 默认没有创建符号链接的权限
+                self.skipTest("无法创建符号链接：%s" % e)
             code, d = self.de("init", "--dir", "ws")
             self.assertEqual(code, 2)
             self.assertIn("符号链接", d["reason"])

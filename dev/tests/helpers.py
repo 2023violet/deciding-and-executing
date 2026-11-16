@@ -1,6 +1,8 @@
 """测试公共工具：与使用者的 git 全局配置隔离，避免签名、钩子、编辑器导致超时或失败。"""
 import json
 import os
+import shutil
+import stat
 import subprocess
 import sys
 
@@ -12,7 +14,7 @@ AUDIT = os.path.join(REPO, "skills", "closing-out", "scripts", "audit.py")
 ENV = dict(os.environ)
 ENV.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_AUTHOR_NAME": "t",
             "GIT_AUTHOR_EMAIL": "t@example.com", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com",
-            "GIT_TERMINAL_PROMPT": "0", "LC_ALL": "C.UTF-8"})
+            "GIT_TERMINAL_PROMPT": "0", "LC_ALL": "C.UTF-8", "PYTHONIOENCODING": "utf-8"})
 
 
 def git(cwd, *args):
@@ -30,6 +32,21 @@ def commit_all(path, msg="c"):
     git(path, "commit", "-q", "-m", msg, "--allow-empty")
 
 
+def rmtree(path, ignore_errors=False):
+    """删除临时仓库；Windows 上 .git/objects 是只读文件，需先去掉只读属性。"""
+    def force(func, p, _exc):
+        os.chmod(p, stat.S_IWRITE)
+        func(p)
+    try:
+        if sys.version_info >= (3, 12):
+            shutil.rmtree(path, onexc=force)
+        else:
+            shutil.rmtree(path, onerror=force)
+    except OSError:
+        if not ignore_errors:
+            raise
+
+
 def write(root, rel, text):
     p = os.path.join(root, rel)
     os.makedirs(os.path.dirname(p) or root, exist_ok=True)
@@ -39,6 +56,7 @@ def write(root, rel, text):
 
 def call(script, cwd, *args, timeout=60):
     r = subprocess.run([sys.executable, script] + list(args), cwd=cwd, capture_output=True, text=True,
+                       encoding="utf-8", errors="replace",
                        env=ENV, timeout=timeout)
     try:
         data = json.loads(r.stdout)

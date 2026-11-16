@@ -370,22 +370,27 @@ class Audit:
             if not self.excluded(u) and not any(u.startswith(w + "/") for w in self.workspaces):
                 self.add("residue", "info", "未被 git 跟踪的文件", u, suggestion="决定：提交、加入 .gitignore，或列为删除候选")
 
+    @staticmethod
+    def _load_json(path):
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+
     def check_decision(self):
         for w in self.workspaces:
             d = os.path.join(self.root, w)
             if os.path.exists(os.path.join(d, "ARCHIVED")):
                 try:
-                    m = json.load(open(os.path.join(d, "ARCHIVED"), encoding="utf-8"))
-                except ValueError:
+                    m = self._load_json(os.path.join(d, "ARCHIVED"))
+                except (OSError, ValueError):
                     m = {}
-                if m.get("synced"):
+                if isinstance(m, dict) and m.get("synced"):
                     self.add("decision", "warn", "%s 已归档且已同步，等待删除" % w, w,
                              suggestion="提交后运行 de.py purge 预览，用户确认后删除")
                 else:
                     self.add("decision", "info", "%s 已归档，知识同步进行中（本次审计即为同步的一部分）" % w, w)
                 continue
             try:
-                plan = json.load(open(os.path.join(d, "plan.json"), encoding="utf-8"))
+                plan = self._load_json(os.path.join(d, "plan.json"))
                 steps = plan.get("steps", []) if isinstance(plan, dict) else []
                 if steps and all(isinstance(s, dict) and s.get("status") == "done" for s in steps):
                     self.add("decision", "warn", "%s 的计划已全部完成但尚未归档：决策卡会被当成现行事实读到" % w, w,

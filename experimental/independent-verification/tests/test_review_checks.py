@@ -53,7 +53,8 @@ class IndependentChecksTest(unittest.TestCase):
     def test_symlink_outside_rejected(self):
         with tempfile.TemporaryDirectory() as t, tempfile.TemporaryDirectory() as outside:
             root=pathlib.Path(t);p=pathlib.Path(outside)/'secret';p.write_text('secret')
-            (root/'link').symlink_to(p)
+            try:(root/'link').symlink_to(p)
+            except OSError as e:self.skipTest('cannot create symlink: %s'%e)  # Windows without privilege
             self.assertEqual(m.evaluate(root,self.spec('python_syntax','link'))['review_outcome'],'BLOCKED')
     def test_sha_mismatch(self):
         with tempfile.TemporaryDirectory() as t:

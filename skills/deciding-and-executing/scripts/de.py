@@ -586,7 +586,16 @@ def cmd_preflight(a, ctx):
     code, branch = run(["git", "branch", "--show-current"], ctx.root)
     branch = branch.decode("utf-8", "replace").strip() if code == 0 else None
     status_code, raw = run(["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"], ctx.root)
-    paths = [os.fsdecode(item[3:]) for item in raw.split(b"\0") if item] if status_code == 0 else []
+    paths = []
+    if status_code == 0:
+        parts, i = raw.split(b"\0"), 0
+        while i < len(parts):
+            item, i = parts[i], i + 1
+            if len(item) < 4:
+                continue
+            paths.append(os.fsdecode(item[3:]))
+            if b"R" in item[:2] or b"C" in item[:2]:
+                i += 1  # 重命名/复制项后面跟着旧路径，不是另一条改动
     checks = []
     warnings = []
     if not ctx.git:
@@ -774,8 +783,9 @@ def cmd_status(a, ctx):
         and (fp is None or review.get("fingerprint") == fp)
     if os.path.exists(ctx.p("ARCHIVED")):
         try:
-            synced = json.load(open(ctx.p("ARCHIVED"), encoding="utf-8")).get("synced")
-        except ValueError:
+            with open(ctx.p("ARCHIVED"), encoding="utf-8") as f:
+                synced = json.load(f).get("synced")
+        except (ValueError, AttributeError):
             synced = False
             warnings.append("ARCHIVED 标记已损坏")
         stage = "ready-to-purge" if synced else "archived"
@@ -980,10 +990,6 @@ def cmd_review(a, ctx):
     fp = fingerprint(ctx)
     problems = []
     if a.verdict == "pass":
-        stale = [(sid_key(s.get("id")), stale_verified_step(ctx, s, fp)) for s in plan["steps"]]
-        stale = [(sid, reason) for sid, reason in stale if reason]
-        if stale:
-            problems.append("文件或命令证据过期：%s" % stale)
         notdone = [sid_key(s.get("id")) for s in plan["steps"] if s.get("status") != "done"]
         if notdone:
             problems.append("还有未完成的步骤 %s" % notdone)
@@ -1096,8 +1102,8 @@ def cmd_archive(a, ctx):
         json.dump({"record": rel, "at": now(), "outcome": a.outcome, "synced": False}, f, ensure_ascii=False)
     commit(ctx, plan, "archive", "归档为决策记录 %s（%s）" % (rel, a.outcome), record=rel, outcome=a.outcome)
     out({"ok": True, "archived_to": rel, "outcome": a.outcome,
-         "next": "交给 closing-out 完整档：把审计 JSON 存为 %s/closeout-audit.json、报告存为 %s/closeout-report.md，再运行 sync"
-                 % (ctx.rel, ctx.rel)})
+         "next": "交给 closing-out 完整档：报告存为 %s/closeout-report.md，再运行 sync --report %s/closeout-report.md"
+                 "（sync 会现场重跑审计）" % (ctx.rel, ctx.rel)})
 
 
 def load_marker(ctx):
@@ -1134,7 +1140,8 @@ def cmd_sync(a, ctx):
         out({"ok": False, "problems": ["收尾报告不存在、位于项目外或内容不足 50 字节"]}, 3)
     try:
         proc = subprocess.run([sys.executable, trusted, "--root", ctx.root], cwd=ctx.root,
-                              capture_output=True, text=True, timeout=180)
+                              capture_output=True, text=True, encoding="utf-8", timeout=180,
+                              env=dict(os.environ, PYTHONIOENCODING="utf-8"))
         audit = json.loads(proc.stdout)
     except (OSError, subprocess.TimeoutExpired, ValueError) as e:
         raise Refuse("本次真实审计未能完成：%s" % e, 3)

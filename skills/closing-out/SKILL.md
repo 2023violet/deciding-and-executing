@@ -108,6 +108,7 @@ metadata:
 - deciding-and-executing 的 ⑤ 收尾分三步：5A 它自己归档；**5B 由本技能做完整档**，先将完整收尾报告存为 `.decision/closeout-report.md`，运行 `de.py sync --report .decision/closeout-report.md`；它会现场执行配套 `audit.py`，将真实结果写入 `.decision/closeout-audit.json`，并核验完整性、当前指纹及错误数；5C 它自己删除工作区。
 - 本技能发现阻断问题时，停在 5B 修复，不能因为决策记录已经写好就当作结案。
 - 审计会识别含 `.de-workspace` 标记的目录：其内容不参与文档检查，也不计入代码指纹；计划全部完成却未归档、或已同步待删除时给出提示。
+- 代码指纹与 de.py 同协议：Git 已跟踪的改动加上未跟踪文件的**内容**（单文件 32 MiB、总量 128 MiB 上限），不含被 Git 忽略的文件。`sync` 必须现场运行审计，任何预先写好的审计 JSON 都不算数。
 - 复盘得到的教训，按 placement.md 的规则决定进规则文件、docs 还是丢弃。
 
 ## 8. 资源索引
@@ -117,8 +118,3 @@ metadata:
 - [references/example.md](references/example.md)：第一次使用、或不确定报告写到什么程度时读
 - [assets/report.md](assets/report.md)：第 6 步的报告模板
 - `scripts/audit.py`：只读审计，`--help` 查看全部参数与检查项
-
-
-### v2.0.1 审计契约补充
-
-本 Skill 的只读审计指纹现在包含 Git 未跟踪文件**内容**（单文件最多 32 MiB、总量最多 128 MiB），但不覆盖被 Git 忽略的文件。`deciding-and-executing sync` 必须现场运行此审计脚本，不能把任何预写 JSON 当作审计已执行的可信证据。静态审计仍不证明文档语义与代码一致，必须单独完成源码事实核查。

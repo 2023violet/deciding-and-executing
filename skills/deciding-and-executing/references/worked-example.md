@@ -152,10 +152,10 @@ $ python3 scripts/de.py archive
 **5B**：交给 closing-out 完整档，告诉它本次把 `getUser` 改成了 `fetchUser`：
 
 ```
-$ python3 <closing-out>/scripts/audit.py --rename getUser=fetchUser > .decision/closeout-audit.json
+$ python3 <closing-out>/scripts/audit.py --rename getUser=fetchUser
 ```
 
-审计报出：README 的测试命令仍是旧的 `npm run e2e`；AGENTS.md 引用了已删除的 `src/legacy/`；`PLAN.md` 是残留。修好前两项，`PLAN.md` 列入删除候选。修改之后重新审计（旧结果不对应当前代码，`sync` 会拒绝），error 0。报告存为 `.decision/closeout-report.md`，运行 `sync`。
+审计报出：README 的测试命令仍是旧的 `npm run e2e`；AGENTS.md 引用了已删除的 `src/legacy/`；`PLAN.md` 是残留。修好前两项，`PLAN.md` 列入删除候选，再跑一次审计确认 error 0。报告存为 `.decision/closeout-report.md`，运行 `sync --report .decision/closeout-report.md`：它现场重跑审计并把结果存为 `.decision/closeout-audit.json`，代码在审计后又被改过也会被发现。
 
 **5C**：提交所有改动。`purge` 列出 9 个将删除的文件，连同 `PLAN.md` 的删除候选一起展示给用户。用户回复"删吧"后，`purge --confirm` 删除工作区，再手动删除 `PLAN.md`，提交，最后再审计一次：error 0。
 

@@ -53,7 +53,7 @@ metadata:
 | ④ 审查与复盘 | [references/stage-4-review.md](references/stage-4-review.md) | **D**：`review --verdict pass` 两步确认；`retro.md` 有实质内容 |
 | ⑤ 收尾 | [references/stage-5-closeout.md](references/stage-5-closeout.md) | 5A `archive --apply`；5B `sync`（审计无 error、对应当前代码）；5C `purge` 两步确认 |
 
-**闸门会自动失效**：决策卡的目标、成功标准、非目标、止损条件、结论一改，A 和 B 都失效；计划步骤的结构（标题、判据、验证、命令、依赖、覆盖、不可逆标记、估时）一改，B 失效。失效后执行类命令会被拒绝，直到重新确认。这正是"改方向/改计划要重新确认"的落地方式。
+**闸门会自动失效**：决策卡的目标、成功标准、非目标、关键假设（只更新"状态"列除外）、止损条件、结论一改，A 和 B 都失效；计划的名称、`first_step`、`if_then` 或步骤结构（标题、判据、验证、命令、依赖、覆盖、验证的假设、不可逆标记、估时）一改，B 失效。失效后执行类命令会被拒绝，直到重新确认。这正是"改方向/改计划要重新确认"的落地方式。
 
 **定位阶段**：有 `.decision/` 时先运行 `python3 scripts/de.py status`，按 `stage`（direction / plan / replan / execute / review / closeout / archived / ready-to-purge）和 `escalations` 继续。没有工作区时按用户信号判断；仍判断不了，只问："你现在是在**决定做什么**，还是在**做已经决定的事**？"
 
@@ -78,10 +78,14 @@ metadata:
 | `reopen ID --reason` | 重做已完成的步骤；旧证据归档，审查结论作废 |
 | `review --verdict pass\|fix\|fail [--blocker]` | 交付审查结论 |
 | `archive [--outcome 完成\|止损\|放弃] [--apply]` | 归档为决策记录；**不删除任何文件** |
-| `sync --report`（可选 `--audit-json` 指定工作区固定输出） | 现场运行 closing-out 静态审计，审计通过后登记知识同步 |
+| `sync --report`（可选 `--audit-json` 指定工作区固定输出） | 现场运行 closing-out 静态审计（不信任任何预先写好的审计 JSON），通过后登记知识同步 |
 | `purge` [`--confirm`] | 删除工作区：要求已同步、已提交到 git、只含已知文件 |
 
-**`done` 的证据规则**：步骤有 `verify_cmd` → 脚本当场执行，退出码 0 且执行期间代码未变才算数，任何文字都不能替代；否则用 `--artifact 文件`（记录哈希）；标准档还可以用 `--evidence 文字`，记为"未验证"，在 status、审查和决策记录里单独标出。高风险档不接受文字证据。
+**`done` 的证据规则**：步骤有 `verify_cmd` → 脚本当场执行，退出码 0 且执行期间代码未变才算数，任何文字都不能替代；否则用 `--artifact 文件`（记录哈希；review 和完成型 archive 时会重新核对文件、哈希与代码指纹）；标准档还可以用 `--evidence 文字`，记为"未验证"，在 status、审查和决策记录里单独标出。高风险档不接受文字证据。
+
+**代码指纹覆盖什么**：Git 已跟踪的改动，加上未跟踪文件的路径和内容（单文件 32 MiB、总量 128 MiB 上限，超限拒绝验证）；**不含被 Git 忽略的文件**。步骤依赖忽略文件（本地配置、外部设备、环境变量）时，另给可验证的证据，不要宣称"仓库全部文件均已验证"。
+
+**只读检查**：执行前运行 `preflight`，报告当前分支、未提交改动和将要执行的 `verify_cmd`，不得自动清理用户改动；④审查时运行 `coverage`，把编号成功标准逐条与实际证据比对，缺少 GUI、硬件或人工观察时保留 `NOT_VERIFIED`。`verify_cmd` 是普通 Shell 命令，不是安全的验证语言：gate B 和 `preflight` 的风险提示是非穷尽的模式匹配，没命中不等于安全；高风险操作仍需宿主授权与隔离环境。
 
 退出码：0 成功；1 检查未通过；2 用法或数据错误；3 闸门拒绝或需要确认（看 `reason`，需要确认时有 `token` 和 `preview`）。
 
@@ -129,18 +133,3 @@ metadata:
 - [references/evidence.md](references/evidence.md)：用户问"为什么这样设计"时读
 - [references/verification-strategy.md](references/verification-strategy.md)：②规划验证方法或④判断验收充分性时读（按交付类型选择证据）
 - `assets/`：决策卡、计划、进度日志、复盘模板（`init` 自动复制）
-
-
-### v4.0.1 验证契约补充
-
-- Gate A 涵盖「关键假设」及其他决策卡核心章节；Gate B 包括 `first_step`、`if_then` 等执行策略。变更后需重新审查并确认。
-- 未跟踪文件被纳入 Git 指纹：按路径和**内容**逐一核验（单文件上限 32 MiB、总量上限 128 MiB）。Git 忽略文件不在指纹范围内，应为依赖这些输入的步骤额外提供可验证证据；不应夸称“仓库全部文件均已验证”。
-- `--artifact` 完成的步骤在 review 和完成型 archive 时会重读文件并比对哈希及代码指纹；找不到文件、符号链接改变或内容不同时拒绝。
-- `sync` **不会信任外部预先提交的审计 JSON**：必须安装配套 `closing-out`，本次调用现场执行审计；旧 `--audit-json` 仅作为工作区内固定输出路径，不能作为输入证明。
-- 两步确认 token 不能证明真人授权；删除、生产变更等高风险操作仍需要宿主审批和用户明确同意。
-
-### R2 验证与环境约束
-
-- 执行前运行 `preflight`，报告当前分支、dirty 工作区和 `verify_cmd`；不得自动清理用户改动。
-- 阶段④运行 `coverage`，将编号成功标准逐条与实际证据比对，缺少 GUI/硬件/人工观察时保留 `NOT_VERIFIED`。
-- `verify_cmd` 是 Shell 命令，不是安全验证语言；Gate B 展示命令与已知风险提示，不能自动认定“未命中提示=安全”。高风险操作继续要求宿主授权与隔离环境。

@@ -1,6 +1,4 @@
-> **v4.1.0 本地候选（非稳定发布）**：R1 的真实 Agent 三组对照尚未执行；R2 新增只读 `preflight` 与 `coverage`；R3 增加回归和评测边界说明。完整结论见 [R1-R2-R3 验收报告](docs/R1-R2-R3-验收报告.md)。
-
-> **v4.0.1 本地候选（未正式发布）**：修复 v4.0.0 六项独立复审 P1 问题。安装和迁移前阅读 [验收记录](docs/v4.0.1-独立验收记录.md) 与 [最终愿景](docs/Skill-愿景与演进路线.md)。
+> **状态：v4.1.0 本地候选，非稳定发布。** 真实 Agent 的对照评测尚未运行；各版本改了什么、验证到哪一层，见 [CHANGELOG](CHANGELOG.md)，阶段报告见 [R1-R2-R3 验收报告](docs/R1-R2-R3-验收报告.md)。
 
 # deciding-and-executing · 从决策到执行，再到收拾干净
 
@@ -75,7 +73,7 @@
 | 有 `verify_cmd` 的步骤，只有命令当场跑通才算完成，任何文字都替代不了 | 文件证据的内容是否属实 → 人工审查 |
 | 代码一变，旧的命令证据自动过期，审查前必须重跑 | 文档描述的行为是否仍与代码一致 → 源码事实核查 |
 | 同一步失败到上限，状态变为待重新规划，不改计划不能继续 | 用宿主的 bypass 模式绕过一切 → 不要在重要项目里用 |
-| 审查结论绑定代码和计划，任一变化即失效 | |
+| 审查结论绑定代码和计划，任一变化即失效 | 被 Git 忽略的文件变化 → 代码指纹不覆盖，依赖它们的步骤要另给证据 |
 | 删除只针对项目内、带标记、只含已知文件、已提交到 git 的工作区 | |
 
 **授权分三层**：脚本的两步确认（防误操作、防确认过期内容）→ 流程规则（Agent 必须把 preview 展示给你，等你回复后才能确认）→ 宿主审批（Claude Code `permissions.ask` / Codex `prompt` 规则，唯一能让真人介入的一层）。高风险档位必须配置第三层，见 [permissions.md](skills/deciding-and-executing/references/permissions.md)。
@@ -143,7 +141,7 @@
 | ④ 审查与复盘 | `review --verdict pass`：步骤全部完成、命令证据对应当前代码、无阻断项；复盘三节有实质内容 |
 | ⑤ 收尾 | 5A `archive --apply`；5B `sync`；5C `purge` 两步确认 |
 
-决策卡的目标、成功标准、非目标、止损条件或结论被改动，闸门 A、B 都失效；计划步骤的结构被改动，闸门 B 失效。失效后执行类命令会被拒绝，直到重新确认。
+决策卡的目标、成功标准、非目标、关键假设（状态列除外）、止损条件或结论被改动，闸门 A、B 都失效；计划名称、`first_step`、`if_then` 或步骤结构被改动，闸门 B 失效。失效后执行类命令会被拒绝，直到重新确认。
 
 **步骤状态机**：`todo → in_progress → implemented → done`，另有 `blocked` 和 `needs_replan`。`done` 不能直接改回去，只能 `reopen`（旧证据归档、审查结论作废）；`needs_replan` 只能通过 `replan` 解除。
 
@@ -155,6 +153,8 @@
 | `check card` / `check plan` | 只校验 |
 | `gate A` / `gate B` [`--confirm TOKEN`] | 闸门两步确认 |
 | `status` | 阶段、闸门、当前步骤、过期证据、纯文字证据、升级提示、事件日志一致性 |
+| `preflight` | 只读：当前分支、未提交改动、将要执行的 `verify_cmd` 及已知风险提示（不是沙箱，没命中不等于安全） |
+| `coverage` | 只读：每条成功标准关联的步骤和证据状态（`READY_FOR_INDEPENDENT_REVIEW` 不等于验收通过） |
 | `step ID --status S [--evidence 文本 \| --artifact 文件] [--hours H]` | 状态转换；`done` 的证据规则见下 |
 | `verify ID` / `verify --all` | 脚本执行 `verify_cmd`，记录退出码、输出摘要、代码指纹 |
 | `fail ID --note` | 记录失败；到上限自动 `needs_replan` |
@@ -162,11 +162,13 @@
 | `reopen ID --reason` | 重做已完成步骤 |
 | `review --verdict pass\|fix\|fail [--blocker …] [--confirm]` | 审查结论 |
 | `archive [--outcome 完成\|止损\|放弃] [--apply]` | 写决策记录；不删除任何东西 |
-| `sync --report`（可选 `--audit-json` 指定工作区固定输出） | 现场运行 closing-out 静态审计，审计通过后登记知识同步 |
+| `sync --report`（可选 `--audit-json` 指定工作区固定输出） | 现场运行 closing-out 静态审计（需两个技能都已安装；不信任预先写好的 JSON），结果存为 `.decision/closeout-audit.json`，通过后登记知识同步 |
 | `purge [--confirm TOKEN]` | 删除工作区 |
 | `show` | 计划表 |
 
-**`done` 的证据规则**：有 `verify_cmd` → 脚本当场执行，退出码 0 且执行期间代码未变才算；否则 `--artifact` 文件（记录哈希）；标准档可用 `--evidence` 文字，记为"未验证"并在状态、审查、决策记录中单独标出；高风险档不接受文字。
+**`done` 的证据规则**：有 `verify_cmd` → 脚本当场执行，退出码 0 且执行期间代码未变才算；否则 `--artifact` 文件（记录哈希，review 与完成型 archive 时重新核对）；标准档可用 `--evidence` 文字，记为"未验证"并在状态、审查、决策记录中单独标出；高风险档不接受文字。
+
+**代码指纹**包含 Git 已跟踪的改动与未跟踪文件的内容（单文件 32 MiB、总量 128 MiB 上限），**不包含 Git 忽略文件**。证据是否可靠，还取决于验证命令是否覆盖了正确的需求。
 
 退出码：`0` 成功；`1` 检查未通过；`2` 用法或数据错误；`3` 闸门拒绝或需要确认（返回 `token` 与 `preview`）。
 
@@ -233,9 +235,11 @@ python3 scripts/audit.py [--root .] [--base main] [--rename 旧=新 ...] [--excl
 │       ├── assets/report.md
 │       └── agents/openai.yaml
 ├── dist/                          打包好的 .skill（release_check 会核对与 skills/ 一致）
+├── experimental/                  实验性第三技能 independent-verification（非默认安装，见 README-完整交付说明.md）
 ├── docs/
-│   ├── 内审报告-v4.0.0.md          对外部评审的逐条回应与自审发现
-│   └── 教程-如何制作高质量Skill.md
+│   ├── 教程-如何制作高质量Skill.md
+│   ├── Skill-愿景与演进路线.md
+│   └── 内审报告-v4.0.0.md、v4.0.1-*.md、R1-R2-R3-*.md   各版本的评审回应与验收记录（历史文件）
 └── dev/
     ├── release_check.py           发布前一次性检查
     ├── validate_skill.py          结构校验（有 PyYAML 时做真实 YAML 解析）
@@ -277,11 +281,11 @@ bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                      
 
 ## 已知局限
 
-- **Agent 行为层尚未独立评测。** 回归测试证明脚本行为正确，但"Agent 是否会把 preview 展示给用户再确认"只能靠行为评测，目前未在真实 Agent 上运行。
+- **Agent 行为层尚未独立评测。** 回归测试证明脚本行为正确，但"Agent 是否会把 preview 展示给用户再确认"只能靠行为评测，目前未在真实 Agent 上运行；不能据单元测试宣称 Claude Code / Codex 上的触发、审批或长期任务效益已通过。
 - **两步确认不能证明确认者是人。** Agent 若违反流程自己确认，脚本发现不了；这一层依赖宿主审批规则，而宿主规则匹配的是命令文本，不是安全边界。
 - **静态审计不懂语义。** 文档行为描述是否正确，需要源码事实核查。
 - **命令检查只覆盖 npm 与 Make。** Poetry、Cargo、Go 等暂不校验。
-- **只在 Linux 上测试过。** Windows 与 macOS 没有运行证据；路径与符号链接处理按跨平台方式编写，但未验证。
+- **macOS 未测试，Windows 只跑过回归测试。** 回归测试在 Linux 与 Windows 上通过（Windows 上符号链接用例因权限跳过，详见 CHANGELOG）；宿主审批规则在任何平台都未实测。
 - **非 git 项目能力降级**：无法判断证据是否对应当前代码，也不能删除工作区。
 
 ## 常见问题
@@ -312,22 +316,3 @@ bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                      
 ## 许可证与致谢
 
 基于 [MIT 许可证](LICENSE) 发布。方法论参考了 Anthropic 与 OpenAI 的官方技能文档、[Agent Skills 开放规范](https://agentskills.io)、Claude Code 团队分享的内部经验，以及 [anthropics/skills](https://github.com/anthropics/skills)、[openai/skills](https://github.com/openai/skills)、[obra/superpowers](https://github.com/obra/superpowers)、[KKKKhazix/khazix-skills](https://github.com/KKKKhazix/khazix-skills) 等开源技能库；4.0.0 的大部分改动来自一份外部工程评审。完整来源见 [教程](docs/教程-如何制作高质量Skill.md)。
-
-
-### v4.0.1 使用注意
-
-- `sync` 要求两个 Skill 都完整安装：`de.py sync --report .decision/closeout-report.md`。它现场运行配套审计器并把结果存为 `.decision/closeout-audit.json`，不信任提前编辑的 JSON。`--audit-json` 如需兼容旧命令，只能指向该固定输出文件。
-- 代码指纹包含 Git 已跟踪变更与未跟踪文件（单文件上限 32 MiB、总量上限 128 MiB）的内容，**不包含 Git 忽略文件**。证据可靠性还取决于验证命令是否覆盖正确的需求。
-- `review pass` 及完成型 `archive` 现在会重新验证 artifact 文件的当前哈希、路径和与代码版本的匹配状态。
-- v4.0.1 仍需要 Windows/macOS、Claude Code/Codex 真实宿主审批与 Agent 触发/行为对照评测，见验收记录。
-
-
-## R1→R2→R3 补充：新能力与限制
-
-- `python3 scripts/de.py preflight`：只读检查当前 Git 分支、未提交文件和待执行命令的潜在副作用；它不是沙箱或命令安全解析器。
-- `python3 scripts/de.py coverage`：只读列出每条成功标准相关的步骤及最新证据状态；不证明实际需求已被完整测试。
-- 启动真实评测时遵循 R1 冻结实验合同；无真实日志不得生成性能比较。
-- 当前不能据单元测试宣称 Claude Code / Codex 上触发、审批或长期任务效益通过。
-
-
-[查看 R1→R2→R3 验收报告](docs/R1-R2-R3-验收报告.md) · [面向使用者的解释](docs/R1-R2-R3-用户说明.md)

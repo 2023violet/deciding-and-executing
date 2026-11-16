@@ -1,13 +1,41 @@
-## deciding-and-executing 4.1.0（R1→R2→R3 本地候选）
-
-- R1: 保留 v4.0.1 三组实验合同和结果边界；只允许真实 Agent 日志进入比较统计。
-- R2: 增加只读 `preflight` 和 `coverage` 命令；闸门 B 展示验证命令的已知风险提示；修复阶段②字段说明不一致。
-- R3: 添加对新命令的对抗/边界回归及评测使用指南，维持简洁主 Skill 和现有 SOP。
-- 限制：尚无真实 Agent 三组实验成绩；新命令不能证明 shell 命令安全，也不能推断验收已充分。
-
 # 更新日志 / Changelog
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。本文件是本仓库**版本、验证结果与测试数量的唯一权威位置**，README 与教程只链接到这里。
+
+## [未发布]
+
+仓库一致性清理，不改变版本号与工作流契约。
+
+### 修复
+- `de.py review --verdict pass` 把同一批过期证据重复报告两次。
+- `de.py archive` 完成后的提示仍要求手动保存审计 JSON（v4.0.1 起 `sync` 会现场重跑审计）；`worked-example.md` 同样已更正。
+- `de.py preflight` 把重命名项的旧路径当成一条额外改动（且路径被截断）。
+- `audit.py`、`de.py` 读取 `ARCHIVED` / `plan.json` 时未关闭文件句柄；`ARCHIVED` 不是对象时会抛异常。
+- `release_check.py` 的外层 ZIP 比对把 `.git/` 也算进"应有文件"，在 git 检出里必然失败；现与 `build_release.py` 共用同一套排除规则。
+- `score_paired.py`（实验性）：清单为空时误报 `PAIRED_EXPLORATORY_RESULTS`；读取 JSON 未指定 UTF-8。
+- `make_fixture.sh` 生成的 `PLAN.md` 含字面 `\n`；`run_trigger_eval.sh` 不再依赖 `bc`。
+- `validate_skill.py` 兼容 CRLF 换行；用法示例改为正确的 `skills/<名称>` 路径。
+- 新增 `.gitattributes`（LF 检出、`.skill` 按二进制处理），避免 Windows 克隆后 dist 与源码按字节比对失败。
+- 测试在 Windows 上的 3 处可移植性问题：只读 `.git` 对象无法删除、文件名含双引号、无权限创建符号链接（改为跳过）。
+
+### 变更
+- 把 SKILL.md、stage-2/stage-4、README 中以"v4.0.1 补充""R2 补充"追加在文末的段落并入正文对应位置（closing-out 自己的规则：就地改写，不追加"更新"段落）；README 命令表补上 `preflight`、`coverage`；闸门失效条件补上关键假设、计划名称、`first_step`、`if_then`。
+- 重新打包 `dist/deciding-and-executing.skill` 与 `dist/closing-out.skill`。
+
+### 验证
+- Windows 10 + Python 3.13（2026-11-16）：清理前 `python -m unittest discover -s dev/tests` 为 83 项、3 项报错（均为上述测试可移植性问题）；清理后 84 项（新增 preflight 重命名回归）通过，1 项符号链接用例因权限跳过，约 150 秒。
+- 结构校验两个技能均通过；`dist/*.skill` 与源码逐文件一致（`dev/verify_integrated_delivery.py`）；自审计 error 0 / warn 0。
+- 实验性技能：`test_review_checks` 与 `test_v02_contract` 30 项通过（2 项符号链接用例跳过）；`test_paired_eval` 仍需操作者提供私有金标。
+- 未运行：`dev/release_check.py` 全流程（需要先在仓库外构建外层 ZIP）；macOS；真实 Agent 行为评测。
+
+## [4.1.0] - 2026-10-14（R1→R2→R3 本地候选）
+
+- deciding-and-executing 4.1.0；closing-out 2.0.1 不变。
+- R1：保留 v4.0.1 三组实验合同和结果边界；只允许真实 Agent 日志进入比较统计。
+- R2：增加只读 `preflight` 和 `coverage` 命令；闸门 B 展示验证命令的已知风险提示；修复阶段②字段说明不一致。
+- R3：添加对新命令的对抗/边界回归及评测使用指南，维持简洁主 Skill 和现有 SOP。
+- 验证：83 项回归在 Linux 上通过（见 [R1-R2-R3 验收报告](docs/R1-R2-R3-验收报告.md)）。
+- 限制：尚无真实 Agent 三组实验成绩；新命令不能证明 shell 命令安全，也不能推断验收已充分。
 
 ## [4.0.1] - 2026-10-13（本地候选，待独立复审）
 
