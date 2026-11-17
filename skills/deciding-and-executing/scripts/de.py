@@ -1678,6 +1678,34 @@ MESSAGES = {
         "next.status": "查看当前阶段和下一步",
         "next.init": "这里还没有工作区：需要时先创建",
         "next.fix_dir": "在项目目录内运行，或修正 --dir / DE_WORKSPACE",
+        "brief.head": "[de] {rel} · {title} · 阶段 {stage} · 闸门 {gates} · {risk}",
+        "brief.steps": "步骤 {done}/{total} 完成",
+        "brief.current": "；当前 #{id} {title}（{status}，失败 {fails}/{max}）",
+        "brief.esc": "升级：{text}",
+        "brief.stale": "证据已过期：{ids}", "brief.note_only": "只有文字证据：{ids}",
+        "brief.fp_unavailable": "代码指纹不可用，证据新鲜度未知：{err}",
+        "brief.next": "下一步：{cmd} — {why}",
+        "brief.others": "其他工作区：{list}", "brief.archived_tag": "（已归档）", "brief.more": "等共 {n} 个",
+        "brief.details": "详情：{status} / {handoff}",
+        "brief.no_selected": "[de] 当前没有选中工作区；本仓库已有：{list}。用 --dir 或 DE_WORKSPACE 选择",
+        "brief.error": "[de] 工作区状态读取失败：{err}",
+        "brief.archived": "已归档为 {record}；知识同步：{synced}", "yes": "已完成", "no": "未完成",
+        "esc.needs_replan": "步骤 {step} 失败 {fails}/{max} 次，待重新规划",
+        "esc.hours": "步骤 {step} 已投入 {spent}h，超过预计 {est}h 的一倍",
+        "esc.deadline": "已到止损期限 {deadline}（触发状态：{trigger}）",
+        "gate.valid": "有效", "gate.stale": "已失效", "gate.missing": "未通过",
+        "fresh.none": "无证据", "fresh.unverified": "未验证（文字）", "fresh.fresh": "新鲜", "fresh.failed": "最近一次失败",
+        "fresh.stale": "已过期", "fresh.intact": "文件完好", "fresh.unknown": "未知",
+        "handoff.title": "# 交接摘要：{title}",
+        "handoff.meta": "- 工作区：`{rel}`\n- 结论：{verdict}\n- 阶段：{stage}；闸门 A {a}、B {b}；风险档位：{risk}\n- 止损期限：{deadline}",
+        "handoff.fp_unavailable": "- 注意：代码指纹不可用（{err}），证据新鲜度未知",
+        "handoff.steps": "## 步骤",
+        "handoff.steps_head": "| # | 步骤 | 状态 | 证据类型 | 新鲜度 | 失败 |",
+        "handoff.note_only": "## 只有文字证据的已完成步骤", "handoff.esc": "## 升级",
+        "handoff.assumptions": "## 关键假设", "handoff.assumptions_head": "| # | 假设 | 状态 | 由哪些步骤检验 |",
+        "handoff.criteria": "## 成功标准覆盖", "handoff.criteria_head": "| # | 标准 | 状态 |",
+        "handoff.events": "## 最近事件", "handoff.next": "## 下一步",
+        "handoff.files": "## 相关文件（只列路径；需要内容时直接读文件）", "handoff.none": "无",
     },
     "en": {
         "ph.note": "<note>", "ph.evidence": "<evidence>", "ph.artifact": "<evidence file>", "ph.reason": "<reason>",
@@ -1721,6 +1749,35 @@ MESSAGES = {
         "next.status": "See the current stage and next step",
         "next.init": "There is no workspace here yet: create one if needed",
         "next.fix_dir": "Run inside the project, or fix --dir / DE_WORKSPACE",
+        "brief.head": "[de] {rel} · {title} · stage {stage} · gates {gates} · {risk}",
+        "brief.steps": "steps {done}/{total} done",
+        "brief.current": "; current #{id} {title} ({status}, fails {fails}/{max})",
+        "brief.esc": "escalation: {text}",
+        "brief.stale": "stale evidence: {ids}", "brief.note_only": "text-only evidence: {ids}",
+        "brief.fp_unavailable": "code fingerprint unavailable, evidence freshness unknown: {err}",
+        "brief.next": "next: {cmd} — {why}",
+        "brief.others": "other workspaces: {list}", "brief.archived_tag": " (archived)", "brief.more": "{n} in total",
+        "brief.details": "details: {status} / {handoff}",
+        "brief.no_selected": "[de] no workspace selected; this repo has: {list}. Select one with --dir or DE_WORKSPACE",
+        "brief.error": "[de] could not read the workspace status: {err}",
+        "brief.archived": "archived as {record}; knowledge sync: {synced}", "yes": "done", "no": "pending",
+        "esc.needs_replan": "step {step} failed {fails}/{max} times and needs replanning",
+        "esc.hours": "step {step} has taken {spent}h, more than twice the {est}h estimate",
+        "esc.deadline": "the stop-loss deadline {deadline} has passed (trigger: {trigger})",
+        "gate.valid": "valid", "gate.stale": "stale", "gate.missing": "not passed",
+        "fresh.none": "no evidence", "fresh.unverified": "unverified (text)", "fresh.fresh": "fresh",
+        "fresh.failed": "last run failed", "fresh.stale": "stale", "fresh.intact": "file intact", "fresh.unknown": "unknown",
+        "handoff.title": "# Handoff: {title}",
+        "handoff.meta": "- Workspace: `{rel}`\n- Verdict: {verdict}\n- Stage: {stage}; gate A {a}, gate B {b}; risk tier: {risk}\n"
+                        "- Stop-loss deadline: {deadline}",
+        "handoff.fp_unavailable": "- Note: code fingerprint unavailable ({err}); evidence freshness unknown",
+        "handoff.steps": "## Steps",
+        "handoff.steps_head": "| # | Step | Status | Evidence kind | Freshness | Fails |",
+        "handoff.note_only": "## Done steps with text-only evidence", "handoff.esc": "## Escalations",
+        "handoff.assumptions": "## Key assumptions", "handoff.assumptions_head": "| # | Assumption | Status | Tested by |",
+        "handoff.criteria": "## Success criteria coverage", "handoff.criteria_head": "| # | Criterion | Status |",
+        "handoff.events": "## Recent events", "handoff.next": "## Next",
+        "handoff.files": "## Files (paths only; read them directly for content)", "handoff.none": "none",
     },
 }
 
@@ -1882,6 +1939,204 @@ def snap_next(ctx, snap):
         extras["retro"] = retro_problems(ctx)
         extras["closing_out"] = closing_out_installed()
     return next_action(ctx, snap, extras)
+
+
+def utf8_stdout():
+    """文本输出（brief、handoff）在 Windows 管道里默认是本地代码页，统一成 UTF-8。"""
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
+
+def esc_text(ctx, item):
+    if item["kind"] == "needs_replan":
+        return T(ctx, "esc.needs_replan", step=item["step"], fails=item["fails"], max=item["max"])
+    if item["kind"] == "hours":
+        return T(ctx, "esc.hours", step=item["step"], spent=item["spent"], est=item["est"])
+    return T(ctx, "esc.deadline", deadline=item["deadline"], trigger=item["trigger"])
+
+
+def status_label(ctx, status):
+    return (STATUS_EN if ctx.lang() == "en" else STATUS_ZH).get(status, status)
+
+
+def short(text, n=40):
+    text = str(text or "").replace("\n", " ")
+    return text if len(text) <= n else text[:n - 1] + "…"
+
+
+BRIEF_MAX_LINES, BRIEF_MAX_CHARS = 15, 1500
+
+
+def brief_lines(ctx):
+    """会话钩子用的简要状态。没有工作区时返回空列表（钩子什么都不注入）。"""
+    if not os.path.isfile(ctx.p(MARKER)):
+        others = find_workspaces(ctx.root, True) if ctx.git else []
+        return [T(ctx, "brief.no_selected", list=", ".join(others[:5]))] if others else []
+    snap = collect_status(ctx, full=False, tolerate_fp_error=True)
+    plan, ci, gs = snap["plan"], snap["ci"], snap["gates"]
+    gates = "A%s B%s" % ("✓" if gs["A"] == "valid" else "✗", "✓" if gs["B"] == "valid" else "✗")
+    lines = [T(ctx, "brief.head", rel=ctx.rel.replace(os.sep, "/"), title=short(card_title(ci)), stage=snap["stage"],
+               gates=gates, risk=plan.get("risk", "standard"))]
+    if snap["archived"] is not None:
+        lines.append(T(ctx, "brief.archived", record=snap["archived"].get("record"),
+                       synced=T(ctx, "yes" if snap["synced"] else "no")))
+    else:
+        line = T(ctx, "brief.steps", done=snap["counts"]["done"], total=len(plan["steps"]))
+        cur = snap["current"]
+        if cur is not None:
+            line += T(ctx, "brief.current", id=cur.get("id"), title=short(cur.get("title")),
+                      status=status_label(ctx, cur.get("status", "todo")), fails=cur.get("fails", 0),
+                      max=snap["max_fails"])
+        lines.append(line)
+        lines += [T(ctx, "brief.esc", text=esc_text(ctx, x)) for x in snap["esc_items"][:3]]
+        if snap["stale"]:
+            lines.append(T(ctx, "brief.stale", ids=", ".join("#" + s for s in snap["stale"])))
+        if snap["note_only"]:
+            lines.append(T(ctx, "brief.note_only", ids=", ".join("#" + s for s in snap["note_only"])))
+        if snap["fp_error"]:
+            lines.append(T(ctx, "brief.fp_unavailable", err=short(snap["fp_error"], 80)))
+    n = snap_next(ctx, snap)
+    lines.append(T(ctx, "brief.next", cmd=n["cmd"] or "—", why=short(n["why"], 160)))
+    others = [w + (T(ctx, "brief.archived_tag") if os.path.exists(os.path.join(ctx.root, w, "ARCHIVED")) else "")
+              for w in other_workspaces(ctx)]
+    if others:
+        listed = ", ".join(others[:5]) + ("，" + T(ctx, "brief.more", n=len(others)) if len(others) > 5 else "")
+        lines.append(T(ctx, "brief.others", list=listed))
+    lines.append(T(ctx, "brief.details", status=de_cmd(ctx, "status"), handoff=de_cmd(ctx, "handoff")))
+    return lines
+
+
+def brief_main(a):
+    """status --brief：永远退出 0，任何错误最多一行，不把异常抛进宿主的会话钩子。"""
+    utf8_stdout()
+    try:
+        ctx = Ctx(a.dir)
+    except Exception:
+        return 0
+    try:
+        lines = brief_lines(ctx)
+    except (Exception, SystemExit) as e:
+        if os.path.isfile(ctx.p(MARKER)):
+            reason = e.reason if isinstance(e, Refuse) else "%s: %s" % (type(e).__name__, e)
+            print(T(ctx, "brief.error", err=short(reason, 120)))
+        return 0
+    text = "\n".join(lines[:BRIEF_MAX_LINES])
+    if len(text) > BRIEF_MAX_CHARS:
+        text = text[:BRIEF_MAX_CHARS - 1] + "…"
+    if text:
+        print(text)
+    return 0
+
+
+def parse_assumptions(ci, plan):
+    """决策卡假设表：编号、假设、证伪后果、状态列，以及哪些步骤在检验它。"""
+    items = []
+    for line in ci["assumptions"]:
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        aid = cells[0]
+        tested = [{"step": s.get("id"), "status": s.get("status", "todo")} for s in plan["steps"]
+                  if re.search(r"\b%s\b" % re.escape(aid), str(s.get("tests_assumption") or ""))]
+        items.append({"id": aid, "text": cells[1] if len(cells) > 1 else "",
+                      "if_false": cells[2] if len(cells) > 2 else "",
+                      "status": cells[3] if len(cells) > 3 and cells[3] else "—", "tested_by": tested})
+    return items
+
+
+def event_line(ctx, ev):
+    t, d = ev.get("type"), ""
+    if t == "step":
+        d = "#%s %s → %s" % (ev.get("step"), status_label(ctx, ev.get("frm")), status_label(ctx, ev.get("to")))
+    elif t == "verify":
+        if "results" in ev:
+            d = ", ".join("#%s %s" % (r.get("step"), "ok" if r.get("ok") else "fail") for r in ev.get("results") or [])
+        else:
+            d = "#%s %s" % (ev.get("step"), "ok" if ev.get("ok") else "fail (exit %s)" % ev.get("exit_code"))
+        if ev.get("escalated"):
+            d += " ↑"
+    elif t == "fail":
+        d = "#%s fails=%s%s" % (ev.get("step"), ev.get("fails"), " ↑" if ev.get("escalated") else "")
+    elif t in ("replan", "reopen"):
+        d = "#%s" % ev.get("step") + (" waived" if ev.get("waived") else "")
+    elif t == "gate":
+        d = str(ev.get("gate"))
+    elif t == "review":
+        d = str(ev.get("verdict"))
+    elif t == "archive":
+        d = "%s (%s)" % (ev.get("record"), ev.get("outcome"))
+    elif t == "init":
+        d = str(ev.get("risk"))
+    return "#%s %s %s%s" % (ev.get("seq"), ev.get("at"), t, (": " + d) if d else "")
+
+
+def handoff_data(ctx, snap):
+    plan, ci, fp, fp_known = snap["plan"], snap["ci"], snap["fp"], snap["fp_known"]
+    steps = []
+    for s in plan["steps"]:
+        last = (s.get("evidence") or [{}])[-1]
+        steps.append({"id": s.get("id"), "title": s.get("title"), "status": s.get("status", "todo"),
+                      "evidence_kind": last.get("kind") if isinstance(last, dict) else None,
+                      "freshness": evidence_state(ctx, s, fp, fp_known), "fails": s.get("fails", 0),
+                      "irreversible": bool(s.get("irreversible"))})
+    criteria = None
+    if fp_known:
+        criteria = [{"criterion": r["criterion"], "text": r["text"], "status": r["status"]}
+                    for r in coverage_rows(ctx, plan, ci, fp)]
+    files = {name: (ctx.rel + "/" + name).replace(os.sep, "/") for name in
+             ("decision-card.md", "plan.json", "state.json", "events.jsonl", "progress.md", "retro.md",
+              "independent-review.md") if os.path.exists(ctx.p(name))}
+    if snap["archived"]:
+        files["record"] = snap["archived"].get("record")
+    return {"ok": True, "read_only": True, "workspace": ctx.rel.replace(os.sep, "/"), "title": card_title(ci),
+            "verdict": ci["verdict_raw"], "stage": snap["stage"], "gates": snap["gates"],
+            "risk": plan.get("risk", "standard"), "deadline": str(ci["deadline"]) if ci["deadline"] else None,
+            "max_fails": snap["max_fails"], "fingerprint_error": snap["fp_error"], "steps": steps,
+            "note_only_done_steps": snap["note_only"], "escalations": [esc_text(ctx, x) for x in snap["esc_items"]],
+            "assumptions": parse_assumptions(ci, plan), "criteria": criteria,
+            "events": [event_line(ctx, e) for e in (snap["events"] or [])[-5:]],
+            "next": snap_next(ctx, snap), "files": files}
+
+
+def render_handoff(ctx, h):
+    none = T(ctx, "handoff.none")
+    gl = {k: T(ctx, "gate." + v) for k, v in h["gates"].items()}
+    out_lines = [T(ctx, "handoff.title", title=h["title"]), "",
+                 T(ctx, "handoff.meta", rel=h["workspace"], verdict=h["verdict"] or none, stage=h["stage"],
+                   a=gl["A"], b=gl["B"], risk=h["risk"], deadline=h["deadline"] or none)]
+    if h["fingerprint_error"]:
+        out_lines.append(T(ctx, "handoff.fp_unavailable", err=short(h["fingerprint_error"], 120)))
+    out_lines += ["", T(ctx, "handoff.steps"), "", T(ctx, "handoff.steps_head"), "|---|---|---|---|---|---|"]
+    for s in h["steps"]:
+        out_lines.append("| %s |" % " | ".join(cell(x) for x in (
+            s["id"], s["title"], status_label(ctx, s["status"]), s["evidence_kind"] or "—",
+            T(ctx, "fresh." + s["freshness"]), "%s/%s" % (s["fails"], h["max_fails"]))))
+    if h["note_only_done_steps"]:
+        out_lines += ["", T(ctx, "handoff.note_only"), "", ", ".join("#" + x for x in h["note_only_done_steps"])]
+    out_lines += ["", T(ctx, "handoff.esc"), ""] + (["- " + x for x in h["escalations"]] or [none])
+    out_lines += ["", T(ctx, "handoff.assumptions"), "", T(ctx, "handoff.assumptions_head"), "|---|---|---|---|"]
+    for x in h["assumptions"]:
+        tested = ", ".join("#%s (%s)" % (t["step"], status_label(ctx, t["status"])) for t in x["tested_by"]) or "—"
+        out_lines.append("| %s |" % " | ".join(cell(v) for v in (x["id"], x["text"], x["status"], tested)))
+    if h["criteria"] is not None:
+        out_lines += ["", T(ctx, "handoff.criteria"), "", T(ctx, "handoff.criteria_head"), "|---|---|---|"]
+        for c in h["criteria"]:
+            out_lines.append("| %s |" % " | ".join(cell(v) for v in (c["criterion"], c["text"], c["status"])))
+    out_lines += ["", T(ctx, "handoff.events"), ""] + (["- " + e for e in h["events"]] or [none])
+    n = h["next"]
+    out_lines += ["", T(ctx, "handoff.next"), "", ("`%s` — " % n["cmd"] if n["cmd"] else "") + n["why"]]
+    out_lines += ["", T(ctx, "handoff.files"), ""] + ["- `%s`" % p for p in h["files"].values() if p]
+    return "\n".join(out_lines) + "\n"
+
+
+def cmd_handoff(a, ctx):
+    """只读交接摘要：证据状态由脚本从 state / events 推出，不是叙述；不写任何文件。"""
+    ctx.require()
+    h = handoff_data(ctx, collect_status(ctx, tolerate_fp_error=True))
+    if a.json:
+        out(h)
+    utf8_stdout()
+    print(render_handoff(ctx, h))
 
 
 def light_next(ctx, plan=None, ci=None, fp=_LAZY):
@@ -2175,7 +2430,11 @@ def main():
     s = add("gate", "闸门 A（决策卡）/ B（计划）/ AB（标准档一次确认两者）的两步确认")
     s.add_argument("which", choices=["A", "B", "AB"])
     s.add_argument("--confirm")
-    add("status", "当前阶段、闸门、升级与证据状态")
+    s = add("status", "当前阶段、闸门、升级与证据状态")
+    s.add_argument("--brief", action="store_true",
+                   help="纯文本简要状态（≤15 行），给会话开始钩子用；没有工作区时不输出，永远退出 0")
+    s = add("handoff", "只读交接摘要（Markdown；--json 输出 JSON），不写任何文件")
+    s.add_argument("--json", action="store_true")
     add("preflight", "只读环境/Git/命令副作用预检")
     add("coverage", "只读验收条件与证据覆盖映射")
     s = add("step", "更新步骤状态（受状态机、闸门与证据规则约束）")
@@ -2228,13 +2487,15 @@ def main():
     if not a.cmd:
         ap.print_help()
         sys.exit(2)
+    if a.cmd == "status" and a.brief:
+        sys.exit(brief_main(a))         # 在构造 Ctx 之前分流：钩子里永远不报错
     global _CTX
     try:
         ctx = _CTX = Ctx(a.dir)
         {"init": cmd_init, "check": cmd_check, "gate": cmd_gate, "status": cmd_status, "step": cmd_step,
          "verify": cmd_verify, "preflight": cmd_preflight, "coverage": cmd_coverage, "fail": cmd_fail, "replan": cmd_replan, "reopen": cmd_reopen,
          "review": cmd_review, "archive": cmd_archive, "sync": cmd_sync, "purge": cmd_purge,
-         "closeout": cmd_closeout, "list": cmd_list, "show": cmd_show}[a.cmd](a, ctx)
+         "closeout": cmd_closeout, "list": cmd_list, "show": cmd_show, "handoff": cmd_handoff}[a.cmd](a, ctx)
     except Refuse as r:
         print(("需要确认：" if r.extra.get("needs_confirmation") else "拒绝：") + r.reason, file=sys.stderr)
         extra = dict(r.extra)
