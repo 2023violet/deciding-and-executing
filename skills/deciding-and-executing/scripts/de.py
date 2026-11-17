@@ -328,7 +328,7 @@ def fingerprint(ctx):
 # plan.json 归 Agent（计划结构）；state.json 归脚本（状态、证据、闸门、审查）。Agent 照常编辑 plan.json
 # 动不到运行时状态；plan.json 里出现的运行时字段一律忽略，并在 status 中提示。
 RUNTIME_STEP_KEYS = ("status", "fails", "spent_h", "evidence", "evidence_history", "started_at", "finished_at",
-                     "escalation", "escalation_history", "waivers")
+                     "escalation", "escalation_history", "waivers", "last_verify", "fail_mark")
 RUNTIME_TOP_KEYS = ("gates", "review", "last_event")
 
 
@@ -796,6 +796,51 @@ def effective_max_fails(plan, ci):
     if a.get("hash") == gate_a_hash(ci):
         return ci["max_fails"]
     return min(ci["max_fails"], a.get("max_fails", DEFAULT_MAX_FAILS))
+
+
+def escalate_step(plan, ci, s, source):
+    """失败次数到达（已确认的）上限时转为待重新规划。返回 (是否升级, 上限)。"""
+    max_fails = effective_max_fails(plan, ci)
+    esc = int(s.get("fails", 0)) >= max_fails
+    if esc:
+        s["escalation"] = {"at": now(), "fails": s["fails"], "struct_hash": sha(struct_of(s), 16),
+                           "prev_status": s.get("status", "todo"), "source": source}
+        s["status"] = "needs_replan"
+    return esc, max_fails
+
+
+COUNTABLE = ("in_progress", "implemented")
+
+
+def track_verify(plan, ci, s, ev):
+    """脚本亲眼看到的失败自动计数："改了代码仍然失败"才算一次修复失败。
+    - 第一次失败是基线（先写测试、先看红灯），不计；同一指纹重复运行不计；
+    - 执行期间代码变了的运行既不计数，也不更新基线；非 git（无指纹）不自动计数；
+    - 只在 in_progress / implemented 时计数；已被手动 fail 记过的指纹不再重复计；
+    - 通过只重置基线，不清零 fails（replan --waive 的"再失败一次就升级"仍然成立）。"""
+    res = {"counted": False, "fails": int(s.get("fails", 0)), "escalate": False,
+           "max_fails": effective_max_fails(plan, ci)}
+    if ev.get("note"):
+        return res
+    fp, cmd_id = ev.get("fingerprint"), sha(ev.get("cmd") or "", 16)
+    prev = s.get("last_verify") if isinstance(s.get("last_verify"), dict) else None
+    mark = s.get("fail_mark") if isinstance(s.get("fail_mark"), dict) else {}
+    if (not ev["ok"] and fp is not None and s.get("status") in COUNTABLE and prev and prev.get("ok") is False
+            and prev.get("cmd") == cmd_id and prev.get("fp") != fp and mark.get("fp") != fp):
+        s["fails"] = int(s.get("fails", 0)) + 1
+        s["fail_mark"] = {"fp": fp, "by": "auto", "at": now(), "absorbed": False}
+        esc, max_fails = escalate_step(plan, ci, s, "auto")
+        res.update(counted=True, fails=s["fails"], escalate=esc, max_fails=max_fails)
+    s["last_verify"] = {"ok": bool(ev["ok"]), "fp": fp, "cmd": cmd_id, "at": ev.get("at")}
+    return res
+
+
+def count_note(t):
+    if t["escalate"]:
+        return "已自动计为一次修复失败（%d/%d），达到上限，步骤转为待重新规划" % (t["fails"], t["max_fails"])
+    if t["counted"]:
+        return "已自动计为一次修复失败（%d/%d）" % (t["fails"], t["max_fails"])
+    return "不计入失败次数（第一次失败作为基线，或代码与上次失败时相同；改了代码仍失败才计）"
 
 
 def require_gate_b(ctx, plan, ci):
@@ -1334,14 +1379,20 @@ def cmd_step(a, ctx):
         fp = fingerprint(ctx)
         if has_verify(s):
             if not fresh_command_pass(s, fp):
-                ev = run_verify(ctx, s, a.timeout)
+                ev = run_verify(ctx, s, a.timeout, fp_before=fp)
+                t = track_verify(plan, ci, s, ev)
                 if not ev["ok"]:
-                    commit(ctx, plan, "verify", "步骤 #%s 验证未通过（退出码 %s）" % (s.get("id"), ev["exit_code"]),
-                           step=s.get("id"), ok=False, exit_code=ev["exit_code"])
-                    raise Refuse("验证命令未通过（退出码 %s）：%s。未标记完成；如属一次失败，运行 fail 记录"
-                                 % (ev["exit_code"], ev.get("note") or ev["output_tail"][-300:]),
-                                 next=nx(ctx, ("step", s.get("id"), "--status", "done"), "next.verify_retry",
-                                         fails=s.get("fails", 0), max=effective_max_fails(plan, ci)))
+                    commit(ctx, plan, "verify", "步骤 #%s 验证未通过（退出码 %s）；%s"
+                           % (s.get("id"), ev["exit_code"], count_note(t)),
+                           step=s.get("id"), ok=False, exit_code=ev["exit_code"], counted=t["counted"],
+                           fails=t["fails"], escalated=t["escalate"])
+                    raise Refuse("验证命令未通过（退出码 %s）：%s。未标记完成；%s"
+                                 % (ev["exit_code"], ev.get("note") or ev["output_tail"][-300:], count_note(t)),
+                                 fails=t["fails"], max_fails=t["max_fails"], counted=t["counted"],
+                                 escalate=t["escalate"],
+                                 next=replan_next(ctx, s, t["max_fails"]) if t["escalate"]
+                                 else nx(ctx, ("step", s.get("id"), "--status", "done"), "next.verify_retry",
+                                         fails=t["fails"], max=t["max_fails"]))
         elif a.artifact:
             path = a.artifact if os.path.isabs(a.artifact) else os.path.join(ctx.root, a.artifact)
             if os.path.islink(path) or not os.path.isfile(path) or not inside(path, ctx.root):
@@ -1385,14 +1436,19 @@ def cmd_verify(a, ctx):
     for s in targets:
         ev = run_verify(ctx, s, a.timeout, fp_before=fp)
         fp = ev["fingerprint"]           # 本步结束时的指纹就是下一步开始时的指纹
+        t = track_verify(plan, ci, s, ev)
         results.append({"step": s.get("id"), "ok": ev["ok"], "exit_code": ev["exit_code"],
-                        "seconds": ev["seconds"], "note": ev.get("note")})
-    commit(ctx, plan, "verify", "执行验证：%s" % (", ".join("#%s %s" % (r["step"], "通过" if r["ok"] else "失败")
-                                                          for r in results) or "无"), results=results)
+                        "seconds": ev["seconds"], "note": ev.get("note"), "counted": t["counted"],
+                        "fails": t["fails"], "escalated": t["escalate"]})
+    commit(ctx, plan, "verify", "执行验证：%s" % (", ".join(
+        "#%s %s" % (r["step"], "通过" if r["ok"] else "失败" + ("，已升级" if r["escalated"] else "，计入失败" if r["counted"] else ""))
+        for r in results) or "无"), results=results)
     ok = all(r["ok"] for r in results)
+    escalated = next((s for s, r in zip(targets, results) if r["escalated"]), None)
     bad = next((s for s, r in zip(targets, results) if not r["ok"]), None)
     out({"ok": ok, "results": results, "fingerprint": fp,
-         "next": light_next(ctx, plan, ci, fp=fp) if bad is None
+         "next": replan_next(ctx, escalated, effective_max_fails(plan, ci)) if escalated is not None
+         else light_next(ctx, plan, ci, fp=fp) if bad is None
          else nx(ctx, ("verify", bad.get("id")), "next.verify_retry", fails=bad.get("fails", 0),
                  max=effective_max_fails(plan, ci))}, 0 if ok else 1)
 
@@ -1403,20 +1459,32 @@ def cmd_fail(a, ctx):
     s = find_step(plan, a.id)
     if s.get("status") in ("done", "needs_replan"):
         raise Refuse("步骤 %s 当前为 %s，不能记录失败" % (s.get("id"), STATUS_ZH[s.get("status")]))
-    s["fails"] = int(s.get("fails", 0)) + 1
     if a.hours:
         s["spent_h"] = round(float(s.get("spent_h", 0)) + a.hours, 2)
-    max_fails = effective_max_fails(plan, ci)
-    esc = s["fails"] >= max_fails
-    if esc:
-        s["escalation"] = {"at": now(), "fails": s["fails"], "struct_hash": sha(struct_of(s), 16),
-                           "prev_status": s.get("status", "todo")}
-        s["status"] = "needs_replan"
+    try:
+        fp = fingerprint(ctx)
+    except Refuse:
+        fp = None
+    mark = s.get("fail_mark") if isinstance(s.get("fail_mark"), dict) else {}
+    if fp is not None and mark.get("by") == "auto" and mark.get("fp") == fp and not mark.get("absorbed"):
+        # 这次失败脚本已经在验证时自动计过；手动报告只记录说明，不重复计数（且只吸收一次）
+        s["fail_mark"] = dict(mark, absorbed=True)
+        max_fails = effective_max_fails(plan, ci)
+        commit(ctx, plan, "fail", "步骤 #%s 的这次失败已由脚本自动计入（第 %d 次），不重复计数：%s"
+               % (s.get("id"), s.get("fails", 0), a.note), step=s.get("id"), fails=s.get("fails", 0),
+               note=a.note, escalated=False, counted=False)
+        out({"ok": True, "step": s.get("id"), "fails": s.get("fails", 0), "max_fails": max_fails, "escalate": False,
+             "counted": False, "status": s["status"],
+             "next": nx(ctx, ("step", s.get("id"), "--status", "done") if has_verify(s) else None, "next.verify_retry",
+                        fails=s.get("fails", 0), max=max_fails)})
+    s["fails"] = int(s.get("fails", 0)) + 1
+    s["fail_mark"] = {"fp": fp, "by": "manual", "at": now(), "absorbed": False}
+    esc, max_fails = escalate_step(plan, ci, s, "manual")
     commit(ctx, plan, "fail", "步骤 #%s 验证失败（第 %d 次）：%s%s" % (s.get("id"), s["fails"], a.note,
                                                               "；触发一级升级，待重新规划" if esc else ""),
-           step=s.get("id"), fails=s["fails"], note=a.note, escalated=esc)
+           step=s.get("id"), fails=s["fails"], note=a.note, escalated=esc, counted=True)
     out({"ok": True, "step": s.get("id"), "fails": s["fails"], "max_fails": max_fails, "escalate": esc,
-         "status": s["status"],
+         "counted": True, "status": s["status"],
          "next": replan_next(ctx, s, max_fails) if esc
          else nx(ctx, ("step", s.get("id"), "--status", "done") if has_verify(s) else None, "next.verify_retry",
                  fails=s["fails"], max=max_fails)})
@@ -1441,6 +1509,8 @@ def cmd_replan(a, ctx):
                      "先在 plan.json 里修改此步骤；确有理由不改，用 --waive 理由" % s.get("id"))
     else:
         s["fails"] = 0
+        s.pop("last_verify", None)      # 重新规划后从新的基线开始计数
+        s.pop("fail_mark", None)
     s["status"] = esc.get("prev_status") if esc.get("prev_status") in ("todo", "blocked") else "todo"
     s.setdefault("escalation_history", []).append(dict(esc, resolved_at=now(),
                                                        resolution="waived" if a.waive else "replanned"))
@@ -1464,6 +1534,7 @@ def cmd_reopen(a, ctx):
     s["evidence"] = []
     s["status"] = "todo"
     s.pop("finished_at", None)
+    s.pop("last_verify", None)          # 重做从新的基线开始；失败次数保留
     plan.pop("review", None)
     commit(ctx, plan, "reopen", "步骤 #%s 重新打开：%s（旧证据已归档，审查结论作废）" % (s.get("id"), a.reason),
            step=s.get("id"), reason=a.reason)
