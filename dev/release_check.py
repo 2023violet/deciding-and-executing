@@ -8,6 +8,7 @@
   4. 每个技能的 metadata.version 在 CHANGELOG.md 里有对应条目
   5. 用 closing-out 审计本仓库自身：error 0 且输出完整
   6. 外层交付 ZIP（build_release.py 的产物）与源码逐文件一致，解压后中文路径完整、审计无 error
+  7. 会被打包的文件中没有评测操作者的私有材料（分组映射、operator_only/、*_PRIVATE.*）
 
 用法: python3 dev/release_check.py [--outer-zip 路径]   # 在仓库根目录运行
 输出 JSON；全部通过退出码 0，否则 1。
@@ -91,6 +92,28 @@ def validate_outer(archive):
                 "dead_links": [x for x in result["findings"] if x["check"] == "dead-links"][:10]}
 
 
+# 评测操作者的私有材料（分组映射、金标）一旦进入发布包，盲测就失效。标记拆开写，避免本文件自身命中。
+PRIVATE_MARKERS = ["操作者" + "私有映射", "operator" + "-private mapping"]
+PRIVATE_PATH_PARTS = ["operator_only/", "_PRIVATE."]
+
+
+def private_leaks():
+    """返回会被打包的文件中疑似评测私有材料的位置（路径命中或内容含标记）。"""
+    hits = []
+    for p in walk_files(pathlib.Path(ROOT)):
+        rel = p.relative_to(ROOT).as_posix()
+        if any(part in rel for part in PRIVATE_PATH_PARTS):
+            hits.append(rel)
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        if any(m in text for m in PRIVATE_MARKERS):
+            hits.append(rel)
+    return hits
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--outer-zip", default=os.path.join(os.path.dirname(ROOT), RELEASE_NAME + ".zip"),
@@ -117,6 +140,9 @@ def main():
             diff = sorted(set(packed.items()) ^ set(src.items()))
             results.append({"check": "dist:" + s, "ok": not diff,
                             "detail": "一致" if not diff else "不一致：%s" % sorted({k for k, _ in diff})[:10]})
+    leaks = private_leaks()
+    results.append({"check": "no-private-eval-material", "ok": not leaks,
+                    "detail": "未发现" if not leaks else "疑似私有评测材料：%s" % leaks[:10]})
     t = time.time()
     code, o, e = sh([sys.executable, "-m", "unittest", "discover", "-s", "dev/tests"])
     m = re.search(r"Ran (\d+) tests", e)
