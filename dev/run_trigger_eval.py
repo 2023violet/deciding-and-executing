@@ -43,10 +43,22 @@ def read_description(skill_dir):
     return m.group(1).strip()
 
 
+def clean_env():
+    """去掉宿主会话传给子进程的变量。在 Claude Code（尤其是桌面应用）里运行本脚本时，这些变量会让
+    子进程 claude 不用自己的登录、改走宿主会话的认证，结果是 "Not logged in"。
+    保留 ANTHROPIC_API_KEY、CLAUDE_CONFIG_DIR 等用户自己设置的认证与配置。"""
+    drop_prefix = ("CLAUDE_CODE_", "CLAUDE_AGENT_SDK_", "CLAUDE_PREVIEW_")
+    drop = {"CLAUDECODE", "CLAUDE_PID", "ANTHROPIC_BASE_URL"}
+    return {k: v for k, v in os.environ.items() if k not in drop and not k.startswith(drop_prefix)}
+
+
 def _reader(stream, q):
     for line in iter(stream.readline, b""):
         q.put(line)
     q.put(None)
+
+
+LISTING_CHARS = None    # 由 --listing-chars 设置；None 表示用宿主默认的技能列表预算
 
 
 def run_once(claude, query, name, description, timeout, model):
@@ -62,7 +74,9 @@ def run_once(claude, query, name, description, timeout, model):
         args = [claude, "-p", query, "--output-format", "stream-json", "--verbose", "--include-partial-messages"]
         if model:
             args += ["--model", model]
-        env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+        env = clean_env()
+        if LISTING_CHARS:
+            env["SLASH_COMMAND_TOOL_CHAR_BUDGET"] = str(LISTING_CHARS)
         proc = subprocess.Popen(args, cwd=proj, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env)
         q = queue.Queue()
         threading.Thread(target=_reader, args=(proc.stdout, q), daemon=True).start()
@@ -117,7 +131,8 @@ def environment(claude, model):
         p = os.path.expanduser(p)
         return sorted(os.listdir(p)) if os.path.isdir(p) else []
     try:
-        ver = subprocess.run([claude, "--version"], capture_output=True, text=True, timeout=30).stdout.strip()
+        ver = subprocess.run([claude, "--version"], capture_output=True, text=True, timeout=30,
+                             env=clean_env()).stdout.strip()
     except (OSError, subprocess.TimeoutExpired):
         ver = None
     plugins = []
@@ -126,7 +141,8 @@ def environment(claude, model):
             plugins = sorted(k for k, v in (json.load(f).get("enabledPlugins") or {}).items() if v)
     except (OSError, ValueError):
         pass
-    return {"claude_version": ver, "model": model or "default", "global_skills": len(ls("~/.claude/skills")),
+    return {"claude_version": ver, "model": model or "default", "listing_chars": LISTING_CHARS or "host default",
+            "global_skills": len(ls("~/.claude/skills")),
             "enabled_plugins": plugins, "platform": sys.platform}
 
 
@@ -141,7 +157,12 @@ def main():
     ap.add_argument("--model")
     ap.add_argument("--description-file", help="用这个文件的内容代替 SKILL.md 的 description（迭代描述时用）")
     ap.add_argument("--out", help="结果 JSON 写到这里")
+    ap.add_argument("--listing-chars", type=int, default=200000,
+                    help="技能列表的字符预算（SLASH_COMMAND_TOOL_CHAR_BUDGET）。装了很多技能时宿主会丢掉新技能的描述，"
+                         "只剩名字，测不出描述本身；默认放大到 200000。0 表示用宿主默认预算（测真实环境下的表现）")
     a = ap.parse_args()
+    global LISTING_CHARS
+    LISTING_CHARS = a.listing_chars or None
     claude = shutil.which("claude")
     if not claude:
         sys.exit("找不到 claude CLI")
