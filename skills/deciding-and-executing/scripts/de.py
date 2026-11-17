@@ -70,8 +70,9 @@ def skill_version():
 
 VERSION = skill_version()
 MARKER = ".de-workspace"
+REVIEW_REPORT = "independent-review.md"
 WORKSPACE_FILES = {MARKER, "decision-card.md", "plan.json", "state.json", "events.jsonl", "progress.md",
-                   "retro.md", "ARCHIVED", "closeout-audit.json", "closeout-report.md"}
+                   "retro.md", "ARCHIVED", "closeout-audit.json", "closeout-report.md", REVIEW_REPORT}
 STATUSES = ["todo", "in_progress", "implemented", "done", "blocked", "needs_replan"]
 STATUS_ZH = {"todo": "待做", "in_progress": "进行中", "implemented": "已实现未验证", "done": "完成",
              "blocked": "阻塞", "needs_replan": "待重新规划"}
@@ -1185,7 +1186,21 @@ def review_problems(ctx, plan, fp):
         return ["以「完成」归档需要交付审查结论为 pass（当前：%s）" % (review.get("verdict") or "无")]
     if review.get("plan_hash") != plan_hash(plan) or (fp is not None and review.get("fingerprint") != fp):
         return ["审查之后计划或代码已改变，需要重新 review"]
+    rep = review.get("independent_report")
+    if isinstance(rep, dict) and file_sha(ctx.p(REVIEW_REPORT)) != rep.get("sha"):
+        return ["审查时关联的独立复核报告 %s 之后被修改或删除，需要重新 review" % rep.get("path")]
     return []
+
+
+def file_sha(path):
+    """普通文件内容的 16 位 sha256；不存在、是符号链接或读不了时返回 None。"""
+    if os.path.islink(path) or not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "rb") as f:
+            return sha(f.read(), 16)
+    except OSError:
+        return None
 
 
 def evidence_state(ctx, step, fp, fp_known=True):
@@ -1584,14 +1599,24 @@ def cmd_review(a, ctx):
     if problems:
         out({"ok": False, "verdict": a.verdict, "problems": problems,
              "next": nx(ctx, None, "next.fix_problems") if a.blocker else light_next(ctx, plan, ci, fp=fp)}, 3)
-    payload = {"verdict": a.verdict, "blockers": a.blocker, "plan": plan_hash(plan), "fp": fp}
+    report = None
+    if a.independent_report:
+        path = ctx.p(REVIEW_REPORT)
+        if os.path.islink(path) or not os.path.isfile(path) or os.path.getsize(path) < REPORT_MIN_BYTES:
+            raise Refuse("--independent-report 需要工作区里的 %s（普通文件，至少 %d 字节；模板见 assets/%s）"
+                         % (REVIEW_REPORT, REPORT_MIN_BYTES, REVIEW_REPORT), 2,
+                         next=nx(ctx, None, "next.fix_problems"))
+        report = {"path": (ctx.rel + "/" + REVIEW_REPORT).replace(os.sep, "/"), "sha": file_sha(path)}
+    payload = {"verdict": a.verdict, "blockers": a.blocker, "plan": plan_hash(plan), "fp": fp, "report": report}
     two_step(ctx, "review", payload, a.confirm,
-             {"结论": a.verdict, "阻断项": a.blocker,
+             {"结论": a.verdict, "阻断项": a.blocker, "独立复核报告": report["path"] if report else None,
               "步骤证据": [{"id": s.get("id"), "最后证据类型": (s.get("evidence") or [{}])[-1].get("kind")}
                        for s in plan["steps"]]})
     plan["review"] = {"verdict": a.verdict, "blockers": a.blocker, "at": now(), "fingerprint": fp,
                       "plan_hash": plan_hash(plan), "confirmed_via": "token",
                       "note": "confirmed_via=token 表示内容经两步确认；脚本无法证明确认者是人"}
+    if report:
+        plan["review"]["independent_report"] = report      # 只防事后篡改，不能证明复核者真的独立
     commit(ctx, plan, "review", "交付审查结论：%s%s" % (a.verdict, "；阻断项：" + "；".join(a.blocker) if a.blocker else ""),
            verdict=a.verdict, blockers=a.blocker)
     out({"ok": True, "verdict": a.verdict,
@@ -1615,7 +1640,7 @@ def strip_h1(text):
 
 LABELS = {
     "zh": {"title": "# 决策记录：%s", "outcome": "- 结局：%s", "date": "- 归档日期：%s", "sync_pending": "- 知识同步：待完成",
-           "review": "- 审查结论：%s", "none": "无",
+           "review": "- 审查结论：%s", "none": "无", "review_report": "- 独立复核报告：%s（sha %s）",
            "note": "- 说明：本文件是历史记录，描述当时为什么这样决定；系统现状以 README 与 docs 为准。",
            "card": "## 决策卡（归档时版本）", "exec": "## 执行摘要", "retro": "## 复盘",
            "table": ["| # | 步骤 | 状态 | 证据类型 | 证据 |", "|---|---|---|---|---|"],
@@ -1625,6 +1650,7 @@ LABELS = {
            "outcomes": {"完成": "完成", "止损": "止损", "放弃": "放弃"}, "status": STATUS_ZH},
     "en": {"title": "# Decision record: %s", "outcome": "- Outcome: %s", "date": "- Archived: %s",
            "sync_pending": "- Knowledge sync: pending", "review": "- Review verdict: %s", "none": "none",
+           "review_report": "- Independent review report: %s (sha %s)",
            "note": "- Note: this is a historical record of why the decision was made; README and docs describe the "
                    "current system.",
            "card": "## Decision card (as archived)", "exec": "## Execution summary", "retro": "## Retro",
@@ -2206,12 +2232,14 @@ def archive_core(a, ctx, apply):
                                                            L["status"].get(s.get("status", "todo")), k or "", desc)))
     with open(ctx.p("retro.md"), encoding="utf-8") as f:
         retro = f.read()
+    rep = review.get("independent_report") if isinstance(review.get("independent_report"), dict) else None
     body = "\n".join([
         L["title"] % card_title(ci), "",
         L["outcome"] % L["outcomes"][outcome],
         L["date"] % dt.date.today().isoformat(),
         L["sync_pending"],
-        L["review"] % (review.get("verdict") or L["none"]),
+        L["review"] % (review.get("verdict") or L["none"])]
+        + ([L["review_report"] % (rep.get("path"), rep.get("sha"))] if rep else []) + [
         L["note"], "",
         L["card"], "", strip_h1(ci["text"]).replace("\n## ", "\n### "), "",
         L["exec"], "", "\n".join(rows), "",
@@ -2465,6 +2493,8 @@ def main():
     s = add("review", "记录交付审查结论（两步确认）")
     s.add_argument("--verdict", required=True, choices=["pass", "fix", "fail"])
     s.add_argument("--blocker", action="append", default=[])
+    s.add_argument("--independent-report", action="store_true",
+                   help="关联工作区里的 independent-review.md（记录哈希；之后被改动审查结论失效）")
     s.add_argument("--confirm")
     s = add("archive", "归档为决策记录（默认只预览；不删除任何文件）")
     s.add_argument("--outcome", choices=OUTCOMES + list(OUTCOME_ALIASES), default="完成")
