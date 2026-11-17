@@ -1,7 +1,22 @@
 ---
 name: deciding-and-executing
-description: 当一项开发或工程任务要跨会话推进、做错了返工代价高、需要可复核的交付证据时使用：多日的迁移、重构、新子系统、上线发布；拿不定技术方向或要评审方案、说"先别急着回答"；方向定了问"接下来怎么排"；执行中同一处反复失败或怀疑跑偏；问"可以上线了吗"；项目结束要结案；或明确要决策卡、执行计划、钢人论证、事前验尸、止损、复盘。用户在做非代码的重要决定（如是否辞职创业）时也可使用，通常只走定方向阶段。不用于一次会话内能做完的普通开发任务、十分钟内能改完的小修复、一次性事实问答、纯闲聊或只要一段文案，也不用于单纯的文档同步与仓库整理（那是 closing-out）。
+description: 当一项开发或工程任务要跨会话推进、做错了返工代价高、需要可复核的交付证据时使用：多日的迁移、重构、新子系统、上线发布；拿不定技术方向或要评审方案、说"先别急着回答"；方向定了问"接下来怎么排"；执行中同一处反复失败或怀疑跑偏；问"可以上线了吗"；项目结束要结案；或明确要决策卡、执行计划、钢人论证、事前验尸、止损、复盘。用户在做非代码的重要决定（如是否辞职创业）时也可使用，通常只走定方向阶段。不用于一次会话内能做完的普通开发任务、十分钟内能改完的小修复、一次性事实问答、纯闲聊或只要一段文案，也不用于单纯的文档同步与仓库整理（那是 closing-out）。Also for English requests about multi-session engineering work, such as a multi-day migration, refactor, new subsystem or release; "should we do this" or "review my approach"; "what's the plan now"; the same fix keeps failing; "is this ready to ship"; resuming or handing off work tracked in .decision/; or an explicit decision card, steelman, pre-mortem, stop-loss or retro. Not for a quick single-session fix or a plain question.
 license: MIT
+allowed-tools:
+  - Bash(python "${CLAUDE_SKILL_DIR}/scripts/de.py" status *)
+  - Bash(python "${CLAUDE_SKILL_DIR}/scripts/de.py" handoff *)
+  - Bash(python "${CLAUDE_SKILL_DIR}/scripts/de.py" check *)
+  - Bash(python "${CLAUDE_SKILL_DIR}/scripts/de.py" list *)
+  - Bash(python "${CLAUDE_SKILL_DIR}/scripts/de.py" show *)
+  - Bash(python "${CLAUDE_SKILL_DIR}/scripts/de.py" preflight *)
+  - Bash(python "${CLAUDE_SKILL_DIR}/scripts/de.py" coverage *)
+  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/de.py" status *)
+  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/de.py" handoff *)
+  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/de.py" check *)
+  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/de.py" list *)
+  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/de.py" show *)
+  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/de.py" preflight *)
+  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/de.py" coverage *)
 metadata:
   version: "4.2.0"
   language: zh-CN
@@ -55,17 +70,19 @@ metadata:
 
 **闸门会自动失效**：决策卡的目标、成功标准、非目标、关键假设（只更新"状态"列除外）、止损条件、结论、修复失败次数上限一改，A 和 B 都失效；计划的名称、`first_step`、`if_then` 或步骤结构（标题、判据、验证、命令、依赖、覆盖、验证的假设、不可逆标记、估时）一改，B 失效。失效后执行类命令会被拒绝，直到重新确认。这正是"改方向/改计划要重新确认"的落地方式。
 
-**定位阶段**：有 `.decision/` 时先运行 `de.py status`，按 `stage`（direction / plan / replan / execute / review / closeout / archived / ready-to-purge）和 `escalations` 继续。没有工作区时按用户信号判断；仍判断不了，只问："你现在是在**决定做什么**，还是在**做已经决定的事**？"
+**定位阶段**：有 `.decision/` 时先运行 `de.py status`，按 `stage`（direction / plan / replan / execute / review / closeout / archived / ready-to-purge）、`escalations` 和 `next` 继续。没有工作区时按用户信号判断；仍判断不了，只问："你现在是在**决定做什么**，还是在**做已经决定的事**？"
+
+**照 `next` 走**：每条命令的 JSON 输出都带 `next = {cmd, why}`。`cmd` 是下一个合法动作（照抄运行，`<…>` 占位要换成真实内容）；`cmd` 为 null 表示下一步是你或用户的工作（改步骤、写复盘、和用户商量），`why` 说明是什么。带 `needs_user: true` 的命令要先把 preview 给用户看、等用户同意后才能运行。
 
 用户跳过前一阶段时不拒绝推进：从对话里提炼最小版本的决策卡或计划，推测项标"假设"，请用户一次性确认（这次确认就是对应的闸门）。
 
 ## 4. 脚本
 
 **怎么调用**：本技能所有文档里的 `de.py …` 都是 `python <本技能目录>/scripts/de.py …` 的简写，从项目里任何目录运行，都会定位到同一个工作区（git 仓库根目录的 `.decision/`）。非 git 项目也能用，但证据无法绑定到当前代码，`purge` 也会拒绝删除工作区。
-- Claude Code：`python "${CLAUDE_SKILL_DIR}/scripts/de.py" status`；变量没被替换时，用技能安装位置的绝对路径（如 `~/.claude/skills/deciding-and-executing/scripts/de.py`）。
+- Claude Code：`python "${CLAUDE_SKILL_DIR}/scripts/de.py" status`（照这个写法调用，只读命令在本轮可免审批）；变量没被替换时，用技能安装位置的绝对路径（如 `~/.claude/skills/deciding-and-executing/scripts/de.py`）。
 - 其他宿主：同样用绝对路径（如 `~/.agents/skills/deciding-and-executing/scripts/de.py`）。
 - macOS / Linux 用 `python3`，Windows 用 `python` 或 `py -3`。
-- **不要**在项目根目录直接运行 `scripts/de.py`：那是项目自己的目录，找不到脚本。
+- 脚本在技能目录里，不在项目里：写 `scripts/de.py` 这样的相对路径会找不到它。
 - 文档里的 `audit.py` 指 closing-out 技能目录下的 `scripts/audit.py`（两个技能装在同一目录时，即 `<本技能目录>/../closing-out/scripts/audit.py`）。
 
 只用 Python 标准库（3.8+）。完整参数见 `de.py --help`。
@@ -76,15 +93,16 @@ metadata:
 | `list` | 列出本仓库所有工作区 |
 | `check card` / `check plan` | 只校验，不改状态 |
 | `gate A` / `gate B` / `gate AB` [`--confirm`] | 闸门确认；`AB` 一次确认两者，仅标准档 |
-| `status` | 每次开工、每个新会话先运行 |
+| `status` | 每次开工、每个新会话先运行；`--brief` 输出 ≤15 行纯文本，给会话开始钩子用 |
+| `handoff` [`--json`] | 只读交接摘要：步骤与证据新鲜度、升级、假设、最近事件、下一步、相关文件路径 |
 | `preflight` | 只读预检：仓库/分支/未提交改动/验证命令潜在副作用 |
 | `coverage` | 只读列出成功标准与步骤证据对应关系（不自动宣称满足） |
 | `step ID --status …` | 状态转换受状态机约束；`done` 的证据规则见下 |
 | `verify ID` / `verify --all` | 脚本执行验证命令，记录退出码与代码指纹 |
-| `fail ID --note` | 记录失败；到上限自动变为 `needs_replan` |
+| `fail ID --note` | 手动记录失败（没有验证命令的步骤）；验证命令的失败由脚本自动计数；到上限自动变为 `needs_replan` |
 | `replan ID --note [--waive 理由]` | 解除升级：步骤必须已修改，或经两步确认记录豁免 |
 | `reopen ID --reason` | 重做已完成的步骤；旧证据归档，审查结论作废 |
-| `review --verdict pass\|fix\|fail [--blocker]` | 交付审查结论 |
+| `review --verdict pass\|fix\|fail [--blocker] [--independent-report]` | 交付审查结论；可关联工作区里的独立复核报告 |
 | `archive [--outcome 完成\|止损\|放弃] [--apply]` | 归档为决策记录；**不删除任何文件**（英文工作区可写 `done\|stopped\|abandoned`） |
 | `sync --report`（可选 `--audit-json` 指定工作区固定输出） | 现场运行 closing-out 静态审计（不信任任何预先写好的审计 JSON），通过后登记知识同步 |
 | `closeout --report 文件 [--outcome] [--apply]` | archive + sync 一步完成：先预览，用户同意后 `--apply` |
@@ -110,7 +128,7 @@ metadata:
 
 ## 5. 升级条件
 
-**一级 → 回到②，只改出问题的那一步**：同一步失败达到上限（默认 2 次，决策卡可改；脚本自动转为 `needs_replan` 并阻止继续）；投入超过预计一倍（用 `--hours` 记录，`status` 提示）；步骤拆错了。
+**一级 → 回到②，只改出问题的那一步**：同一步失败达到上限（默认 2 次，决策卡可改；验证命令"改了代码仍失败"由脚本自动计数，规则见 stage-3；到上限自动转为 `needs_replan` 并阻止继续）；投入超过预计一倍（用 `--hours` 记录，`status` 提示）；步骤拆错了。
 
 **二级 → 回到①，只重审被击中的那条假设**：止损期限到达（`status` 提示）；关键假设被证伪（失败的步骤标有 `tests_assumption` 时，脚本会提醒）；外部约束改变；出现明显更优且切换成本低的方案。
 
@@ -125,7 +143,7 @@ metadata:
 - **成功标准不可验证或没被覆盖**：每条标准要能被观察，并被至少一个步骤的 `covers` 引用。
 - **为了过闸门改标准**：改成功标准、放宽判据、删测试都会让闸门失效并要求重新确认，这是故意的，要告诉用户为什么改。
 - **最危险的假设排在最后**：先做能证伪方向的那一步。
-- **新会话凭记忆续做**：先 `status`。也可以让宿主在会话开始时自动运行它（见 [references/permissions.md](references/permissions.md)）。
+- **新会话凭记忆续做**：先 `status`；交接给别的会话或 Agent 时给它 `handoff` 的输出。也可以让宿主在会话开始时自动注入 `status --brief`（见 [references/permissions.md](references/permissions.md)）。
 - **项目结束不结案**：留在仓库里的 `.decision/` 会被下一个 Agent 当成现行目标。
 - **决策记录写成了系统说明**：决策记录只写"为什么"，现状写在 README 与 docs。
 

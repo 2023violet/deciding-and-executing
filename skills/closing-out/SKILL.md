@@ -1,6 +1,6 @@
 ---
 name: closing-out
-description: 当一段工作告一段落，需要让项目里的文档、规则文件、决策记录跟上代码现状时使用：会话结束前收尾、里程碑或发布后整理、交接给别人或下一个 Agent、改名或删模块后担心文档过时、CLAUDE.md 和 AGENTS.md 冲突或引用失效、清理计划草稿和调试残留，或用户说"收尾""擦屁股""同步一下文档""整理仓库""clean handoff"。即使用户只说"今天先到这"，只要本次改动影响了别人会读的文档，也应使用。不用于写新功能、排查报错、整理一份数据或文案，也不用于复盘决策和做法本身。
+description: 当一段工作告一段落，需要让项目里的文档、规则文件、决策记录跟上代码现状时使用：会话结束前收尾、里程碑或发布后整理、交接给别人或下一个 Agent、改名或删模块后担心文档过时、CLAUDE.md 和 AGENTS.md 冲突或引用失效、清理计划草稿和调试残留，或用户说"收尾""擦屁股""同步一下文档""整理仓库""clean handoff"。即使用户只说"今天先到这"，只要本次改动影响了别人会读的文档，也应使用。不用于写新功能、排查报错、整理一份数据或文案，也不用于复盘决策和做法本身。Also for English requests to wrap up a session, sync docs with the code, clean up the repo, prepare a clean handoff, or fix stale or conflicting CLAUDE.md and AGENTS.md after a rename or deletion. Not for building features, debugging or retrospectives.
 license: MIT
 metadata:
   version: "2.1.0"
@@ -107,6 +107,7 @@ metadata:
 两个技能可以单独使用。一起安装时：
 - deciding-and-executing 的 ⑤ 收尾分三步：5A 它自己归档；**5B 由本技能做完整档**，先将完整收尾报告存为 `.decision/closeout-report.md`，运行 `de.py sync --report .decision/closeout-report.md`；它会现场执行配套 `audit.py`，将真实结果写入 `.decision/closeout-audit.json`，并核验完整性、当前指纹及错误数；5C 它自己删除工作区。
 - 本技能发现阻断问题时，停在 5B 修复，不能因为决策记录已经写好就当作结案。
+- 会话结束但那件事还没做完（轻量档）：把 `de.py handoff` 的输出放进收尾报告或交给下一个会话。它由脚本从状态和事件推出（哪步完成、哪些证据已过期或只有文字、下一步命令），比凭记忆写的交接更可靠。
 - 审计会识别含 `.de-workspace` 标记的目录：其内容不参与文档检查，也不计入代码指纹；计划全部完成却未归档、或已同步待删除时给出提示。
 - 代码指纹与 de.py 同协议：Git 已跟踪的改动加上未跟踪文件的**内容**（单文件 32 MiB、总量 128 MiB 上限），不含被 Git 忽略的文件。`sync` 必须现场运行审计，任何预先写好的审计 JSON 都不算数。
 - 复盘得到的教训，按 placement.md 的规则决定进规则文件、docs 还是丢弃。
