@@ -240,7 +240,7 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 │   ├── 教程-如何制作高质量Skill.md  Guide to building high-quality skills (Chinese)
 │   ├── Skill-愿景与演进路线.md      Vision and roadmap (Chinese)
 │   └── history/                    Review responses and validation records per version (historical, Chinese, not updated)
-└── dev/                           release_check.py, validate_skill.py, run_trigger_eval.sh,
+└── dev/                           release_check.py, validate_skill.py, run_trigger_eval.py,
                                    tests/ (hermetic regression + adversarial), evals/<skill>/, eval-runs/
 ```
 
@@ -249,7 +249,7 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 ```bash
 python3 dev/release_check.py                       # everything: structure, tests, dist consistency, CHANGELOG, self-audit
 python3 -m unittest discover -s dev/tests     # tests only
-bash dev/run_trigger_eval.sh closing-out dev/evals/closing-out/trigger_evals.json 3   # trigger rate (Claude Code + jq)
+python3 dev/run_trigger_eval.py skills/closing-out dev/evals/closing-out/trigger_evals.json --runs 3   # trigger rate (needs a logged-in claude CLI)
 bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                            # closing-out fixture repo
 ```
 

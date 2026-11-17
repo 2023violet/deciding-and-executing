@@ -24,6 +24,7 @@
 - 两个技能的 description 加英文触发句；SKILL.md 的 `allowed-tools` 列出只读的 de.py 命令（Claude Code 在调用技能的那一轮内免审批）。
 - Claude Code 插件：`.claude-plugin/plugin.json` 与 `marketplace.json`（`claude plugin validate` 通过）；README 增加插件与 `npx skills add` 两种安装方式。
 - 会话钩子改为 `de.py status --brief`，matcher `startup|resume|clear|compact`，另给 Codex 版配置；closing-out 轻量档建议附上 `handoff` 输出。
+- 触发评测改用 `dev/run_trigger_eval.py`（替代 `run_trigger_eval.sh`，跨平台、不需要 jq、不需要把技能装到全局）：做法沿用官方 skill-creator 的 run_eval——临时命令文件承载被测描述，从 `claude -p` 的流式输出判断是否调用；记录本机全局技能与插件等运行环境。触发用例补充英文正例与近似反例（deciding-and-executing 35 条、closing-out 28 条）。
 
 ### 仓库卫生
 - `experimental/independent-verification/R1_SMOKE_OPERATOR.md` 删除了被提交进仓库的操作者分组映射表；映射只放在已忽略的私有文件里。旧的 9 个 Trial 分组已在 git 历史中暴露，正式运行前必须重新随机（未改写 git 历史）。
@@ -38,6 +39,7 @@
 ### 未验证
 - 宿主上的 `allowed-tools` 免审批、SessionStart 钩子注入（Claude Code 与 Codex）、插件与 `npx skills add` 在干净环境的安装、macOS。
 - 真实 Agent 的行为对照（R1）仍未运行。
+- **触发评测未运行（NOT_RUN）**：本机 PATH 上的 `claude` CLI 未登录（`claude -p` 返回 "Not logged in"），运行器只做过冒烟测试。登录后运行 `python dev/run_trigger_eval.py skills/<技能> dev/evals/<技能>/trigger_evals.json --runs 3 --out dev/eval-runs/trigger-<日期>/<技能>.json`。
 
 ## [4.2.0] - 2026-11-16（本地候选）
 

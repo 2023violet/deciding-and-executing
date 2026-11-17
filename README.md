@@ -242,7 +242,7 @@ python3 scripts/audit.py [--root .] [--base main] [--rename 旧=新 ...] [--excl
 └── dev/
     ├── release_check.py           发布前一次性检查
     ├── validate_skill.py          结构校验（有 PyYAML 时做真实 YAML 解析）
-    ├── run_trigger_eval.sh        触发率测试
+    ├── run_trigger_eval.py        触发率测试（只测 description，无需安装技能）
     ├── tests/                     回归与对抗测试（与本机 git 全局配置隔离）
     ├── evals/<技能名>/            行为评测用例与触发查询
     └── eval-runs/                 评测运行记录
@@ -253,7 +253,7 @@ python3 scripts/audit.py [--root .] [--base main] [--rename 旧=新 ...] [--excl
 ```bash
 python3 dev/release_check.py                       # 一次跑完：结构、测试、dist 一致性、CHANGELOG、自审计
 python3 -m unittest discover -s dev/tests     # 只跑测试
-bash dev/run_trigger_eval.sh closing-out dev/evals/closing-out/trigger_evals.json 3   # 触发率（需 Claude Code 与 jq）
+python3 dev/run_trigger_eval.py skills/closing-out dev/evals/closing-out/trigger_evals.json --runs 3   # 触发率（需已登录的 claude CLI）
 bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                            # closing-out 示例仓库
 ```
 

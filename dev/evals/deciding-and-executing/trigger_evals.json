@@ -94,5 +94,49 @@
   {
     "query": "要把生产库的用户表迁到新 schema，几百万行数据，不能丢，先帮我想清楚再动手",
     "should_trigger": true
+  },
+  {
+    "query": "We're planning a multi-week migration from MySQL to PostgreSQL across 12 services. Before we start, help me decide whether it's worth it and how to stage it so a failure halfway doesn't hurt.",
+    "should_trigger": true
+  },
+  {
+    "query": "Direction is settled: we're rewriting the billing module. Lay out the steps, how each one gets verified, and what we do if a step keeps failing.",
+    "should_trigger": true
+  },
+  {
+    "query": "The deploy step has failed three times with the same error and the agent keeps retrying. I think we're off track. What should we do?",
+    "should_trigger": true
+  },
+  {
+    "query": "Is this ready to ship? All the tests passed yesterday but we've changed a few things since.",
+    "should_trigger": true
+  },
+  {
+    "query": "Pick up where the last session left off on the search-index rebuild. There's a .decision folder in the repo.",
+    "should_trigger": true
+  },
+  {
+    "query": "Before I commit to moving our frontend into a monorepo, write a decision card with a steelman of both options and a pre-mortem.",
+    "should_trigger": true
+  },
+  {
+    "query": "Fix the typo in the README heading.",
+    "should_trigger": false
+  },
+  {
+    "query": "What's a pre-mortem? Explain the technique in two paragraphs.",
+    "should_trigger": false
+  },
+  {
+    "query": "Write a short, friendly email to the team recapping last sprint.",
+    "should_trigger": false
+  },
+  {
+    "query": "This function throws KeyError: 'id'. Can you fix it? It's a one-line change.",
+    "should_trigger": false
+  },
+  {
+    "query": "Update the README and AGENTS.md so they match the new API names we introduced today.",
+    "should_trigger": false
   }
 ]
