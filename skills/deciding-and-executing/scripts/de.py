@@ -630,7 +630,12 @@ def gate_a_hash(ci):
                     line = "|" + "|".join(cells[:3]) + "|"
             lines.append(line)
         approved[name] = lines
-    return sha({"verdict": ci["verdict"], "sec": approved}, 16)
+    payload = {"verdict": ci["verdict"], "sec": approved}
+    # 失败次数上限决定何时强制升级，放宽它等于改了止损规则，也需要审批。
+    # 取默认值时不入哈希，使沿用默认上限的已有工作区升级后闸门仍然有效。
+    if ci["max_fails"] != DEFAULT_MAX_FAILS:
+        payload["max_fails"] = ci["max_fails"]
+    return sha(payload, 16)
 
 
 # ---------------------------------------------------------------- 计划校验
@@ -715,6 +720,14 @@ def gate_state(plan, ci):
     else:
         b_state = "valid" if b.get("hash") == plan_hash(plan) else "stale"
     return {"A": a_state, "B": b_state}
+
+
+def effective_max_fails(plan, ci):
+    """未经确认的放宽不生效：闸门 A 失效时，取已确认的上限与卡片当前值中较严的一个。"""
+    a = plan.get("gates", {}).get("A") or {}
+    if a.get("hash") == gate_a_hash(ci):
+        return ci["max_fails"]
+    return min(ci["max_fails"], a.get("max_fails", DEFAULT_MAX_FAILS))
 
 
 def require_gate_b(plan, ci):
@@ -971,7 +984,7 @@ def cmd_check(a, ctx):
 def gate_a_preview(ci, warnings):
     return {"结论": ci["verdict_raw"], "成功标准": ci["criteria"],
             "止损": {"触发状态": ci["trigger"], "期限": str(ci["deadline"]), "动作": ci["action"]},
-            "warnings": warnings}
+            "修复失败次数上限": ci["max_fails"], "warnings": warnings}
 
 
 def gate_b_preview(plan, warnings):
@@ -996,7 +1009,7 @@ def cmd_gate(a, ctx):
         ha = gate_a_hash(ci)
     if a.which == "A":
         two_step("gate-A", ha, a.confirm, gate_a_preview(ci, warnings_a))
-        gates["A"] = {"hash": ha, "at": now(), "confirmed_via": "token"}
+        gates["A"] = {"hash": ha, "at": now(), "confirmed_via": "token", "max_fails": ci["max_fails"]}
         gates.pop("B", None)
         commit(ctx, plan, "gate", "闸门 A 通过（决策卡已确认）", gate="A", hash=ha)
         out({"ok": True, "gate": "A", "next": "制定计划，然后 check plan → gate B"})
@@ -1018,7 +1031,7 @@ def cmd_gate(a, ctx):
         two_step("gate-AB", {"a": ha, "b": hb}, a.confirm,
                  {"决策卡": gate_a_preview(ci, warnings_a), "计划": gate_b_preview(plan, warnings_b),
                   "说明": "一次确认同时通过闸门 A（方向）与闸门 B（计划），并同意执行计划里的验证命令"})
-        gates["A"] = {"hash": ha, "at": now(), "confirmed_via": "token"}
+        gates["A"] = {"hash": ha, "at": now(), "confirmed_via": "token", "max_fails": ci["max_fails"]}
         msg = "闸门 A、B 一次确认通过（决策卡与计划）"
     gates["B"] = {"hash": hb, "a_hash": ha, "at": now(), "confirmed_via": "token"}
     commit(ctx, plan, "gate", msg, gate=a.which, hash=hb)
@@ -1041,7 +1054,7 @@ def cmd_status(a, ctx):
         sid = sid_key(s.get("id"))
         if s.get("status") == "needs_replan":
             escalations.append("步骤 %s 已失败 %d 次（上限 %d），待重新规划：修改步骤后 replan，再重新通过 gate B"
-                               % (sid, s.get("fails", 0), ci["max_fails"])
+                               % (sid, s.get("fails", 0), effective_max_fails(plan, ci))
                                + ("；它验证的是假设 %s，先回到定方向重审" % s["tests_assumption"]
                                   if s.get("tests_assumption") else ""))
         est, spent = s.get("estimate_h"), s.get("spent_h", 0)
@@ -1110,7 +1123,8 @@ def cmd_step(a, ctx):
         pending = [d for d in s.get("depends_on", []) if find_step(plan, d).get("status") != "done"]
         if pending:
             raise Refuse("步骤 %s 依赖的步骤 %s 尚未完成" % (s.get("id"), pending))
-        if s.get("irreversible") and old == "todo":
+        # 每次从未开始的状态（todo 或 blocked）进入执行都要确认，不能经 blocked 绕过
+        if s.get("irreversible") and old in ("todo", "blocked"):
             two_step("irreversible", {"step": struct_of(s), "fp": fingerprint(ctx)}, a.confirm,
                      {"步骤": s.get("title"), "警告": "这是不可逆操作，开始前需要用户确认"})
         s.setdefault("started_at", now())
@@ -1183,7 +1197,8 @@ def cmd_fail(a, ctx):
     s["fails"] = int(s.get("fails", 0)) + 1
     if a.hours:
         s["spent_h"] = round(float(s.get("spent_h", 0)) + a.hours, 2)
-    esc = s["fails"] >= ci["max_fails"]
+    max_fails = effective_max_fails(plan, ci)
+    esc = s["fails"] >= max_fails
     if esc:
         s["escalation"] = {"at": now(), "fails": s["fails"], "struct_hash": sha(struct_of(s), 16),
                            "prev_status": s.get("status", "todo")}
@@ -1191,7 +1206,7 @@ def cmd_fail(a, ctx):
     commit(ctx, plan, "fail", "步骤 #%s 验证失败（第 %d 次）：%s%s" % (s.get("id"), s["fails"], a.note,
                                                               "；触发一级升级，待重新规划" if esc else ""),
            step=s.get("id"), fails=s["fails"], note=a.note, escalated=esc)
-    out({"ok": True, "step": s.get("id"), "fails": s["fails"], "max_fails": ci["max_fails"], "escalate": esc,
+    out({"ok": True, "step": s.get("id"), "fails": s["fails"], "max_fails": max_fails, "escalate": esc,
          "status": s["status"],
          "next": ("停止盲试：在 plan.json 修改此步骤（拆小、换做法、补前置步骤）后运行 replan，再重新通过 gate B"
                   + ("；它验证的是假设 %s，先回到定方向重审" % s["tests_assumption"] if s.get("tests_assumption") else ""))
@@ -1210,7 +1225,7 @@ def cmd_replan(a, ctx):
         two_step("waive", {"step": struct_of(s), "fails": s.get("fails"), "reason": a.waive}, a.confirm,
                  {"步骤": s.get("title"), "失败次数": s.get("fails"), "豁免理由": a.waive,
                   "后果": "不修改计划继续尝试；再失败一次会立即再次升级"})
-        s["fails"] = max(0, ci["max_fails"] - 1)
+        s["fails"] = max(0, effective_max_fails(plan, ci) - 1)
         s.setdefault("waivers", []).append({"at": now(), "reason": a.waive})
     elif not changed:
         raise Refuse("步骤 %s 的内容（标题/完成判据/验证方法/验证命令/依赖等）自升级以来没有修改。"

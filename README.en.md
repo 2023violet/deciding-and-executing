@@ -151,7 +151,7 @@ Full walkthroughs: the [deciding-and-executing example](skills/deciding-and-exec
 
 On the standard tier, `gate AB` confirms gates A and B at once and `closeout` does 5A and 5B in one step; the high-risk tier still confirms them separately.
 
-Changing the decision card's goal, success criteria, non-goals, key assumptions (except their status column), stop-loss or verdict invalidates gates A and B. Changing the plan's name, `first_step`, `if_then` or a step's structure invalidates gate B. Until you re-confirm, execution commands are refused.
+Changing the decision card's goal, success criteria, non-goals, key assumptions (except their status column), stop-loss, verdict or max fails invalidates gates A and B. Changing the plan's name, `first_step`, `if_then` or a step's structure invalidates gate B. Until you re-confirm, execution commands are refused.
 
 **Step state machine.** `todo → in_progress → implemented → done`, plus `blocked` and `needs_replan`. A `done` step can't be moved back directly; use `reopen`, which archives the old evidence and voids the review. `needs_replan` is cleared only by `replan`.
 

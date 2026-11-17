@@ -279,6 +279,48 @@ class TestStateMachine(Base):
         self.set_card(CARD.replace("| 未验证 |", "| 已证实 |"))
         self.assertEqual(self.de("status")[1]["gates"], {"A": "valid", "B": "valid"})
 
+    def test_raising_max_fails_invalidates_gates(self):
+        # 放宽失败上限会让升级永不触发，必须重新确认
+        self.ready()
+        self.set_card(CARD.replace("修复失败次数上限：2", "修复失败次数上限：99"))
+        st = self.de("status")[1]
+        self.assertEqual(st["gates"], {"A": "stale", "B": "stale"})
+        self.assertEqual(self.de("step", "1", "--status", "in_progress")[0], 3)
+        code, d = self.de("gate", "A")
+        self.assertEqual(code, 3, d)
+        self.assertEqual(d["preview"]["修复失败次数上限"], 99)
+
+    def test_unconfirmed_max_fails_raise_does_not_delay_escalation(self):
+        # 闸门失效期间 fail 仍可记录，但按已确认的上限升级，放宽不能先用后批
+        self.ready()
+        self.de("step", "1", "--status", "in_progress")
+        self.set_card(CARD.replace("修复失败次数上限：2", "修复失败次数上限：99"))
+        self.assertFalse(self.de("fail", "1", "--note", "x")[1]["escalate"])
+        code, d = self.de("fail", "1", "--note", "x")
+        self.assertTrue(d["escalate"], d)
+        self.assertEqual(d["max_fails"], 2)
+
+    def test_unconfirmed_max_fails_tightening_applies_immediately(self):
+        self.ready()
+        self.de("step", "1", "--status", "in_progress")
+        self.set_card(CARD.replace("修复失败次数上限：2", "修复失败次数上限：1"))
+        self.assertTrue(self.de("fail", "1", "--note", "x")[1]["escalate"])
+
+    def test_confirmed_max_fails_raise_applies(self):
+        self.ready()
+        self.set_card(CARD.replace("修复失败次数上限：2", "修复失败次数上限：3"))
+        self.confirm("gate", "AB")
+        self.de("step", "1", "--status", "in_progress")
+        self.assertFalse(self.de("fail", "1", "--note", "x")[1]["escalate"])
+        self.assertFalse(self.de("fail", "1", "--note", "x")[1]["escalate"])
+        self.assertTrue(self.de("fail", "1", "--note", "x")[1]["escalate"])
+
+    def test_default_max_fails_keeps_gates(self):
+        # 显式写默认值与不写等价：沿用默认上限的已有工作区升级后闸门仍有效
+        self.ready()
+        self.set_card(CARD.replace("## 升级阈值\n- 修复失败次数上限：2\n", ""))
+        self.assertEqual(self.de("status")[1]["gates"], {"A": "valid", "B": "valid"})
+
     def test_escalation_blocks_until_replan(self):
         self.ready()
         self.de("step", "1", "--status", "in_progress")
@@ -333,6 +375,14 @@ class TestStateMachine(Base):
         self.ready(st=steps({1: {"irreversible": True}}))
         code, d = self.de("step", "1", "--status", "in_progress")
         self.assertEqual(code, 3)
+        self.assertTrue(d["needs_confirmation"])
+        self.confirm("step", "1", "--status", "in_progress")
+
+    def test_irreversible_confirmation_not_bypassed_via_blocked(self):
+        self.ready(st=steps({1: {"irreversible": True}}))
+        self.assertEqual(self.de("step", "1", "--status", "blocked")[0], 0)
+        code, d = self.de("step", "1", "--status", "in_progress")
+        self.assertEqual(code, 3, d)
         self.assertTrue(d["needs_confirmation"])
         self.confirm("step", "1", "--status", "in_progress")
 

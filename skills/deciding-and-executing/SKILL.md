@@ -53,7 +53,7 @@ metadata:
 | ④ 审查与复盘 | [references/stage-4-review.md](references/stage-4-review.md) | **D**：`review --verdict pass` 两步确认；`retro.md` 有实质内容 |
 | ⑤ 收尾 | [references/stage-5-closeout.md](references/stage-5-closeout.md) | 5A `archive --apply`；5B `sync`（审计无 error、对应当前代码）——或 `closeout --apply` 一步完成两者；5C `purge` 两步确认 |
 
-**闸门会自动失效**：决策卡的目标、成功标准、非目标、关键假设（只更新"状态"列除外）、止损条件、结论一改，A 和 B 都失效；计划的名称、`first_step`、`if_then` 或步骤结构（标题、判据、验证、命令、依赖、覆盖、验证的假设、不可逆标记、估时）一改，B 失效。失效后执行类命令会被拒绝，直到重新确认。这正是"改方向/改计划要重新确认"的落地方式。
+**闸门会自动失效**：决策卡的目标、成功标准、非目标、关键假设（只更新"状态"列除外）、止损条件、结论、修复失败次数上限一改，A 和 B 都失效；计划的名称、`first_step`、`if_then` 或步骤结构（标题、判据、验证、命令、依赖、覆盖、验证的假设、不可逆标记、估时）一改，B 失效。失效后执行类命令会被拒绝，直到重新确认。这正是"改方向/改计划要重新确认"的落地方式。
 
 **定位阶段**：有 `.decision/` 时先运行 `de.py status`，按 `stage`（direction / plan / replan / execute / review / closeout / archived / ready-to-purge）和 `escalations` 继续。没有工作区时按用户信号判断；仍判断不了，只问："你现在是在**决定做什么**，还是在**做已经决定的事**？"
 
@@ -61,7 +61,7 @@ metadata:
 
 ## 4. 脚本
 
-**怎么调用**：本技能所有文档里的 `de.py …` 都是 `python <本技能目录>/scripts/de.py …` 的简写，从项目里任何目录运行，都会定位到同一个工作区（git 仓库根目录的 `.decision/`）。
+**怎么调用**：本技能所有文档里的 `de.py …` 都是 `python <本技能目录>/scripts/de.py …` 的简写，从项目里任何目录运行，都会定位到同一个工作区（git 仓库根目录的 `.decision/`）。非 git 项目也能用，但证据无法绑定到当前代码，`purge` 也会拒绝删除工作区。
 - Claude Code：`python "${CLAUDE_SKILL_DIR}/scripts/de.py" status`；变量没被替换时，用技能安装位置的绝对路径（如 `~/.claude/skills/deciding-and-executing/scripts/de.py`）。
 - 其他宿主：同样用绝对路径（如 `~/.agents/skills/deciding-and-executing/scripts/de.py`）。
 - macOS / Linux 用 `python3`，Windows 用 `python` 或 `py -3`。

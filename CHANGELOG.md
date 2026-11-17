@@ -31,6 +31,11 @@
 - 工作区查找结果在一次命令内缓存，`status` 少跑一次 git。
 - 未做：实验性技能 `experimental/` 是否拆到独立仓库、`dist/*.skill` 是否改为只随发布提供，留给维护者决定。
 
+### 绕过修复（2026-11-17 复现后修复）
+- 不可逆步骤先标为 `blocked` 再进入 `in_progress` 可以跳过确认；现在从 `todo` 或 `blocked` 进入执行都要两步确认。
+- 闸门通过后在决策卡里调高"修复失败次数上限"，闸门不失效，升级也不再触发；现在上限进入闸门 A 的哈希（取默认值 2 时不进入，沿用默认值的旧工作区闸门不受影响），gate A 预览会显示上限。重新确认之前，`fail` 按已确认的上限与卡片当前值中较严的一个判断是否升级，放宽不能先用后批。
+- SKILL.md 补一句：非 git 项目可用，但证据无法绑定当前代码，`purge` 会拒绝删除。
+
 ### 仓库一致性清理（不改变工作流契约）
 - `de.py review --verdict pass` 把同一批过期证据重复报告两次。
 - `de.py archive` 完成后的提示仍要求手动保存审计 JSON（v4.0.1 起 `sync` 会现场重跑审计）；`worked-example.md` 同样已更正。
@@ -49,8 +54,8 @@
 ### 验证
 - 环境：Windows 10 + Python 3.13 + Git for Windows（2026-11-16）。
 - 整改前基线：`python -m unittest discover -s dev/tests` 83 项、3 项报错（均为测试在 Windows 上的可移植性问题）。
-- 整改后：`dev/release_check.py --outer-zip <临时目录>/deciding-and-executing-v4.2.0.zip` 全部通过——两个技能结构校验、CHANGELOG 版本、`dist/*.skill` 与源码逐文件一致、回归与对抗测试 103 项通过（1 项符号链接用例因权限跳过，约 200 秒）、自审计 error 0 / warn 0、外层 ZIP 解压后 115 个文件逐一比对且静态审计 error 0。这是外层 ZIP 检查第一次在 git 检出里跑通（此前它把 `.git/` 算进应有文件，必然失败）。
-- 新增测试覆盖：方括号内容、`verify_argv`（含找不到程序、与 `verify_cmd` 冲突、旧计划批准不失效）、`state.json` 拆分（伪造字段被忽略、手改被发现、旧工作区迁移）、`gate AB`、`closeout`、多工作区指纹、`DE_WORKSPACE`、英文决策卡全流程、`just` 配方检查。
+- 整改后：`dev/release_check.py --outer-zip <临时目录>/deciding-and-executing-v4.2.0.zip` 全部通过——两个技能结构校验、CHANGELOG 版本、`dist/*.skill` 与源码逐文件一致、回归与对抗测试 109 项通过（1 项符号链接用例因权限跳过，约 150–200 秒）、自审计 error 0 / warn 0、外层 ZIP 解压后 116 个文件逐一比对且静态审计 error 0（2026-11-17 绕过修复后重跑）。这是外层 ZIP 检查第一次在 git 检出里跑通（此前它把 `.git/` 算进应有文件，必然失败）。
+- 新增测试覆盖：方括号内容、`verify_argv`（含找不到程序、与 `verify_cmd` 冲突、旧计划批准不失效）、`state.json` 拆分（伪造字段被忽略、手改被发现、旧工作区迁移）、`gate AB`、`closeout`、多工作区指纹、`DE_WORKSPACE`、英文决策卡全流程、`just` 配方检查、两条绕过路径（经 `blocked` 跳过不可逆确认、事后放宽失败上限）。这两条修复各做了变异检查：把修复改回去，对应测试会失败。
 - 实验性技能：`test_review_checks` 与 `test_v02_contract` 30 项通过（2 项符号链接用例跳过）；`test_paired_eval` 仍需操作者提供私有金标。
 - 未运行：macOS；Claude Code / Codex 上的真实触发与行为评测；宿主审批规则与 SessionStart 钩子的实机验证。
 
