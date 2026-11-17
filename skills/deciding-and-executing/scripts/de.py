@@ -168,6 +168,7 @@ class Ctx:
         if not inside(self.dir, self.root) or self.dir == self.root:
             raise Refuse("工作区必须是项目根目录 %s 之下的子目录，收到 %s" % (self.root, self.dir), 2)
         self.rel = os.path.relpath(self.dir, self.root)
+        self._lang = None
 
     def p(self, name):
         return os.path.join(self.dir, name)
@@ -177,12 +178,64 @@ class Ctx:
             raise Refuse("%s 不是由 de.py init 创建的工作区（缺少 %s）" % (self.dir, MARKER), 2)
 
     def lang(self):
+        if self._lang:
+            return self._lang
         try:
             with open(self.p(MARKER), encoding="utf-8") as f:
                 lang = json.load(f).get("lang", "zh")
         except (OSError, ValueError, AttributeError):
-            lang = "zh"
-        return lang if lang in LANGS else "zh"
+            return "zh"             # 标记还不存在或损坏时不缓存，init 之后能读到真实语言
+        self._lang = lang if lang in LANGS else "zh"
+        return self._lang
+
+    def default_dir(self):
+        return self.dir == os.path.realpath(os.path.join(self.root, ".decision"))
+
+
+# ---------------------------------------------------------------- 下一步命令的拼装
+_SAFE_ARG = re.compile(r"^[\w./:@%+=,-]+$")
+
+
+def _quote(x):
+    x = str(x)
+    return x if _SAFE_ARG.match(x) else '"%s"' % x.replace('"', '\\"')
+
+
+def dir_arg(ctx):
+    """非默认工作区需要在命令里带 --dir；路径相对当前目录（Ctx 就是这样解析 --dir 的）。"""
+    if ctx is None or ctx.default_dir():
+        return None
+    try:
+        rel = os.path.relpath(ctx.dir, os.getcwd())
+    except ValueError:          # Windows 上跨盘符
+        rel = ctx.dir
+    return rel.replace(os.sep, "/")
+
+
+def de_cmd(ctx, *parts):
+    """拼出一条可以直接运行的 de.py 命令（文档里 de.py 是脚本完整路径的简写）。"""
+    args = [str(p) for p in parts if p is not None]
+    d = dir_arg(ctx)
+    if d:
+        args += ["--dir", d]
+    return "de.py " + " ".join(_quote(x) for x in args)
+
+
+def invocation_parts(drop=("--confirm",)):
+    """本次调用的参数，去掉 --dir（de_cmd 会重新加）和 drop 里的选项。"""
+    parts, args, i = [], sys.argv[1:], 0
+    skip = set(drop) | {"--dir"}
+    while i < len(args):
+        x = args[i]
+        if x in skip:
+            i += 2
+            continue
+        if any(x.startswith(k + "=") for k in skip):
+            i += 1
+            continue
+        parts.append(x)
+        i += 1
+    return parts
 
 
 _WORKSPACES = {}
@@ -393,7 +446,7 @@ def commit(ctx, plan, etype, human, **data):
     return seq
 
 
-def state_warnings(ctx, plan):
+def state_warnings(ctx, plan, events=None):
     """state.json 是否由 de.py 最后一次写入；plan.json 里是否混入了会被忽略的运行时字段。"""
     w, meta = [], plan.get("_meta") or {}
     if meta.get("legacy"):
@@ -403,7 +456,8 @@ def state_warnings(ctx, plan):
                  % "、".join(meta["ignored"][:10]))
     if os.path.exists(ctx.p("state.json")):
         st = read_json(ctx.p("state.json"), "state.json")
-        ev = next((e for e in read_events(ctx) if e.get("seq") == st.get("last_event")), {})
+        events = read_events(ctx) if events is None else events
+        ev = next((e for e in events if e.get("seq") == st.get("last_event")), {})
         if ev.get("state_sha") and ev["state_sha"] != sha(st, 16):
             w.append("state.json 与事件日志记录的摘要不一致：它在 de.py 之外被修改过，状态与证据不可信，请对照 events.jsonl 检查")
     return w
@@ -889,11 +943,30 @@ def cmd_preflight(a, ctx):
                     "不修改或清理用户工作树"]})
 
 
-def cmd_coverage(a, ctx):
+def coverage_quality(ctx, step, fp, cache):
+    """一个步骤作为成功标准证据的质量；同一步骤覆盖多条标准时只算一次（文件证据要重新哈希）。"""
+    sid = sid_key(step.get("id"))
+    if sid not in cache:
+        state = step.get("status", "todo")
+        evidence = step.get("evidence", [])
+        failure = stale_verified_step(ctx, step, fp) if state == "done" else None
+        if state != "done":
+            quality = "PENDING"
+        elif failure:
+            quality = "STALE"
+        elif has_verify(step) and fresh_command_pass(step, fp):
+            quality = "COMMAND_PASS"
+        elif any(isinstance(e, dict) and e.get("kind") == "artifact" for e in evidence):
+            quality = "ARTIFACT_INTACT"
+        else:
+            quality = "UNVERIFIED_NOTE"
+        cache[sid] = (quality, failure)
+    return cache[sid]
+
+
+def coverage_rows(ctx, plan, ci, fp, cache=None):
     """只给证据覆盖候选，不把步骤自报 covers 当成成功标准已验证。"""
-    ctx.require()
-    plan, ci = load_plan(ctx), card_info(ctx)
-    fp = fingerprint(ctx)
+    cache = {} if cache is None else cache
     items = []
     for line in ci["criteria"]:
         m = re.match(r"^(\d+)[.、]\s*(.*)$", line)
@@ -904,20 +977,8 @@ def cmd_coverage(a, ctx):
         for step in plan["steps"]:
             if cid not in step.get("covers", []):
                 continue
-            state = step.get("status", "todo")
-            evidence = step.get("evidence", [])
-            failure = stale_verified_step(ctx, step, fp) if state == "done" else None
-            if state != "done":
-                quality = "PENDING"
-            elif failure:
-                quality = "STALE"
-            elif has_verify(step) and fresh_command_pass(step, fp):
-                quality = "COMMAND_PASS"
-            elif any(isinstance(e, dict) and e.get("kind") == "artifact" for e in evidence):
-                quality = "ARTIFACT_INTACT"
-            else:
-                quality = "UNVERIFIED_NOTE"
-            linked.append({"step": step.get("id"), "state": state,
+            quality, failure = coverage_quality(ctx, step, fp, cache)
+            linked.append({"step": step.get("id"), "state": step.get("status", "todo"),
                            "evidence_quality": quality, "reason": failure})
         if not linked:
             status = "NO_COVERAGE"
@@ -928,7 +989,14 @@ def cmd_coverage(a, ctx):
         else:
             status = "READY_FOR_INDEPENDENT_REVIEW"
         items.append({"criterion": cid, "text": m.group(2), "status": status, "steps": linked})
-    out({"ok": True, "read_only": True, "fingerprint": fp, "criteria": items,
+    return items
+
+
+def cmd_coverage(a, ctx):
+    ctx.require()
+    snap = collect_status(ctx, full=False, fp=fingerprint(ctx))
+    items = coverage_rows(ctx, snap["plan"], snap["ci"], snap["fp"])
+    out({"ok": True, "read_only": True, "fingerprint": snap["fp"], "criteria": items,
          "all_ready_for_review": bool(items) and all(x["status"] == "READY_FOR_INDEPENDENT_REVIEW" for x in items),
          "limits": ["covers 由 Agent 编写，不证明测试与真实需求存在语义对应",
                     "命令 PASS 仅证明该命令成功退出；artifact 完整不证明内容属实",
@@ -1038,45 +1106,116 @@ def cmd_gate(a, ctx):
     out({"ok": True, "gate": a.which, "first_step": plan.get("first_step")})
 
 
-def cmd_status(a, ctx):
-    ctx.require()
-    plan, ci = load_plan(ctx), card_info(ctx)
+_LAZY = object()        # collect_status 的 fp 参数：需要时才计算指纹
+
+
+def review_problems(ctx, plan, fp):
+    """审查结论对当前计划与代码是否仍然有效；空列表表示有效。status 与 archive 共用同一判断。"""
+    review = plan.get("review") or {}
+    if review.get("verdict") != "pass":
+        return ["以「完成」归档需要交付审查结论为 pass（当前：%s）" % (review.get("verdict") or "无")]
+    if review.get("plan_hash") != plan_hash(plan) or (fp is not None and review.get("fingerprint") != fp):
+        return ["审查之后计划或代码已改变，需要重新 review"]
+    return []
+
+
+def evidence_state(ctx, step, fp, fp_known=True):
+    """步骤当前证据的新鲜度：none / unverified / fresh / failed / stale / intact / unknown。"""
+    evidence = [e for e in step.get("evidence", []) if isinstance(e, dict)]
+    if not evidence:
+        return "none"
+    if has_verify(step):
+        cmds = [e for e in evidence if e.get("kind") == "command"]
+        if not cmds:
+            return "unverified" if evidence[-1].get("kind") == "note" else "none"
+        if not cmds[-1].get("ok"):
+            return "failed"
+        if not fp_known or fp is None:
+            return "unknown"
+        return "fresh" if fresh_command_pass(step, fp) else "stale"
+    if any(e.get("kind") == "artifact" for e in evidence):
+        if artifact_issues(ctx, step, fp if fp_known else None):
+            return "stale"
+        return "intact" if fp_known and fp is not None else "unknown"
+    return "unverified"
+
+
+def read_archived(ctx):
+    """ARCHIVED 标记：(标记 dict 或 None, 是否已同步, 是否损坏)。"""
+    if not os.path.exists(ctx.p("ARCHIVED")):
+        return None, False, False
+    try:
+        with open(ctx.p("ARCHIVED"), encoding="utf-8") as f:
+            m = json.load(f)
+        if not isinstance(m, dict):
+            raise ValueError
+        return m, bool(m.get("synced")), False
+    except (OSError, ValueError):
+        return {}, False, True
+
+
+def collect_status(ctx, plan=None, ci=None, fp=_LAZY, full=True, tolerate_fp_error=False):
+    """一次读取得到 status / brief / handoff / next 共用的快照；不写任何文件，不调用 out()。
+    full=False 时不读事件、不做一致性告警；fp=_LAZY 时只在需要判断证据时计算指纹。"""
+    plan = plan if plan is not None else load_plan(ctx)
+    ci = ci if ci is not None else card_info(ctx)
     steps = plan["steps"]
-    fp = fingerprint(ctx)
     gs = gate_state(plan, ci)
     counts = {k: sum(1 for s in steps if s.get("status", "todo") == k) for k in STATUSES}
-    warnings, escalations = state_warnings(ctx, plan), []
-    seq = last_event_seq(ctx)
-    if plan.get("last_event", 0) < seq:
-        warnings.append("plan.json 落后于事件日志（最后事件 #%d，计划记录 #%d）：上次写入可能中断，请检查 events.jsonl"
-                        % (seq, plan.get("last_event", 0)))
+    review = plan.get("review") or {}
+    fp_known, fp_error = True, None
+    if fp is _LAZY:
+        if full or counts["done"] == len(steps) or review:
+            try:
+                fp = fingerprint(ctx)
+            except Refuse as r:
+                if not tolerate_fp_error:
+                    raise
+                fp, fp_known, fp_error = None, False, r.reason
+        else:
+            fp, fp_known = None, False
+    events, warnings = None, []
+    if full:
+        events = read_events(ctx)
+        warnings = state_warnings(ctx, plan, events)
+        seq = 0
+        for ev in events:
+            try:
+                seq = max(seq, int(ev.get("seq", 0)))
+            except (TypeError, ValueError):
+                pass
+        if plan.get("last_event", 0) < seq:
+            warnings.append("plan.json 落后于事件日志（最后事件 #%d，计划记录 #%d）：上次写入可能中断，请检查 events.jsonl"
+                            % (seq, plan.get("last_event", 0)))
+    max_fails = effective_max_fails(plan, ci)
+    esc_items = []
     for s in steps:
         sid = sid_key(s.get("id"))
         if s.get("status") == "needs_replan":
-            escalations.append("步骤 %s 已失败 %d 次（上限 %d），待重新规划：修改步骤后 replan，再重新通过 gate B"
-                               % (sid, s.get("fails", 0), effective_max_fails(plan, ci))
-                               + ("；它验证的是假设 %s，先回到定方向重审" % s["tests_assumption"]
-                                  if s.get("tests_assumption") else ""))
+            esc_items.append({"kind": "needs_replan", "step": sid, "fails": s.get("fails", 0), "max": max_fails,
+                              "tests_assumption": s.get("tests_assumption") or None})
         est, spent = s.get("estimate_h"), s.get("spent_h", 0)
         if isinstance(est, (int, float)) and est > 0 and spent > 2 * est and s.get("status") != "done":
-            escalations.append("步骤 %s 已投入 %.1fh，超过预计 %.1fh 的一倍：一级升级，回到计划层" % (sid, spent, est))
-    if isinstance(ci["deadline"], dt.date) and dt.date.today() >= ci["deadline"] and counts["done"] < len(steps):
-        escalations.append("已到止损期限 %s（触发状态：%s）：二级升级，对照决策卡判断是否执行动作「%s」"
-                           % (ci["deadline"], ci["trigger"], ci["action"]))
-    stale = [sid_key(s.get("id")) for s in steps if s.get("status") == "done"
-             and stale_verified_step(ctx, s, fp)]
+            esc_items.append({"kind": "hours", "step": sid, "spent": spent, "est": est})
+    deadline_hit = isinstance(ci["deadline"], dt.date) and dt.date.today() >= ci["deadline"] \
+        and counts["done"] < len(steps)
+    if deadline_hit:
+        esc_items.append({"kind": "deadline", "deadline": str(ci["deadline"]), "trigger": ci["trigger"],
+                          "action": ci["action"]})
+    stale = {}
+    if fp_known:
+        for s in steps:
+            if s.get("status") == "done":
+                reason = stale_verified_step(ctx, s, fp)
+                if reason:
+                    stale[sid_key(s.get("id"))] = reason
     note_only = [sid_key(s.get("id")) for s in steps if s.get("status") == "done"
                  and s.get("evidence") and all(e.get("kind") == "note" for e in s["evidence"])]
-    review = plan.get("review") or {}
-    review_valid = review.get("verdict") == "pass" and review.get("plan_hash") == plan_hash(plan) \
-        and (fp is None or review.get("fingerprint") == fp)
-    if os.path.exists(ctx.p("ARCHIVED")):
-        try:
-            with open(ctx.p("ARCHIVED"), encoding="utf-8") as f:
-                synced = json.load(f).get("synced")
-        except (ValueError, AttributeError):
-            synced = False
-            warnings.append("ARCHIVED 标记已损坏")
+    rproblems = review_problems(ctx, plan, fp) if (review and fp_known) else ["no review"]
+    marker, synced, broken = read_archived(ctx)
+    if broken:
+        warnings.append("ARCHIVED 标记已损坏")
+    if marker is not None:
         stage = "ready-to-purge" if synced else "archived"
     elif gs["A"] != "valid":
         stage = "direction"
@@ -1086,25 +1225,56 @@ def cmd_status(a, ctx):
         stage = "replan"
     elif counts["done"] < len(steps):
         stage = "execute"
-    elif not review_valid:
+    elif rproblems:
         stage = "review"
     else:
         stage = "closeout"
     current = next((s for s in steps if s.get("status") == "in_progress"), None) \
         or next((s for s in steps if s.get("status") in ("todo", "implemented")), None)
-    if fp is None:
+    if full and fp is None and fp_known:
         warnings.append("非 git 项目：无法判断证据是否对应当前代码")
-    out({"stage": stage, "gates": gs, "risk": plan.get("risk", "standard"),
-         "current_step": {k: current.get(k) for k in ("id", "title", "done_when", "verify", "verify_cmd", "verify_argv", "status")}
-         if current else None,
-         "counts": counts, "total": len(steps),
-         "unverified_steps": [sid_key(s.get("id")) for s in steps if s.get("status") == "implemented"],
-         "stale_evidence_steps": stale, "note_only_done_steps": note_only,
-         "review": {"verdict": review.get("verdict"), "valid_for_current_code": review_valid} if review else None,
-         "escalations": escalations, "warnings": warnings, "fingerprint": fp,
-         "kill_deadline": str(ci["deadline"]) if ci["deadline"] else None,
-         "other_workspaces": [w for w in find_workspaces(ctx.root, ctx.git)
-                              if os.path.realpath(os.path.join(ctx.root, w)) != ctx.dir]})
+    return {"plan": plan, "ci": ci, "fp": fp, "fp_known": fp_known, "fp_error": fp_error, "gates": gs,
+            "counts": counts, "stage": stage, "current": current, "esc_items": esc_items,
+            "deadline_hit": deadline_hit, "stale": stale, "note_only": note_only, "review": review,
+            "review_valid": not rproblems, "archived": marker, "synced": synced, "events": events,
+            "warnings": warnings, "max_fails": max_fails}
+
+
+def esc_text_zh(item):
+    """status JSON 里沿用的中文升级说明（brief / handoff 用本地化版本）。"""
+    if item["kind"] == "needs_replan":
+        return ("步骤 %s 已失败 %d 次（上限 %d），待重新规划：修改步骤后 replan，再重新通过 gate B"
+                % (item["step"], item["fails"], item["max"])
+                + ("；它验证的是假设 %s，先回到定方向重审" % item["tests_assumption"] if item["tests_assumption"] else ""))
+    if item["kind"] == "hours":
+        return "步骤 %s 已投入 %.1fh，超过预计 %.1fh 的一倍：一级升级，回到计划层" % (item["step"], item["spent"], item["est"])
+    return ("已到止损期限 %s（触发状态：%s）：二级升级，对照决策卡判断是否执行动作「%s」"
+            % (item["deadline"], item["trigger"], item["action"]))
+
+
+def status_payload(ctx, snap):
+    plan, ci, current, review = snap["plan"], snap["ci"], snap["current"], snap["review"]
+    steps = plan["steps"]
+    return {"stage": snap["stage"], "gates": snap["gates"], "risk": plan.get("risk", "standard"),
+            "current_step": {k: current.get(k) for k in ("id", "title", "done_when", "verify", "verify_cmd",
+                                                         "verify_argv", "status")} if current else None,
+            "counts": snap["counts"], "total": len(steps),
+            "unverified_steps": [sid_key(s.get("id")) for s in steps if s.get("status") == "implemented"],
+            "stale_evidence_steps": list(snap["stale"]), "note_only_done_steps": snap["note_only"],
+            "review": {"verdict": review.get("verdict"), "valid_for_current_code": snap["review_valid"]}
+            if review else None,
+            "escalations": [esc_text_zh(x) for x in snap["esc_items"]], "warnings": snap["warnings"],
+            "fingerprint": snap["fp"], "kill_deadline": str(ci["deadline"]) if ci["deadline"] else None,
+            "other_workspaces": other_workspaces(ctx)}
+
+
+def other_workspaces(ctx):
+    return [w for w in find_workspaces(ctx.root, ctx.git) if os.path.realpath(os.path.join(ctx.root, w)) != ctx.dir]
+
+
+def cmd_status(a, ctx):
+    ctx.require()
+    out(status_payload(ctx, collect_status(ctx)))
 
 
 def cmd_step(a, ctx):
@@ -1380,10 +1550,7 @@ def archive_core(a, ctx, apply):
     problems += retro_problems(ctx)
     review = plan.get("review") or {}
     if outcome == "完成":
-        if review.get("verdict") != "pass":
-            problems.append("以「完成」归档需要交付审查结论为 pass（当前：%s）" % (review.get("verdict") or "无"))
-        elif review.get("plan_hash") != plan_hash(plan) or (fp is not None and review.get("fingerprint") != fp):
-            problems.append("审查之后计划或代码已改变，需要重新 review")
+        problems += review_problems(ctx, plan, fp)
         stale = [(sid_key(s.get("id")), stale_verified_step(ctx, s, fp)) for s in plan["steps"]]
         stale = [(sid, reason) for sid, reason in stale if reason]
         if stale:
