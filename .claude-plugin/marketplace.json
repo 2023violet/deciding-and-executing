@@ -1,0 +1,14 @@
+{
+  "name": "deciding-and-executing-mkt",
+  "owner": {
+    "name": "2023violet"
+  },
+  "description": "Marketplace for the deciding-and-executing and closing-out skills.",
+  "plugins": [
+    {
+      "name": "deciding-and-executing",
+      "source": "./",
+      "description": "deciding-and-executing + closing-out: script-enforced evidence from decision to delivery, then docs brought back in line with the code."
+    }
+  ]
+}

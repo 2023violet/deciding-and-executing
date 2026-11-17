@@ -2,6 +2,43 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。本文件是本仓库**版本、验证结果与测试数量的唯一权威位置**，README 与教程只链接到这里。
 
+## [5.0.0] - 2026-11-17（本地候选）
+
+- deciding-and-executing 5.0.0；closing-out 2.2.0。
+- 一句话：把"下一步该做什么"从参考文档挪进脚本输出，堵上最后一条靠 Agent 自报的绕过路径（失败计数），给新会话与交接一个由脚本推出的状态视图，并把独立复核做成审查阶段的正式一步。依据与取舍见 [docs/proposals/2026-11-17-skills-optimization-v3.md](docs/proposals/2026-11-17-skills-optimization-v3.md)。
+
+### 不兼容变更
+- **`next` 从字符串改为对象** `{cmd, why[, needs_user]}`，并且所有 JSON 输出（成功与拒绝）都有。`cmd` 是可直接运行的 `de.py …` 命令，`null` 表示下一步是人或 Agent 的工作；`needs_user` 表示要先把 preview 给用户看。
+- **`status` 的 `current_step` 语义变化**：按 进行中 > 已实现待验证 > 依赖已满足的待做（尚未开工时优先 `first_step`）> 阻塞 > 依赖未满足的待做 选取；不再指向依赖未完成的步骤。
+- **验证命令的失败自动计数**（见下）。以前只靠手动 `fail` 的步骤可能更早触发一级升级。
+
+### 新增
+- `next` 由脚本从状态推出：标准档且计划无错时建议 `gate AB`；被升级的步骤改过之后先 `replan` 再 `gate B`；到达止损期限交给用户决定；执行期不因证据过期改道，审查期命令证据过期建议 `verify --all`、文件证据过期建议 `reopen`；复盘未写完先写复盘；装了 closing-out 时建议 `closeout`。非默认工作区（包括来自 `DE_WORKSPACE` 的）自动带 `--dir`，路径相对当前目录。
+- **失败自动计数**：同一个验证命令上次失败、这次改了代码（指纹不同）仍失败，计一次修复失败。第一次失败是基线；代码没变的重跑、执行期间代码被改动的运行、todo / done 状态的步骤、非 git 项目都不计；通过只重置基线不清零失败次数（`replan --waive` 的"再失败一次就升级"仍成立）；手动 `fail` 与自动计数双向去重。新增的运行时字段只在 `state.json`，计划与闸门哈希不变。
+- `status --brief`：给会话开始钩子用的纯文本（≤15 行、约 1,500 字符）。没有工作区时不输出，任何错误最多一行，永远退出 0；执行期不算代码指纹。
+- `handoff [--json]`：只读交接摘要。步骤的证据新鲜度由脚本推出（新鲜 / 已过期 / 未验证 / 最近一次失败），另含升级、假设状态与检验步骤、成功标准覆盖、最近 5 条事件、下一步与相关文件路径（只给路径不复制内容）。
+- 独立复核：stage-4 把"派一个没有执行上下文的子代理（或新会话 / 其他模型）逐条复核成功标准"定为正式一步（高风险档必须，标准档建议），新增中英文报告模板 `assets/independent-review.md`；`review --independent-report` 记下报告哈希，报告事后被改动或删除则审查结论失效，决策记录写明报告路径。只防事后篡改，不能证明复核者真的独立。
+- 新输出（`next.why`、`--brief`、`handoff`）按工作区语言输出中文或英文；旧的拒绝原因仍是中文。
+- stage-1 改为"按轮提问"：每轮只问当前就能回答的问题，编号并附推荐答案，用户答"是"即采纳；事实由 Agent 自己查。
+- 复盘模板加可选小节"环境改进"（查找、自动检查、工具）。
+- 两个技能的 description 加英文触发句；SKILL.md 的 `allowed-tools` 列出只读的 de.py 命令（Claude Code 在调用技能的那一轮内免审批）。
+- Claude Code 插件：`.claude-plugin/plugin.json` 与 `marketplace.json`（`claude plugin validate` 通过）；README 增加插件与 `npx skills add` 两种安装方式。
+- 会话钩子改为 `de.py status --brief`，matcher `startup|resume|clear|compact`，另给 Codex 版配置；closing-out 轻量档建议附上 `handoff` 输出。
+
+### 仓库卫生
+- `experimental/independent-verification/R1_SMOKE_OPERATOR.md` 删除了被提交进仓库的操作者分组映射表；映射只放在已忽略的私有文件里。旧的 9 个 Trial 分组已在 git 历史中暴露，正式运行前必须重新随机（未改写 git 历史）。
+- `release_check.py` 新增两项：会被打包的文件里不得出现评测私有材料；`plugin.json` 版本与技能版本一致。
+
+### 验证
+- 环境：Windows 10 + Python 3.13 + Git for Windows（2026-11-17）。
+- `dev/release_check.py --outer-zip <临时目录>/deciding-and-executing-v5.0.0.zip` 全部通过：两个技能结构校验、CHANGELOG 版本、`dist/*.skill` 与源码逐文件一致、插件版本一致、无评测私有材料、回归与对抗测试 174 项通过（2 项符号链接用例因权限跳过，约 320 秒）、自审计 error 0 / warn 0、外层 ZIP 解压后 124 个文件逐一比对且静态审计 error 0。
+- 新增 65 项测试：`test_v5_next`（含一条照着 `next.cmd` 从 `gate AB` 走到 `purge` 的全流程）、`test_v5_autofail`、`test_v5_brief_handoff`（含进程内统计代码指纹调用次数）、`test_v5_review_report`。失败计数的三个关键条件（同指纹不计、手动去重、基线）和 4.2 的两条绕过修复都做了变异检查：改回去，对应测试会失败。
+- `claude plugin validate`（Claude Code 2.1.283）对 `marketplace.json` 与 `plugin.json` 均通过。
+
+### 未验证
+- 宿主上的 `allowed-tools` 免审批、SessionStart 钩子注入（Claude Code 与 Codex）、插件与 `npx skills add` 在干净环境的安装、macOS。
+- 真实 Agent 的行为对照（R1）仍未运行。
+
 ## [4.2.0] - 2026-11-16（本地候选）
 
 - deciding-and-executing 4.2.0；closing-out 2.1.0。

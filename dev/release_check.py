@@ -9,6 +9,7 @@
   5. 用 closing-out 审计本仓库自身：error 0 且输出完整
   6. 外层交付 ZIP（build_release.py 的产物）与源码逐文件一致，解压后中文路径完整、审计无 error
   7. 会被打包的文件中没有评测操作者的私有材料（分组映射、operator_only/、*_PRIVATE.*）
+  8. .claude-plugin/plugin.json 的版本与 deciding-and-executing 的 metadata.version 一致
 
 用法: python3 dev/release_check.py [--outer-zip 路径]   # 在仓库根目录运行
 输出 JSON；全部通过退出码 0，否则 1。
@@ -140,6 +141,14 @@ def main():
             diff = sorted(set(packed.items()) ^ set(src.items()))
             results.append({"check": "dist:" + s, "ok": not diff,
                             "detail": "一致" if not diff else "不一致：%s" % sorted({k for k, _ in diff})[:10]})
+    plugin_path = os.path.join(ROOT, ".claude-plugin", "plugin.json")
+    if os.path.exists(plugin_path):
+        with open(plugin_path, encoding="utf-8") as f:
+            pver = json.load(f).get("version")
+        main_ver = re.search(r'version:\s*"?([\w.]+)"?', open(os.path.join(ROOT, "skills", "deciding-and-executing", "SKILL.md"),
+                                                         encoding="utf-8").read()).group(1)
+        results.append({"check": "plugin-version", "ok": pver == main_ver,
+                        "detail": "plugin.json=%s，SKILL.md=%s" % (pver, main_ver)})
     leaks = private_leaks()
     results.append({"check": "no-private-eval-material", "ok": not leaks,
                     "detail": "未发现" if not leaks else "疑似私有评测材料：%s" % leaks[:10]})

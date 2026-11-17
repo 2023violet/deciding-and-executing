@@ -1,0 +1,12 @@
+{
+  "name": "deciding-and-executing",
+  "version": "5.0.0",
+  "description": "Two companion skills: deciding-and-executing (direction, plan, step-by-step execution with script-enforced evidence, review, closeout) and closing-out (sync docs, rules files and decision records with the code).",
+  "author": {
+    "name": "2023violet"
+  },
+  "homepage": "https://github.com/2023violet/deciding-and-executing",
+  "repository": "https://github.com/2023violet/deciding-and-executing",
+  "license": "MIT",
+  "keywords": ["skills", "planning", "verification", "evidence", "handoff", "documentation"]
+}
