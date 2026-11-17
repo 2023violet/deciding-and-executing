@@ -115,9 +115,23 @@ class Refuse(Exception):
         self.reason, self.code, self.extra = reason, code, extra
 
 
+_CTX = None     # main() 构造好的上下文；out() 用它给缺少 next 的输出补一个兜底的下一步
+
+
 def out(obj, code=0):
+    if isinstance(obj, dict) and "next" not in obj:
+        obj = dict(obj, next=fallback_next(_CTX))
     print(json.dumps(obj, ensure_ascii=False, indent=2))
     sys.exit(code)
+
+
+def fallback_next(ctx):
+    """不重新计算快照的兜底下一步：先看状态。"""
+    if ctx is None:
+        return {"cmd": None, "why": T(None, "next.fix_dir")}
+    if not os.path.isfile(ctx.p(MARKER)):
+        return nx(ctx, ("init",), "next.init")
+    return nx(ctx, ("status",), "next.status")
 
 
 def now():
@@ -784,21 +798,23 @@ def effective_max_fails(plan, ci):
     return min(ci["max_fails"], a.get("max_fails", DEFAULT_MAX_FAILS))
 
 
-def require_gate_b(plan, ci):
+def require_gate_b(ctx, plan, ci):
     gs = gate_state(plan, ci)
     if gs["B"] != "valid":
         raise Refuse("计划未通过闸门 B，或通过后决策卡/计划结构已改变（A=%s，B=%s）。先运行 gate A / gate B 重新确认"
-                     % (gs["A"], gs["B"]), gates=gs)
+                     % (gs["A"], gs["B"]), gates=gs, next=gate_next(ctx, plan, gs))
 
 
-def two_step(kind, payload, confirm, preview):
+def two_step(ctx, kind, payload, confirm, preview):
     tok = token_for(kind, payload)
+    parts = invocation_parts()
     if confirm is None:
         raise Refuse("向用户展示 preview，用户明确同意后带 --confirm %s 重新运行" % tok,
-                     3, needs_confirmation=True, token=tok, preview=preview)
+                     3, needs_confirmation=True, token=tok, preview=preview,
+                     next=nx(ctx, parts + ["--confirm", tok], "next.confirm", needs_user=True))
     if confirm != tok:
         raise Refuse("确认 token 不匹配：内容已变化或 token 有误。重新运行不带 --confirm 的命令查看最新内容", 3,
-                     needs_confirmation=True)
+                     needs_confirmation=True, next=nx(ctx, parts, "next.confirm_mismatch"))
     return tok
 
 
@@ -1000,7 +1016,8 @@ def cmd_coverage(a, ctx):
          "all_ready_for_review": bool(items) and all(x["status"] == "READY_FOR_INDEPENDENT_REVIEW" for x in items),
          "limits": ["covers 由 Agent 编写，不证明测试与真实需求存在语义对应",
                     "命令 PASS 仅证明该命令成功退出；artifact 完整不证明内容属实",
-                    "即便全部 READY_FOR_INDEPENDENT_REVIEW，也不等于用户验收通过"]})
+                    "即便全部 READY_FOR_INDEPENDENT_REVIEW，也不等于用户验收通过"],
+         "next": snap_next(ctx, snap)})
 
 
 # ---------------------------------------------------------------- 命令实现
@@ -1033,7 +1050,7 @@ def cmd_init(a, ctx):
     commit(ctx, load_plan(ctx), "init", "初始化工作区（风险档位：%s）" % a.risk, risk=a.risk)
     created.append(os.path.join(ctx.rel, "state.json"))
     out({"ok": True, "dir": ctx.dir, "risk": a.risk, "created": created,
-         "next": "填写 decision-card.md，然后 check card → gate A"})
+         "next": nx(ctx, ("check", "card"), "next.fill_card")})
 
 
 def cmd_check(a, ctx):
@@ -1042,11 +1059,15 @@ def cmd_check(a, ctx):
     if a.target == "card":
         errors, warnings = card_errors(ci)
         out({"ok": not errors, "errors": errors, "warnings": warnings,
-             "verdict": ci["verdict"], "assumptions": ci["assumptions"]}, 0 if not errors else 1)
+             "verdict": ci["verdict"], "assumptions": ci["assumptions"],
+             "next": nx(ctx, ("check", "card"), "next.fix_card", n=len(errors)) if errors
+             else light_next(ctx, ci=ci)}, 0 if not errors else 1)
     plan = load_plan(ctx)
     errors, warnings = plan_errors(plan, ci)
     out({"ok": not errors, "errors": errors, "warnings": warnings, "step_count": len(plan["steps"]),
-         "risk": plan.get("risk", "standard")}, 0 if not errors else 1)
+         "risk": plan.get("risk", "standard"),
+         "next": nx(ctx, ("check", "plan"), "next.fix_plan", n=len(errors)) if errors
+         else light_next(ctx, plan=plan, ci=ci)}, 0 if not errors else 1)
 
 
 def gate_a_preview(ci, warnings):
@@ -1073,37 +1094,40 @@ def cmd_gate(a, ctx):
     if a.which in ("A", "AB"):
         errors, warnings_a = card_errors(ci)
         if errors:
-            out({"ok": False, "gate": "A", "errors": errors, "warnings": warnings_a}, 1)
+            out({"ok": False, "gate": "A", "errors": errors, "warnings": warnings_a,
+                 "next": nx(ctx, ("check", "card"), "next.fix_card", n=len(errors))}, 1)
         ha = gate_a_hash(ci)
     if a.which == "A":
-        two_step("gate-A", ha, a.confirm, gate_a_preview(ci, warnings_a))
+        two_step(ctx, "gate-A", ha, a.confirm, gate_a_preview(ci, warnings_a))
         gates["A"] = {"hash": ha, "at": now(), "confirmed_via": "token", "max_fails": ci["max_fails"]}
         gates.pop("B", None)
         commit(ctx, plan, "gate", "闸门 A 通过（决策卡已确认）", gate="A", hash=ha)
-        out({"ok": True, "gate": "A", "next": "制定计划，然后 check plan → gate B"})
+        out({"ok": True, "gate": "A", "next": nx(ctx, ("check", "plan"), "next.write_plan")})
     if a.which == "B":
         gs = gate_state(plan, ci)
         if gs["A"] != "valid":
-            raise Refuse("闸门 A 未通过或决策卡核心内容已改变，先运行 gate A", gates=gs)
+            raise Refuse("闸门 A 未通过或决策卡核心内容已改变，先运行 gate A", gates=gs, next=gate_next(ctx, plan, gs))
         ha = gates["A"]["hash"]
     elif plan.get("risk") == "high":
-        raise Refuse("高风险档必须分别确认 gate A 与 gate B：方向和计划各自需要用户看清后同意", 2)
+        raise Refuse("高风险档必须分别确认 gate A 与 gate B：方向和计划各自需要用户看清后同意", 2,
+                     next=nx(ctx, ("gate", "A"), "next.gate_a"))
     errors, warnings_b = plan_errors(plan, ci)
     if errors:
-        out({"ok": False, "gate": "B", "errors": errors, "warnings": warnings_b}, 1)
+        out({"ok": False, "gate": "B", "errors": errors, "warnings": warnings_b,
+             "next": nx(ctx, ("check", "plan"), "next.fix_plan", n=len(errors))}, 1)
     hb = plan_hash(plan)
     if a.which == "B":
-        two_step("gate-B", hb, a.confirm, gate_b_preview(plan, warnings_b))
+        two_step(ctx, "gate-B", hb, a.confirm, gate_b_preview(plan, warnings_b))
         msg = "闸门 B 通过（计划已确认）"
     else:
-        two_step("gate-AB", {"a": ha, "b": hb}, a.confirm,
+        two_step(ctx, "gate-AB", {"a": ha, "b": hb}, a.confirm,
                  {"决策卡": gate_a_preview(ci, warnings_a), "计划": gate_b_preview(plan, warnings_b),
                   "说明": "一次确认同时通过闸门 A（方向）与闸门 B（计划），并同意执行计划里的验证命令"})
         gates["A"] = {"hash": ha, "at": now(), "confirmed_via": "token", "max_fails": ci["max_fails"]}
         msg = "闸门 A、B 一次确认通过（决策卡与计划）"
     gates["B"] = {"hash": hb, "a_hash": ha, "at": now(), "confirmed_via": "token"}
     commit(ctx, plan, "gate", msg, gate=a.which, hash=hb)
-    out({"ok": True, "gate": a.which, "first_step": plan.get("first_step")})
+    out({"ok": True, "gate": a.which, "first_step": plan.get("first_step"), "next": light_next(ctx, plan=plan, ci=ci)})
 
 
 _LAZY = object()        # collect_status 的 fp 参数：需要时才计算指纹
@@ -1229,12 +1253,11 @@ def collect_status(ctx, plan=None, ci=None, fp=_LAZY, full=True, tolerate_fp_err
         stage = "review"
     else:
         stage = "closeout"
-    current = next((s for s in steps if s.get("status") == "in_progress"), None) \
-        or next((s for s in steps if s.get("status") in ("todo", "implemented")), None)
+    current, current_reason = pick_current(plan)
     if full and fp is None and fp_known:
         warnings.append("非 git 项目：无法判断证据是否对应当前代码")
     return {"plan": plan, "ci": ci, "fp": fp, "fp_known": fp_known, "fp_error": fp_error, "gates": gs,
-            "counts": counts, "stage": stage, "current": current, "esc_items": esc_items,
+            "counts": counts, "stage": stage, "current": current, "current_reason": current_reason, "esc_items": esc_items,
             "deadline_hit": deadline_hit, "stale": stale, "note_only": note_only, "review": review,
             "review_valid": not rproblems, "archived": marker, "synced": synced, "events": events,
             "warnings": warnings, "max_fails": max_fails}
@@ -1274,7 +1297,8 @@ def other_workspaces(ctx):
 
 def cmd_status(a, ctx):
     ctx.require()
-    out(status_payload(ctx, collect_status(ctx)))
+    snap = collect_status(ctx)
+    out(dict(status_payload(ctx, snap), next=snap_next(ctx, snap)))
 
 
 def cmd_step(a, ctx):
@@ -1283,19 +1307,25 @@ def cmd_step(a, ctx):
     s = find_step(plan, a.id)
     old, new = s.get("status", "todo"), a.status
     if old == "needs_replan":
-        raise Refuse("步骤 %s 已触发升级，待重新规划：先修改步骤并 replan，或用 replan --waive 记录豁免" % s.get("id"))
+        raise Refuse("步骤 %s 已触发升级，待重新规划：先修改步骤并 replan，或用 replan --waive 记录豁免" % s.get("id"),
+                     next=replan_next(ctx, s, effective_max_fails(plan, ci)))
     if old == "done":
-        raise Refuse("步骤 %s 已完成；如需重做，用 reopen 记录原因（旧证据会归档）" % s.get("id"))
+        raise Refuse("步骤 %s 已完成；如需重做，用 reopen 记录原因（旧证据会归档）" % s.get("id"),
+                     next=nx(ctx, ("reopen", s.get("id"), "--reason", T(ctx, "ph.reason")), "next.reopen", step=s.get("id")))
     if new not in TRANSITIONS[old]:
-        raise Refuse("不允许的状态转换：%s → %s。允许：%s" % (old, new, ", ".join(sorted(TRANSITIONS[old])) or "无"), 2)
-    require_gate_b(plan, ci)
+        allowed = sorted(TRANSITIONS[old])
+        to = "in_progress" if "in_progress" in allowed else allowed[0]
+        raise Refuse("不允许的状态转换：%s → %s。允许：%s" % (old, new, ", ".join(allowed) or "无"), 2,
+                     next=nx(ctx, ("step", s.get("id"), "--status", to), "next.start", step=s.get("id"), title=s.get("title")))
+    require_gate_b(ctx, plan, ci)
     if new == "in_progress":
         pending = [d for d in s.get("depends_on", []) if find_step(plan, d).get("status") != "done"]
         if pending:
-            raise Refuse("步骤 %s 依赖的步骤 %s 尚未完成" % (s.get("id"), pending))
+            raise Refuse("步骤 %s 依赖的步骤 %s 尚未完成" % (s.get("id"), pending),
+                         next=nx(ctx, ("status",), "next.wait_dep", step=s.get("id"), deps=pending))
         # 每次从未开始的状态（todo 或 blocked）进入执行都要确认，不能经 blocked 绕过
         if s.get("irreversible") and old in ("todo", "blocked"):
-            two_step("irreversible", {"step": struct_of(s), "fp": fingerprint(ctx)}, a.confirm,
+            two_step(ctx, "irreversible", {"step": struct_of(s), "fp": fingerprint(ctx)}, a.confirm,
                      {"步骤": s.get("title"), "警告": "这是不可逆操作，开始前需要用户确认"})
         s.setdefault("started_at", now())
     if a.hours:
@@ -1309,7 +1339,9 @@ def cmd_step(a, ctx):
                     commit(ctx, plan, "verify", "步骤 #%s 验证未通过（退出码 %s）" % (s.get("id"), ev["exit_code"]),
                            step=s.get("id"), ok=False, exit_code=ev["exit_code"])
                     raise Refuse("验证命令未通过（退出码 %s）：%s。未标记完成；如属一次失败，运行 fail 记录"
-                                 % (ev["exit_code"], ev.get("note") or ev["output_tail"][-300:]))
+                                 % (ev["exit_code"], ev.get("note") or ev["output_tail"][-300:]),
+                                 next=nx(ctx, ("step", s.get("id"), "--status", "done"), "next.verify_retry",
+                                         fails=s.get("fails", 0), max=effective_max_fails(plan, ci)))
         elif a.artifact:
             path = a.artifact if os.path.isabs(a.artifact) else os.path.join(ctx.root, a.artifact)
             if os.path.islink(path) or not os.path.isfile(path) or not inside(path, ctx.root):
@@ -1321,12 +1353,14 @@ def cmd_step(a, ctx):
                                                  "text": a.evidence or ""})
         elif (a.evidence or "").strip():
             if plan.get("risk") == "high":
-                raise Refuse("高风险计划不接受纯文字证据：给步骤加验证命令（verify_argv / verify_cmd），或用 --artifact 指向证据文件")
+                raise Refuse("高风险计划不接受纯文字证据：给步骤加验证命令（verify_argv / verify_cmd），或用 --artifact 指向证据文件",
+                             next=finish_next(ctx, plan, s))
             s.setdefault("evidence", []).append({"kind": "note", "text": a.evidence.strip(), "at": now(),
                                                  "fingerprint": fp, "verified": False})
         else:
             raise Refuse("没有证据不能标记完成。可用：验证命令 verify_argv / verify_cmd（脚本执行）、--artifact 文件、"
-                         "或 --evidence 文字（仅标准档，记为未验证）；尚未验证就用 implemented")
+                         "或 --evidence 文字（仅标准档，记为未验证）；尚未验证就用 implemented",
+                         next=finish_next(ctx, plan, s))
         s["finished_at"] = now()
     s["status"] = new
     commit(ctx, plan, "step", "步骤 #%s %s → %s%s" % (s.get("id"), STATUS_ZH[old], STATUS_ZH[new],
@@ -1335,7 +1369,8 @@ def cmd_step(a, ctx):
     last = s["evidence"][-1] if new == "done" and s.get("evidence") else None
     out({"ok": True, "step": s.get("id"), "from": old, "to": new,
          "evidence_kind": last.get("kind") if last else None,
-         "evidence_verified": (last.get("kind") in ("command", "artifact")) if last else None})
+         "evidence_verified": (last.get("kind") in ("command", "artifact")) if last else None,
+         "next": light_next(ctx, plan, ci, fp=fp if new == "done" else _LAZY)})
 
 
 def cmd_verify(a, ctx):
@@ -1343,7 +1378,7 @@ def cmd_verify(a, ctx):
     plan, ci = load_plan(ctx), card_info(ctx)
     if not a.all and not a.id:
         raise Refuse("给出步骤 ID 或 --all", 2)
-    require_gate_b(plan, ci)
+    require_gate_b(ctx, plan, ci)
     targets = [s for s in plan["steps"] if has_verify(s)] if a.all \
         else [find_step(plan, a.id)]
     results, fp = [], fingerprint(ctx)
@@ -1355,7 +1390,11 @@ def cmd_verify(a, ctx):
     commit(ctx, plan, "verify", "执行验证：%s" % (", ".join("#%s %s" % (r["step"], "通过" if r["ok"] else "失败")
                                                           for r in results) or "无"), results=results)
     ok = all(r["ok"] for r in results)
-    out({"ok": ok, "results": results, "fingerprint": fp}, 0 if ok else 1)
+    bad = next((s for s, r in zip(targets, results) if not r["ok"]), None)
+    out({"ok": ok, "results": results, "fingerprint": fp,
+         "next": light_next(ctx, plan, ci, fp=fp) if bad is None
+         else nx(ctx, ("verify", bad.get("id")), "next.verify_retry", fails=bad.get("fails", 0),
+                 max=effective_max_fails(plan, ci))}, 0 if ok else 1)
 
 
 def cmd_fail(a, ctx):
@@ -1378,9 +1417,9 @@ def cmd_fail(a, ctx):
            step=s.get("id"), fails=s["fails"], note=a.note, escalated=esc)
     out({"ok": True, "step": s.get("id"), "fails": s["fails"], "max_fails": max_fails, "escalate": esc,
          "status": s["status"],
-         "next": ("停止盲试：在 plan.json 修改此步骤（拆小、换做法、补前置步骤）后运行 replan，再重新通过 gate B"
-                  + ("；它验证的是假设 %s，先回到定方向重审" % s["tests_assumption"] if s.get("tests_assumption") else ""))
-         if esc else "换一个独立假设再试（见 stage-3-execute.md 的诊断法）"})
+         "next": replan_next(ctx, s, max_fails) if esc
+         else nx(ctx, ("step", s.get("id"), "--status", "done") if has_verify(s) else None, "next.verify_retry",
+                 fails=s["fails"], max=max_fails)})
 
 
 def cmd_replan(a, ctx):
@@ -1392,7 +1431,7 @@ def cmd_replan(a, ctx):
     esc = s.get("escalation") or {}
     changed = sha(struct_of(s), 16) != esc.get("struct_hash")
     if a.waive:
-        two_step("waive", {"step": struct_of(s), "fails": s.get("fails"), "reason": a.waive}, a.confirm,
+        two_step(ctx, "waive", {"step": struct_of(s), "fails": s.get("fails"), "reason": a.waive}, a.confirm,
                  {"步骤": s.get("title"), "失败次数": s.get("fails"), "豁免理由": a.waive,
                   "后果": "不修改计划继续尝试；再失败一次会立即再次升级"})
         s["fails"] = max(0, effective_max_fails(plan, ci) - 1)
@@ -1410,7 +1449,8 @@ def cmd_replan(a, ctx):
            step=s.get("id"), waived=bool(a.waive), note=a.note)
     gs = gate_state(plan, ci)
     out({"ok": True, "step": s.get("id"), "status": s["status"], "gates": gs,
-         "next": "计划结构已改变，运行 gate B 重新确认" if gs["B"] != "valid" else "可以继续执行"})
+         "next": gate_next(ctx, plan, gs) if gs["B"] != "valid"
+         else nx(ctx, ("step", s.get("id"), "--status", "in_progress"), "next.start", step=s.get("id"), title=s.get("title"))})
 
 
 def cmd_reopen(a, ctx):
@@ -1427,7 +1467,9 @@ def cmd_reopen(a, ctx):
     plan.pop("review", None)
     commit(ctx, plan, "reopen", "步骤 #%s 重新打开：%s（旧证据已归档，审查结论作废）" % (s.get("id"), a.reason),
            step=s.get("id"), reason=a.reason)
-    out({"ok": True, "step": s.get("id"), "status": "todo", "review_invalidated": True})
+    out({"ok": True, "step": s.get("id"), "status": "todo", "review_invalidated": True,
+         "next": nx(ctx, ("step", s.get("id"), "--status", "in_progress"), "next.start", step=s.get("id"),
+                    title=s.get("title"))})
 
 
 def retro_problems(ctx):
@@ -1450,7 +1492,7 @@ def retro_problems(ctx):
 def cmd_review(a, ctx):
     ctx.require()
     plan, ci = load_plan(ctx), card_info(ctx)
-    require_gate_b(plan, ci)
+    require_gate_b(ctx, plan, ci)
     fp = fingerprint(ctx)
     problems = []
     if a.verdict == "pass":
@@ -1469,9 +1511,10 @@ def cmd_review(a, ctx):
         if a.blocker:
             problems.append("结论为 pass 时不能有阻断项；有阻断项请用 fix 或 fail")
     if problems:
-        out({"ok": False, "verdict": a.verdict, "problems": problems}, 3)
+        out({"ok": False, "verdict": a.verdict, "problems": problems,
+             "next": nx(ctx, None, "next.fix_problems") if a.blocker else light_next(ctx, plan, ci, fp=fp)}, 3)
     payload = {"verdict": a.verdict, "blockers": a.blocker, "plan": plan_hash(plan), "fp": fp}
-    two_step("review", payload, a.confirm,
+    two_step(ctx, "review", payload, a.confirm,
              {"结论": a.verdict, "阻断项": a.blocker,
               "步骤证据": [{"id": s.get("id"), "最后证据类型": (s.get("evidence") or [{}])[-1].get("kind")}
                        for s in plan["steps"]]})
@@ -1481,8 +1524,9 @@ def cmd_review(a, ctx):
     commit(ctx, plan, "review", "交付审查结论：%s%s" % (a.verdict, "；阻断项：" + "；".join(a.blocker) if a.blocker else ""),
            verdict=a.verdict, blockers=a.blocker)
     out({"ok": True, "verdict": a.verdict,
-         "next": "完成复盘（retro.md）后运行 archive" if a.verdict == "pass"
-         else "把阻断项作为新步骤加入计划（会要求重新确认 gate B）"})
+         "next": light_next(ctx, plan, ci, fp=fp) if a.verdict == "pass"
+         else nx(ctx, ("check", "plan"), "next.review_fix") if a.verdict == "fix"
+         else nx(ctx, ("archive", "--outcome", stop_outcome(ctx)), "next.review_fail")})
 
 
 def cell(x):
@@ -1520,6 +1564,260 @@ LABELS = {
            "sync_report": "## Knowledge sync report", "purged": "- Workspace: deleted on %s (recoverable from git history)",
            "outcomes": {"完成": "done", "止损": "stopped", "放弃": "abandoned"}, "status": STATUS_EN},
 }
+# 新增输出（next.why、status --brief、handoff）的中英文文案；旧的拒绝原因仍是中文。
+MESSAGES = {
+    "zh": {
+        "ph.note": "<说明>", "ph.evidence": "<证据>", "ph.artifact": "<证据文件>", "ph.reason": "<原因>",
+        "ph.blocker": "<阻断项>",
+        "next.fill_card": "填写 decision-card.md，然后检查决策卡",
+        "next.fix_card": "决策卡还有 {n} 处错误：按 check card 的提示修改后再检查",
+        "next.gate_a": "决策卡已通过检查：把预览给用户看，用户同意后确认方向（闸门 A）",
+        "next.gate_ab": "标准档，决策卡和计划都已通过检查：把预览给用户看，一次确认方向与计划",
+        "next.write_plan": "方向已确认：编写 plan.json，然后检查计划",
+        "next.fix_plan": "计划还有 {n} 处错误：按 check plan 的提示修改后再检查",
+        "next.gate_b": "计划已通过检查：把预览（含将执行的验证命令）给用户看，用户同意后确认计划（闸门 B）",
+        "next.replan_changed": "步骤 {step} 已修改：先解除升级，再重新确认计划",
+        "next.edit_step": "步骤 {step} 失败 {fails}/{max} 次已升级：在 plan.json 修改它（拆小、换做法、补前置步骤）后运行 replan；"
+                          "不修改而继续，需与用户商量后用 --waive",
+        "next.assumption": "；它检验的是假设 {a}，先回到定方向重审这条假设",
+        "next.deadline": "已到止损期限 {deadline}：和用户对照决策卡决定是否执行「{action}」；决定停止就以止损归档",
+        "next.start": "开始步骤 {step}：{title}",
+        "next.start_irreversible": "开始不可逆步骤 {step}：{title}（脚本会先要求用户确认）",
+        "next.unblock": "步骤 {step} 处于阻塞：解除阻塞原因后继续",
+        "next.wait_dep": "步骤 {step} 依赖的步骤 {deps} 尚未完成",
+        "next.finish_cmd": "完成步骤 {step}：脚本会运行验证命令，通过才算完成",
+        "next.finish_note": "完成步骤 {step}：它没有验证命令，给出证据（标准档的文字证据记为未验证）",
+        "next.finish_artifact": "完成步骤 {step}：高风险档需要命令或文件证据",
+        "next.verify_retry": "验证未通过（已计失败 {fails}/{max}）：查明原因、修改后再试",
+        "next.verify_all": "审查前重新验证：步骤 {steps} 的命令证据已不对应当前代码",
+        "next.reopen": "步骤 {step} 的证据文件已变化：reopen 后重新完成",
+        "next.review_pass": "全部步骤已完成：按 stage-4 审查，把预览给用户看后记录审查结论",
+        "next.review_fix": "审查结论为 fix：把阻断项写成新步骤加入 plan.json，再检查计划",
+        "next.review_fail": "审查结论为 fail：和用户决定回到哪一级；决定停止就以止损归档",
+        "next.retro": "先写完复盘 retro.md（{problems}），再归档",
+        "next.closeout": "审查已通过：closing-out 写好收尾报告后，一步完成归档与知识同步（先预览）",
+        "next.archive": "审查已通过：归档为决策记录（先预览）",
+        "next.sync": "已归档：closing-out 写好收尾报告后登记知识同步",
+        "next.purge": "已同步：提交全部改动后，预览删除工作区",
+        "next.purge_done": "提交这次删除；装了 closing-out 的话再审计一次",
+        "next.confirm": "把预览给用户看；用户明确同意后才运行这条命令",
+        "next.confirm_mismatch": "内容已变化：重新运行不带 --confirm 的命令，查看最新预览",
+        "next.apply": "把预览给用户看；用户同意后加 --apply 执行",
+        "next.fix_problems": "先解决上面列出的问题",
+        "next.status": "查看当前阶段和下一步",
+        "next.init": "这里还没有工作区：需要时先创建",
+        "next.fix_dir": "在项目目录内运行，或修正 --dir / DE_WORKSPACE",
+    },
+    "en": {
+        "ph.note": "<note>", "ph.evidence": "<evidence>", "ph.artifact": "<evidence file>", "ph.reason": "<reason>",
+        "ph.blocker": "<blocker>",
+        "next.fill_card": "Fill in decision-card.md, then check the card",
+        "next.fix_card": "The decision card still has {n} errors: fix them as check card reports, then check again",
+        "next.gate_a": "The card passes its checks: show the preview to the user and confirm the direction (gate A) once they agree",
+        "next.gate_ab": "Standard tier and both card and plan pass their checks: show the preview and confirm direction and plan together",
+        "next.write_plan": "Direction confirmed: write plan.json, then check the plan",
+        "next.fix_plan": "The plan still has {n} errors: fix them as check plan reports, then check again",
+        "next.gate_b": "The plan passes its checks: show the preview (including the verify commands) and confirm the plan (gate B) once the user agrees",
+        "next.replan_changed": "Step {step} has been edited: clear the escalation, then re-confirm the plan",
+        "next.edit_step": "Step {step} failed {fails}/{max} times and escalated: edit it in plan.json (split it, change approach, add a prerequisite), "
+                          "then run replan; to continue unchanged, agree it with the user and use --waive",
+        "next.assumption": "; it tests assumption {a}, so revisit that assumption first",
+        "next.deadline": "The stop-loss deadline {deadline} has passed: decide with the user whether to take the action \"{action}\"; "
+                         "if stopping, archive as stopped",
+        "next.start": "Start step {step}: {title}",
+        "next.start_irreversible": "Start irreversible step {step}: {title} (the script asks for user confirmation first)",
+        "next.unblock": "Step {step} is blocked: resolve the blocker, then continue",
+        "next.wait_dep": "Step {step} depends on unfinished steps {deps}",
+        "next.finish_cmd": "Finish step {step}: the script runs its verify command and only a pass counts",
+        "next.finish_note": "Finish step {step}: it has no verify command, so give evidence (text evidence is recorded as unverified)",
+        "next.finish_artifact": "Finish step {step}: the high-risk tier needs command or file evidence",
+        "next.verify_retry": "Verification failed (counted failures {fails}/{max}): find the cause, change something, then retry",
+        "next.verify_all": "Re-verify before review: command evidence for steps {steps} no longer matches the code",
+        "next.reopen": "Step {step}'s evidence file changed: reopen it and finish it again",
+        "next.review_pass": "All steps are done: review per stage-4, show the preview to the user, then record the verdict",
+        "next.review_fix": "Review verdict is fix: add the blockers to plan.json as new steps, then check the plan",
+        "next.review_fail": "Review verdict is fail: decide with the user which level to return to; if stopping, archive as stopped",
+        "next.retro": "Finish retro.md first ({problems}), then archive",
+        "next.closeout": "Review passed: once closing-out has written its report, archive and sync in one step (preview first)",
+        "next.archive": "Review passed: archive as a decision record (preview first)",
+        "next.sync": "Archived: once closing-out has written its report, register the knowledge sync",
+        "next.purge": "Synced: commit everything, then preview deleting the workspace",
+        "next.purge_done": "Commit the deletion; if closing-out is installed, audit once more",
+        "next.confirm": "Show the preview to the user; run this command only after they clearly agree",
+        "next.confirm_mismatch": "The content changed: rerun without --confirm to see the current preview",
+        "next.apply": "Show the preview to the user; once they agree, rerun with --apply",
+        "next.fix_problems": "Resolve the problems listed above first",
+        "next.status": "See the current stage and next step",
+        "next.init": "There is no workspace here yet: create one if needed",
+        "next.fix_dir": "Run inside the project, or fix --dir / DE_WORKSPACE",
+    },
+}
+
+
+def T(ctx, key, **kw):
+    lang = ctx.lang() if ctx is not None else "zh"
+    tpl = MESSAGES.get(lang, {}).get(key) or MESSAGES["zh"][key]
+    return tpl.format(**kw)
+
+
+def nx(ctx, parts, key, needs_user=False, **kw):
+    """下一步：cmd 是可直接运行的 de.py 命令（None 表示下一步是人或 Agent 的工作），why 说明原因。"""
+    d = {"cmd": de_cmd(ctx, *parts) if parts is not None else None, "why": T(ctx, key, **kw)}
+    if needs_user:
+        d["needs_user"] = True
+    return d
+
+
+def rel_cwd(path):
+    try:
+        return os.path.relpath(path, os.getcwd()).replace(os.sep, "/")
+    except ValueError:
+        return path
+
+
+def report_arg(ctx):
+    return rel_cwd(ctx.p("closeout-report.md"))
+
+
+def stop_outcome(ctx):
+    return "stopped" if ctx.lang() == "en" else "止损"
+
+
+def closing_out_installed():
+    return os.path.isfile(os.path.join(os.path.dirname(SKILL_DIR), "closing-out", "scripts", "audit.py"))
+
+
+def pick_current(plan):
+    """当前应处理的步骤与原因：in_progress > implemented > 依赖已满足的 todo（尚未开工时优先 first_step）
+    > blocked > 依赖未满足的 todo。"""
+    steps = plan["steps"]
+    done = {sid_key(s.get("id")) for s in steps if s.get("status") == "done"}
+    for status in ("in_progress", "implemented"):
+        s = next((x for x in steps if x.get("status") == status), None)
+        if s:
+            return s, status
+    todo = [s for s in steps if s.get("status", "todo") == "todo"]
+    ready = [s for s in todo if all(sid_key(d) in done for d in s.get("depends_on", []))]
+    if ready:
+        started = any(s.get("started_at") or s.get("status", "todo") != "todo" for s in steps)
+        first = next((s for s in ready if sid_key(s.get("id")) == sid_key(plan.get("first_step"))), None)
+        return (first if first and not started else ready[0]), "ready"
+    s = next((x for x in steps if x.get("status") == "blocked"), None)
+    if s:
+        return s, "blocked"
+    if todo:
+        return todo[0], "waiting"
+    return None, None
+
+
+def replan_next(ctx, s, max_fails):
+    esc = s.get("escalation") or {}
+    if sha(struct_of(s), 16) != esc.get("struct_hash"):
+        return nx(ctx, ("replan", s.get("id"), "--note", T(ctx, "ph.note")), "next.replan_changed", step=s.get("id"))
+    d = nx(ctx, None, "next.edit_step", step=s.get("id"), fails=s.get("fails", 0), max=max_fails)
+    if s.get("tests_assumption"):
+        d["why"] += T(ctx, "next.assumption", a=s["tests_assumption"])
+    return d
+
+
+def finish_next(ctx, plan, s):
+    if has_verify(s):
+        return nx(ctx, ("step", s.get("id"), "--status", "done"), "next.finish_cmd", step=s.get("id"))
+    if plan.get("risk") == "high":
+        return nx(ctx, ("step", s.get("id"), "--status", "done", "--artifact", T(ctx, "ph.artifact")),
+                  "next.finish_artifact", step=s.get("id"))
+    return nx(ctx, ("step", s.get("id"), "--status", "done", "--evidence", T(ctx, "ph.evidence")),
+              "next.finish_note", step=s.get("id"))
+
+
+def gate_next(ctx, plan, gs):
+    if gs["A"] != "valid":
+        which = "AB" if plan.get("risk", "standard") == "standard" else "A"
+        return nx(ctx, ("gate", which), "next.gate_ab" if which == "AB" else "next.gate_a")
+    return nx(ctx, ("gate", "B"), "next.gate_b")
+
+
+def next_action(ctx, snap, extras):
+    """由快照推出下一个合法动作。extras 里是按阶段补算的检查结果（卡片/计划错误、复盘问题等）。"""
+    stage, plan, ci = snap["stage"], snap["plan"], snap["ci"]
+    steps, risk = plan["steps"], plan.get("risk", "standard")
+    if stage == "ready-to-purge":
+        return nx(ctx, ("purge",), "next.purge")
+    if stage == "archived":
+        return nx(ctx, ("sync", "--report", report_arg(ctx)), "next.sync")
+    if stage == "direction":
+        if extras.get("card_errors"):
+            return nx(ctx, ("check", "card"), "next.fix_card", n=len(extras["card_errors"]))
+        if risk == "standard" and not extras.get("plan_errors"):
+            return nx(ctx, ("gate", "AB"), "next.gate_ab")
+        return nx(ctx, ("gate", "A"), "next.gate_a")
+    if stage == "plan":
+        for s in steps:
+            if s.get("status") == "needs_replan" and sha(struct_of(s), 16) != (s.get("escalation") or {}).get("struct_hash"):
+                return replan_next(ctx, s, snap["max_fails"])
+        if extras.get("plan_errors"):
+            return nx(ctx, ("check", "plan"), "next.fix_plan", n=len(extras["plan_errors"]))
+        return nx(ctx, ("gate", "B"), "next.gate_b")
+    if snap["deadline_hit"] and stage in ("replan", "execute"):
+        return nx(ctx, None, "next.deadline", deadline=ci["deadline"], action=ci["action"])
+    if stage == "replan":
+        s = next(x for x in steps if x.get("status") == "needs_replan")
+        return replan_next(ctx, s, snap["max_fails"])
+    if stage == "execute":
+        s, reason = snap.get("current"), snap.get("current_reason")
+        if reason in ("in_progress", "implemented"):
+            return finish_next(ctx, plan, s)
+        if reason == "ready":
+            return nx(ctx, ("step", s.get("id"), "--status", "in_progress"),
+                      "next.start_irreversible" if s.get("irreversible") else "next.start",
+                      step=s.get("id"), title=s.get("title"))
+        if reason == "blocked":
+            return nx(ctx, ("step", s.get("id"), "--status", "in_progress"), "next.unblock", step=s.get("id"))
+        if s is not None:
+            done = {sid_key(x.get("id")) for x in steps if x.get("status") == "done"}
+            deps = [d for d in s.get("depends_on", []) if sid_key(d) not in done]
+            return nx(ctx, ("status",), "next.wait_dep", step=s.get("id"), deps=deps)
+        return nx(ctx, ("status",), "next.status")
+    if stage == "review":
+        review = snap["review"]
+        if review.get("verdict") == "fix":
+            return nx(ctx, ("check", "plan"), "next.review_fix")
+        if review.get("verdict") == "fail":
+            return nx(ctx, ("archive", "--outcome", stop_outcome(ctx)), "next.review_fail")
+        stale_cmd = [sid for sid in snap["stale"] if has_verify(find_step(plan, sid))]
+        if stale_cmd:
+            return nx(ctx, ("verify", "--all"), "next.verify_all", steps=stale_cmd)
+        for sid in snap["stale"]:
+            return nx(ctx, ("reopen", sid, "--reason", T(ctx, "ph.reason")), "next.reopen", step=sid)
+        return nx(ctx, ("review", "--verdict", "pass"), "next.review_pass")
+    # closeout
+    if extras.get("retro"):
+        return nx(ctx, None, "next.retro", problems="；".join(extras["retro"]))
+    if extras.get("closing_out"):
+        return nx(ctx, ("closeout", "--report", report_arg(ctx)), "next.closeout")
+    return nx(ctx, ("archive",), "next.archive")
+
+
+def snap_next(ctx, snap):
+    """按阶段补算 next_action 需要的检查，再求下一步。"""
+    extras, stage = {}, snap["stage"]
+    if stage == "direction":
+        extras["card_errors"] = card_errors(snap["ci"])[0]
+        if not extras["card_errors"]:
+            extras["plan_errors"] = plan_errors(snap["plan"], snap["ci"])[0]
+    elif stage == "plan":
+        extras["plan_errors"] = plan_errors(snap["plan"], snap["ci"])[0]
+    elif stage == "closeout":
+        extras["retro"] = retro_problems(ctx)
+        extras["closing_out"] = closing_out_installed()
+    return next_action(ctx, snap, extras)
+
+
+def light_next(ctx, plan=None, ci=None, fp=_LAZY):
+    """写入命令之后的下一步：复用内存里的计划，不做一致性告警。"""
+    return snap_next(ctx, collect_status(ctx, plan=plan, ci=ci, fp=fp, full=False, tolerate_fp_error=True))
+
+
 RECORD_HEADERS = ("# 决策记录", "# Decision record")
 SYNC_LINE = r"^- (?:知识同步|Knowledge sync)[:：].*$"
 NOTE_LINE = r"^(- (?:说明|Note)[:：].*)$"
@@ -1536,7 +1834,7 @@ def archive_core(a, ctx, apply):
     """归档为决策记录；返回 (结果, 退出码)。apply=False 只预览。不删除任何文件。"""
     if os.path.exists(ctx.p("ARCHIVED")):
         return {"ok": True, "already_archived": True,
-                "next": "交给 closing-out 完整档完成知识同步，然后运行 sync"}, 0
+                "next": nx(ctx, ("sync", "--report", report_arg(ctx)), "next.sync")}, 0
     plan, ci = load_plan(ctx), card_info(ctx)
     outcome = OUTCOME_ALIASES.get(a.outcome, a.outcome)
     fp = fingerprint(ctx)
@@ -1565,9 +1863,10 @@ def archive_core(a, ctx, apply):
     preview = {"ok": not problems, "dry_run": not apply, "outcome": outcome,
                "would_write": os.path.relpath(target, ctx.root), "problems": problems}
     if problems:
+        preview["next"] = nx(ctx, None, "next.fix_problems")
         return preview, (3 if apply else 1)
     if not apply:
-        preview["next"] = "向用户展示预览；同意后加 --apply 写入（不会删除任何文件）"
+        preview["next"] = nx(ctx, invocation_parts() + ["--apply"], "next.apply", needs_user=True)
         return preview, 0
     L = LABELS[ctx.lang()]
     rows = list(L["table"])
@@ -1599,8 +1898,7 @@ def archive_core(a, ctx, apply):
         json.dump({"record": rel, "at": now(), "outcome": outcome, "synced": False}, f, ensure_ascii=False)
     commit(ctx, plan, "archive", "归档为决策记录 %s（%s）" % (rel, outcome), record=rel, outcome=outcome)
     return {"ok": True, "archived_to": rel, "outcome": outcome,
-            "next": "交给 closing-out 完整档：报告存为 %s/closeout-report.md，再运行 sync --report %s/closeout-report.md"
-                    "（sync 会现场重跑审计）" % (ctx.rel, ctx.rel)}, 0
+            "next": nx(ctx, ("sync", "--report", report_arg(ctx)), "next.sync")}, 0
 
 
 def cmd_archive(a, ctx):
@@ -1640,7 +1938,7 @@ def sync_core(a, ctx):
         raise Refuse("--audit-json 仅允许指向工作区 closeout-audit.json；此参数是本次审计的输出位置，不再读取第三方报告", 2)
     problem = report_problem(ctx, a.report)
     if problem:
-        return {"ok": False, "problems": [problem]}, 3
+        return {"ok": False, "problems": [problem], "next": nx(ctx, None, "next.fix_problems")}, 3
     try:
         proc = subprocess.run([sys.executable, trusted, "--root", ctx.root], cwd=ctx.root,
                               capture_output=True, text=True, encoding="utf-8", timeout=180,
@@ -1662,7 +1960,7 @@ def sync_core(a, ctx):
     if os.path.realpath(audit.get("inventory", {}).get("root", "")) != ctx.root:
         problems.append("本次审计目标不是当前项目根目录")
     if problems:
-        return {"ok": False, "problems": problems, "audit_summary": summ}, 3
+        return {"ok": False, "problems": problems, "audit_summary": summ, "next": nx(ctx, None, "next.fix_problems")}, 3
     with open(audit_path, "w", encoding="utf-8") as f:
         json.dump(audit, f, ensure_ascii=False, indent=2)
     with open(a.report, encoding="utf-8") as f:
@@ -1680,7 +1978,7 @@ def sync_core(a, ctx):
         json.dump(m, f, ensure_ascii=False)
     commit(ctx, None, "sync", "本次真实静态审计完成，知识同步报告已并入 %s" % m["record"])
     return {"ok": True, "record": m["record"], "audit_summary": summ,
-            "next": "提交所有改动（含工作区），然后运行 purge 预览删除"}, 0
+            "next": nx(ctx, ("purge",), "next.purge")}, 0
 
 
 def cmd_sync(a, ctx):
@@ -1697,11 +1995,11 @@ def cmd_closeout(a, ctx):
             res = dict(res, ok=False, problems=res.get("problems", []) + [problem + "；先按 closing-out 完整档写好报告"])
             code = code or 1
         res.update(closeout_preview=True, report=a.report)
-        if code == 0:
-            res["next"] = "向用户展示预览；同意后加 --apply：写入决策记录，并现场重跑审计完成知识同步"
+        res["next"] = nx(ctx, invocation_parts() + ["--apply"], "next.apply", needs_user=True) if code == 0 \
+            else nx(ctx, None, "next.fix_problems")
         out(res, code)
     if problem:
-        out({"ok": False, "problems": [problem]}, 3)
+        out({"ok": False, "problems": [problem], "next": nx(ctx, None, "next.fix_problems")}, 3)
     res, code = archive_core(a, ctx, True)
     if code != 0:
         out(res, code)
@@ -1711,7 +2009,7 @@ def cmd_closeout(a, ctx):
         sres, scode = {"ok": False, "problems": [r.reason]}, r.code
     out({"ok": scode == 0, "archive": res, "sync": sres,
          "next": sres.get("next") if scode == 0
-         else "决策记录已写入；修复上面的问题后运行 sync --report %s" % a.report}, scode)
+         else nx(ctx, ("sync", "--report", a.report), "next.sync")}, scode)
 
 
 def cmd_purge(a, ctx):
@@ -1741,7 +2039,7 @@ def cmd_purge(a, ctx):
     if untracked or dirty:
         raise Refuse("工作区有未提交的内容，删除后无法从 git 恢复。先提交：%s" % (untracked or "存在修改"), 3)
     payload = {"dir": ctx.dir, "files": sorted(files), "record": m.get("record")}
-    two_step("purge", payload, a.confirm,
+    two_step(ctx, "purge", payload, a.confirm,
              {"将删除目录": ctx.rel, "文件": [f for f, _ in sorted(files)],
               "可恢复": "这些文件均已提交，可用 git 恢复", "决策记录保留在": m.get("record")})
     lang = ctx.lang()
@@ -1753,7 +2051,7 @@ def cmd_purge(a, ctx):
     with open(record, "w", encoding="utf-8") as f:
         f.write(body)
     out({"ok": True, "removed": ctx.rel, "record": m.get("record"),
-         "next": "提交删除；如安装了 closing-out，再审计一次"})
+         "next": nx(ctx, None, "next.purge_done")})
 
 
 def cmd_list(a, ctx):
@@ -1859,15 +2157,18 @@ def main():
     if not a.cmd:
         ap.print_help()
         sys.exit(2)
+    global _CTX
     try:
-        ctx = Ctx(a.dir)
+        ctx = _CTX = Ctx(a.dir)
         {"init": cmd_init, "check": cmd_check, "gate": cmd_gate, "status": cmd_status, "step": cmd_step,
          "verify": cmd_verify, "preflight": cmd_preflight, "coverage": cmd_coverage, "fail": cmd_fail, "replan": cmd_replan, "reopen": cmd_reopen,
          "review": cmd_review, "archive": cmd_archive, "sync": cmd_sync, "purge": cmd_purge,
          "closeout": cmd_closeout, "list": cmd_list, "show": cmd_show}[a.cmd](a, ctx)
     except Refuse as r:
         print(("需要确认：" if r.extra.get("needs_confirmation") else "拒绝：") + r.reason, file=sys.stderr)
-        out(dict({"ok": False, "refused": r.code == 3, "reason": r.reason}, **r.extra), r.code)
+        extra = dict(r.extra)
+        extra.setdefault("next", fallback_next(_CTX))
+        out(dict({"ok": False, "refused": r.code == 3, "reason": r.reason}, **extra), r.code)
 
 
 if __name__ == "__main__":
