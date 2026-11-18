@@ -33,13 +33,15 @@
     "platform": "win32"
   },
   "summary": {
-    "passed": 20,
+    "passed": 25,
     "total": 35,
-    "positives_passed": 3,
+    "positives_passed": 8,
     "positives": 18,
     "negatives_passed": 17,
     "negatives": 17,
-    "seconds": 563
+    "error_runs": 0,
+    "unmeasured_queries": 0,
+    "seconds": 120
   },
   "results": [
     {
@@ -49,15 +51,15 @@
       "runs": [
         {
           "triggered": true,
-          "why": "Skill"
+          "why": "Skill(this skill)"
         },
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         }
       ],
       "pass": false
@@ -69,15 +71,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         }
       ],
       "pass": false
@@ -89,15 +91,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "first-work-tool:PowerShell"
+          "why": "other: Read"
         },
         {
           "triggered": false,
-          "why": "first-work-tool:Glob"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Read"
         }
       ],
       "pass": false
@@ -109,15 +111,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "first-work-tool:Glob"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "first-work-tool:PowerShell"
+          "why": "other: Read > Glob"
         },
         {
           "triggered": false,
-          "why": "first-work-tool:Glob"
+          "why": "other: Glob"
         }
       ],
       "pass": false
@@ -129,15 +131,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         }
       ],
       "pass": false
@@ -149,15 +151,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "first-work-tool:PowerShell"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "first-work-tool:PowerShell"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "first-work-tool:PowerShell"
+          "why": "other: Glob"
         }
       ],
       "pass": false
@@ -169,15 +171,15 @@
       "runs": [
         {
           "triggered": true,
-          "why": "Skill"
+          "why": "Skill(this skill)"
         },
         {
           "triggered": true,
-          "why": "Skill"
+          "why": "Skill(this skill)"
         },
         {
           "triggered": true,
-          "why": "Skill"
+          "why": "Skill(this skill)"
         }
       ],
       "pass": true
@@ -189,15 +191,15 @@
       "runs": [
         {
           "triggered": true,
-          "why": "Skill"
+          "why": "Skill(this skill)"
         },
         {
           "triggered": true,
-          "why": "Skill"
+          "why": "Skill(this skill)"
         },
         {
           "triggered": true,
-          "why": "Skill"
+          "why": "Skill(this skill)"
         }
       ],
       "pass": true
@@ -209,15 +211,15 @@
       "runs": [
         {
           "triggered": true,
-          "why": "Skill"
+          "why": "Skill(this skill)"
         },
         {
           "triggered": true,
-          "why": "Skill"
+          "why": "Skill(this skill)"
         },
         {
           "triggered": true,
-          "why": "Skill"
+          "why": "Skill(this skill)"
         }
       ],
       "pass": true
@@ -229,15 +231,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         }
       ],
       "pass": false
@@ -249,15 +251,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "answered-directly"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -269,15 +271,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -289,15 +291,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -309,15 +311,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -329,15 +331,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -349,15 +351,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -369,15 +371,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -389,15 +391,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -409,15 +411,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -429,15 +431,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -445,22 +447,22 @@
     {
       "query": "这个项目做完了，.decision 里的东西帮我结个案，复盘已经写好了",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 1.0,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "帮我把 README 和 AGENTS.md 跟今天的改动对齐一下，改了好几个接口名",
@@ -469,15 +471,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         }
       ],
       "pass": true
@@ -489,15 +491,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         }
       ],
       "pass": true
@@ -509,15 +511,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": false
@@ -525,42 +527,42 @@
     {
       "query": "We're planning a multi-week migration from MySQL to PostgreSQL across 12 services. Before we start, help me decide whether it's worth it and how to stage it so a failure halfway doesn't hurt.",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 1.0,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "Direction is settled: we're rewriting the billing module. Lay out the steps, how each one gets verified, and what we do if a step keeps failing.",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 1.0,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "The deploy step has failed three times with the same error and the agent keeps retrying. I think we're off track. What should we do?",
@@ -569,15 +571,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(superpowers:systematic-debugging)"
         }
       ],
       "pass": false
@@ -589,15 +591,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         }
       ],
       "pass": false
@@ -605,42 +607,42 @@
     {
       "query": "Pick up where the last session left off on the search-index rebuild. There's a .decision folder in the repo.",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 0.67,
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "Before I commit to moving our frontend into a monorepo, write a decision card with a steelman of both options and a pre-mortem.",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 1.0,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "Fix the typo in the README heading.",
@@ -649,15 +651,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         }
       ],
       "pass": true
@@ -669,15 +671,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -689,15 +691,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -709,15 +711,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -729,15 +731,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         }
       ],
       "pass": true

@@ -1,109 +1,26 @@
-[1/105] T ÎÒÔÚ¾À½áÒª²»Òª°ÑÍÅ¶ÓÏÖÔÚÓÃµÄ jenkins È«²¿Ç¨µ½ github actions£¬´ó¸Å 40 ¸ö
-[2/105] - ÎÒÔÚ¾À½áÒª²»Òª°ÑÍÅ¶ÓÏÖÔÚÓÃµÄ jenkins È«²¿Ç¨µ½ github actions£¬´ó¸Å 40 ¸ö
-[3/105] - ÀÏ°åÈÃÎÒÏÂ¸öÔÂÇ£Í·×ö¿Í·şÏµÍ³¸Ä°æ£¬ÎÒÏÖÔÚÄÔ×ÓºÜÂÒ²»ÖªµÀ´ÓÄÄ¿ªÊ¼£¬ÄãÏÈ±ğ¸ø·½°¸£¬°ïÎÒÀíÒ»Àí
-[4/105] - ÎÒÔÚ¾À½áÒª²»Òª°ÑÍÅ¶ÓÏÖÔÚÓÃµÄ jenkins È«²¿Ç¨µ½ github actions£¬´ó¸Å 40 ¸ö
-[5/105] - ·½ÏòÒÑ¾­¶¨ÁË£¬ÓÃ supabase ×öºó¶Ë¡¢Á½ÖÜÄÚÉÏÏßÄÚ²â°æ£¬°ïÎÒ²ğÒ»ÏÂÃ¿Ìì¸ÉÊ²Ã´
-[6/105] - ·½ÏòÒÑ¾­¶¨ÁË£¬ÓÃ supabase ×öºó¶Ë¡¢Á½ÖÜÄÚÉÏÏßÄÚ²â°æ£¬°ïÎÒ²ğÒ»ÏÂÃ¿Ìì¸ÉÊ²Ã´
-[7/105] - ÀÏ°åÈÃÎÒÏÂ¸öÔÂÇ£Í·×ö¿Í·şÏµÍ³¸Ä°æ£¬ÎÒÏÖÔÚÄÔ×ÓºÜÂÒ²»ÖªµÀ´ÓÄÄ¿ªÊ¼£¬ÄãÏÈ±ğ¸ø·½°¸£¬°ïÎÒÀíÒ»Àí
-[8/105] - ÀÏ°åÈÃÎÒÏÂ¸öÔÂÇ£Í·×ö¿Í·şÏµÍ³¸Ä°æ£¬ÎÒÏÖÔÚÄÔ×ÓºÜÂÒ²»ÖªµÀ´ÓÄÄ¿ªÊ¼£¬ÄãÏÈ±ğ¸ø·½°¸£¬°ïÎÒÀíÒ»Àí
-[9/105] - °´×òÌì¶¨µÄ¼Æ»®ÔÚ×öµÚ4²½Êı¾İÇ¨ÒÆ£¬ÅÜµ½Ò»°ë±¨ duplicate key£¬ÎÒ¸ÄÁËÁ½´ÎË÷Òı»¹ÊÇ²»ĞĞ£¬ÊÇ
-[10/105] - °´×òÌì¶¨µÄ¼Æ»®ÔÚ×öµÚ4²½Êı¾İÇ¨ÒÆ£¬ÅÜµ½Ò»°ë±¨ duplicate key£¬ÎÒ¸ÄÁËÁ½´ÎË÷Òı»¹ÊÇ²»ĞĞ£¬ÊÇ
-[11/105] - °´×òÌì¶¨µÄ¼Æ»®ÔÚ×öµÚ4²½Êı¾İÇ¨ÒÆ£¬ÅÜµ½Ò»°ë±¨ duplicate key£¬ÎÒ¸ÄÁËÁ½´ÎË÷Òı»¹ÊÇ²»ĞĞ£¬ÊÇ
-[12/105] - ·½ÏòÒÑ¾­¶¨ÁË£¬ÓÃ supabase ×öºó¶Ë¡¢Á½ÖÜÄÚÉÏÏßÄÚ²â°æ£¬°ïÎÒ²ğÒ»ÏÂÃ¿Ìì¸ÉÊ²Ã´
-[13/105] - ¸Ğ¾õ×ö×Å×ö×ÅÆ«ÁË£¬±¾À´Ö»Ïë×ö¸ö¼ÇÕËĞ¡¹¤¾ß£¬ÏÖÔÚÔÚĞ´¶à±ÒÖÖ»ãÂÊÍ¬²½¡­¡­
-[14/105] - ¸Ğ¾õ×ö×Å×ö×ÅÆ«ÁË£¬±¾À´Ö»Ïë×ö¸ö¼ÇÕËĞ¡¹¤¾ß£¬ÏÖÔÚÔÚĞ´¶à±ÒÖÖ»ãÂÊÍ¬²½¡­¡­
-[15/105] - ¸Ğ¾õ×ö×Å×ö×ÅÆ«ÁË£¬±¾À´Ö»Ïë×ö¸ö¼ÇÕËĞ¡¹¤¾ß£¬ÏÖÔÚÔÚĞ´¶à±ÒÖÖ»ãÂÊÍ¬²½¡­¡­
-[16/105] - ÏîÄ¿×öÍêÁË£¬ÏÂÖÜÒª¸øÍ¶×ÊÈËÑİÊ¾£¬°ïÎÒ´ÓÍ·µ½Î²¼ì²éÒ»±é»¹ÓĞÊ²Ã´¿Ó
-[17/105] - ÏîÄ¿×öÍêÁË£¬ÏÂÖÜÒª¸øÍ¶×ÊÈËÑİÊ¾£¬°ïÎÒ´ÓÍ·µ½Î²¼ì²éÒ»±é»¹ÓĞÊ²Ã´¿Ó
-[18/105] - ÏîÄ¿×öÍêÁË£¬ÏÂÖÜÒª¸øÍ¶×ÊÈËÑİÊ¾£¬°ïÎÒ´ÓÍ·µ½Î²¼ì²éÒ»±é»¹ÓĞÊ²Ã´¿Ó
-[19/105] T ÉÏ¸ö¼¾¶ÈÄÇ¸öÔö³¤ÊµÑéÊ§°ÜÁË£¬ÏëÈÏÕæ¸´ÅÌÒ»ÏÂµ½µ×ÊÇ¾ö²ß´íÁË»¹ÊÇÔËÆø²»ºÃ
-[20/105] T ÓÃ¸ÖÈËÂÛÖ¤°ïÎÒÆÀ¹ÀÒ»ÏÂ£ºÒª²»Òª°Ñ¹«ÖÚºÅÍ£µô×¨ĞÄ×öĞ¡ºìÊé
-[21/105] T ÉÏ¸ö¼¾¶ÈÄÇ¸öÔö³¤ÊµÑéÊ§°ÜÁË£¬ÏëÈÏÕæ¸´ÅÌÒ»ÏÂµ½µ×ÊÇ¾ö²ß´íÁË»¹ÊÇÔËÆø²»ºÃ
-[22/105] T ÉÏ¸ö¼¾¶ÈÄÇ¸öÔö³¤ÊµÑéÊ§°ÜÁË£¬ÏëÈÏÕæ¸´ÅÌÒ»ÏÂµ½µ×ÊÇ¾ö²ß´íÁË»¹ÊÇÔËÆø²»ºÃ
-[23/105] T ÓÃ¸ÖÈËÂÛÖ¤°ïÎÒÆÀ¹ÀÒ»ÏÂ£ºÒª²»Òª°Ñ¹«ÖÚºÅÍ£µô×¨ĞÄ×öĞ¡ºìÊé
-[24/105] T ÓÃ¸ÖÈËÂÛÖ¤°ïÎÒÆÀ¹ÀÒ»ÏÂ£ºÒª²»Òª°Ñ¹«ÖÚºÅÍ£µô×¨ĞÄ×öĞ¡ºìÊé
-[25/105] T ÎÒÏë¸ø×Ô¼ºµÄ¸±Òµ¶¨¸öÖ¹ËğÏß£¬Ê²Ã´Çé¿öÏÂ¸Ã·ÅÆú£¬°ïÎÒÏëÇå³ş
-[26/105] T ÎÒÏë¸ø×Ô¼ºµÄ¸±Òµ¶¨¸öÖ¹ËğÏß£¬Ê²Ã´Çé¿öÏÂ¸Ã·ÅÆú£¬°ïÎÒÏëÇå³ş
-[27/105] T ÎÒÏë¸ø×Ô¼ºµÄ¸±Òµ¶¨¸öÖ¹ËğÏß£¬Ê²Ã´Çé¿öÏÂ¸Ã·ÅÆú£¬°ïÎÒÏëÇå³ş
-[28/105] - °ïÎÒĞ´Ò»¶Î¸ø¿Í»§µÄµÀÇ¸ÓÊ¼ş£¬ÏîÄ¿ÑÓÆÚÁËÁ½ÖÜ
-[29/105] - °ïÎÒĞ´Ò»¶Î¸ø¿Í»§µÄµÀÇ¸ÓÊ¼ş£¬ÏîÄ¿ÑÓÆÚÁËÁ½ÖÜ
-[30/105] - °ïÎÒ°Ñ¿ªÒ»¼Ò¿§·È¹İÕâ¼şÊÂĞ´³ÉÒ»¸ö´Óµ÷ÑĞµ½¿ªÒµµÄ SOP£¬Ã¿²½ÔõÃ´ÅĞ¶ÏÍê³ÉÁË
-[31/105] - °ïÎÒĞ´Ò»¶Î¸ø¿Í»§µÄµÀÇ¸ÓÊ¼ş£¬ÏîÄ¿ÑÓÆÚÁËÁ½ÖÜ
-[32/105] - ¸ÖÈËÂÛÖ¤ºÍµ¾²İÈËÃıÎóÓĞÊ²Ã´Çø±ğ£¿¾Ù¸öÀı×Ó
-[33/105] - °ïÎÒ°Ñ¿ªÒ»¼Ò¿§·È¹İÕâ¼şÊÂĞ´³ÉÒ»¸ö´Óµ÷ÑĞµ½¿ªÒµµÄ SOP£¬Ã¿²½ÔõÃ´ÅĞ¶ÏÍê³ÉÁË
-[34/105] - ¸ÖÈËÂÛÖ¤ºÍµ¾²İÈËÃıÎóÓĞÊ²Ã´Çø±ğ£¿¾Ù¸öÀı×Ó
-[35/105] - °ïÎÒ°Ñ¿ªÒ»¼Ò¿§·È¹İÕâ¼şÊÂĞ´³ÉÒ»¸ö´Óµ÷ÑĞµ½¿ªÒµµÄ SOP£¬Ã¿²½ÔõÃ´ÅĞ¶ÏÍê³ÉÁË
-[36/105] - ¸ÖÈËÂÛÖ¤ºÍµ¾²İÈËÃıÎóÓĞÊ²Ã´Çø±ğ£¿¾Ù¸öÀı×Ó
-[37/105] - Õâ¶Î python ±¨ KeyError: 'id'£¬´úÂëÌù¸øÄãÁË£¬°ïÎÒ¿´¿´ÄÄÒ»ĞĞµÄÎÊÌâ
-[38/105] - Õâ¶Î python ±¨ KeyError: 'id'£¬´úÂëÌù¸øÄãÁË£¬°ïÎÒ¿´¿´ÄÄÒ»ĞĞµÄÎÊÌâ
-[39/105] - Õâ¶Î python ±¨ KeyError: 'id'£¬´úÂëÌù¸øÄãÁË£¬°ïÎÒ¿´¿´ÄÄÒ»ĞĞµÄÎÊÌâ
-[40/105] - °ÑÕâ·İ»áÒé¼ÍÒªÕûÀí³É 5 ÌõÒªµã
-[41/105] - °ÑÕâ·İ»áÒé¼ÍÒªÕûÀí³É 5 ÌõÒªµã
-[42/105] - °ÑÕâ·İ»áÒé¼ÍÒªÕûÀí³É 5 ÌõÒªµã
-[43/105] - ÍÆ¼ö¼¸±¾½²¾ö²ßºÍ¸´ÅÌµÄÊé
-[44/105] - ÍÆ¼ö¼¸±¾½²¾ö²ßºÍ¸´ÅÌµÄÊé
-[45/105] - ÍÆ¼ö¼¸±¾½²¾ö²ßºÍ¸´ÅÌµÄÊé
-[46/105] - °ïÎÒ°ÑÕâ¸öº¯Êı¸Ä³ÉÒì²½µÄ
-[47/105] - °ïÎÒ°ÑÕâ¸öº¯Êı¸Ä³ÉÒì²½µÄ
-[48/105] - °ïÎÒ°ÑÕâ¸öº¯Êı¸Ä³ÉÒì²½µÄ
-[49/105] - ¸øÎÒ×öÒ»¸öÏÂÖÜµÄ½¡Éí¼Æ»®£¬Ò»ÖÜÁ·ËÄ´Î
-[50/105] - ¸øÎÒ×öÒ»¸öÏÂÖÜµÄ½¡Éí¼Æ»®£¬Ò»ÖÜÁ·ËÄ´Î
-[51/105] - ¸øÎÒ×öÒ»¸öÏÂÖÜµÄ½¡Éí¼Æ»®£¬Ò»ÖÜÁ·ËÄ´Î
-[52/105] - °ïÎÒÈóÉ«Ò»ÏÂÕâ·İÏîÄ¿¸´ÅÌ±¨¸æµÄ´ë´Ç£¬ÄÚÈİ²»ÓÃ¸Ä
-[53/105] - SOP Õâ¸ö´ÊÓ¢ÎÄÈ«³ÆÊÇÊ²Ã´
-[54/105] - SOP Õâ¸ö´ÊÓ¢ÎÄÈ«³ÆÊÇÊ²Ã´
-[55/105] - SOP Õâ¸ö´ÊÓ¢ÎÄÈ«³ÆÊÇÊ²Ã´
-[56/105] - °ïÎÒÈóÉ«Ò»ÏÂÕâ·İÏîÄ¿¸´ÅÌ±¨¸æµÄ´ë´Ç£¬ÄÚÈİ²»ÓÃ¸Ä
-[57/105] - ½ñÌìÖĞÎç³ÔÊ²Ã´ºÃ£¬ÔÚ¹«Ë¾¸½½ü
-[58/105] - °ïÎÒÈóÉ«Ò»ÏÂÕâ·İÏîÄ¿¸´ÅÌ±¨¸æµÄ´ë´Ç£¬ÄÚÈİ²»ÓÃ¸Ä
-[59/105] - ½ñÌìÖĞÎç³ÔÊ²Ã´ºÃ£¬ÔÚ¹«Ë¾¸½½ü
-[60/105] - Õâ¸öÏîÄ¿×öÍêÁË£¬.decision ÀïµÄ¶«Î÷°ïÎÒ½á¸ö°¸£¬¸´ÅÌÒÑ¾­Ğ´ºÃÁË
-[61/105] - Õâ¸öÏîÄ¿×öÍêÁË£¬.decision ÀïµÄ¶«Î÷°ïÎÒ½á¸ö°¸£¬¸´ÅÌÒÑ¾­Ğ´ºÃÁË
-[62/105] - ½ñÌìÖĞÎç³ÔÊ²Ã´ºÃ£¬ÔÚ¹«Ë¾¸½½ü
-[63/105] - Õâ¸öÏîÄ¿×öÍêÁË£¬.decision ÀïµÄ¶«Î÷°ïÎÒ½á¸ö°¸£¬¸´ÅÌÒÑ¾­Ğ´ºÃÁË
-[64/105] - °ïÎÒ°Ñ README ºÍ AGENTS.md ¸ú½ñÌìµÄ¸Ä¶¯¶ÔÆëÒ»ÏÂ£¬¸ÄÁËºÃ¼¸¸ö½Ó¿ÚÃû
-[65/105] - °ïÎÒ°Ñ README ºÍ AGENTS.md ¸ú½ñÌìµÄ¸Ä¶¯¶ÔÆëÒ»ÏÂ£¬¸ÄÁËºÃ¼¸¸ö½Ó¿ÚÃû
-[66/105] - °ïÎÒ°Ñ README ºÍ AGENTS.md ¸ú½ñÌìµÄ¸Ä¶¯¶ÔÆëÒ»ÏÂ£¬¸ÄÁËºÃ¼¸¸ö½Ó¿ÚÃû
-[67/105] - readme ÓĞ¸ö´í±ğ×Ö°ïÎÒ¸ÄÏÂ
-[68/105] - readme ÓĞ¸ö´í±ğ×Ö°ïÎÒ¸ÄÏÂ
-[69/105] - readme ÓĞ¸ö´í±ğ×Ö°ïÎÒ¸ÄÏÂ
-[70/105] - Òª°ÑÉú²ú¿âµÄÓÃ»§±íÇ¨µ½ĞÂ schema£¬¼¸°ÙÍòĞĞÊı¾İ£¬²»ÄÜ¶ª£¬ÏÈ°ïÎÒÏëÇå³şÔÙ¶¯ÊÖ
-[71/105] - Òª°ÑÉú²ú¿âµÄÓÃ»§±íÇ¨µ½ĞÂ schema£¬¼¸°ÙÍòĞĞÊı¾İ£¬²»ÄÜ¶ª£¬ÏÈ°ïÎÒÏëÇå³şÔÙ¶¯ÊÖ
-[72/105] - Òª°ÑÉú²ú¿âµÄÓÃ»§±íÇ¨µ½ĞÂ schema£¬¼¸°ÙÍòĞĞÊı¾İ£¬²»ÄÜ¶ª£¬ÏÈ°ïÎÒÏëÇå³şÔÙ¶¯ÊÖ
-[73/105] - We're planning a multi-week migration from MySQL t
-[74/105] - We're planning a multi-week migration from MySQL t
-[75/105] - We're planning a multi-week migration from MySQL t
-[76/105] - The deploy step has failed three times with the sa
-[77/105] - Direction is settled: we're rewriting the billing 
-[78/105] - Direction is settled: we're rewriting the billing 
-[79/105] - Direction is settled: we're rewriting the billing 
-[80/105] - The deploy step has failed three times with the sa
-[81/105] - Is this ready to ship? All the tests passed yester
-[82/105] - The deploy step has failed three times with the sa
-[83/105] - Is this ready to ship? All the tests passed yester
-[84/105] - Is this ready to ship? All the tests passed yester
-[85/105] - Pick up where the last session left off on the sea
-[86/105] - Pick up where the last session left off on the sea
-[87/105] - Pick up where the last session left off on the sea
-[88/105] - Fix the typo in the README heading.
-[89/105] - Before I commit to moving our frontend into a mono
-[90/105] - Before I commit to moving our frontend into a mono
-[91/105] - Before I commit to moving our frontend into a mono
-[92/105] - Fix the typo in the README heading.
-[93/105] - Fix the typo in the README heading.
-[94/105] - What's a pre-mortem? Explain the technique in two 
-[95/105] - What's a pre-mortem? Explain the technique in two 
-[96/105] - Write a short, friendly email to the team recappin
-[97/105] - What's a pre-mortem? Explain the technique in two 
-[98/105] - Write a short, friendly email to the team recappin
-[99/105] - Write a short, friendly email to the team recappin
-[100/105] - This function throws KeyError: 'id'. Can you fix i
-[101/105] - This function throws KeyError: 'id'. Can you fix i
-[102/105] - This function throws KeyError: 'id'. Can you fix i
-[103/105] - Update the README and AGENTS.md so they match the 
-[104/105] - Update the README and AGENTS.md so they match the 
-[105/105] - Update the README and AGENTS.md so they match the 
-{"passed": 20, "total": 35, "positives_passed": 3, "positives": 18, "negatives_passed": 17, "negatives": 17, "seconds": 563}
+[1/22] - Pick up where the last session left off on the sea
+[2/22] T Pick up where the last session left off on the sea
+[3/22] - Is this ready to ship? All the tests passed yester
+[4/22] T Pick up where the last session left off on the sea
+[5/22] T Before I commit to moving our frontend into a mono
+[6/22] T Before I commit to moving our frontend into a mono
+[7/22] - Fix the typo in the README heading.
+[8/22] T Before I commit to moving our frontend into a mono
+[9/22] - Fix the typo in the README heading.
+[10/22] - Fix the typo in the README heading.
+[11/22] - What's a pre-mortem? Explain the technique in two 
+[12/22] - What's a pre-mortem? Explain the technique in two 
+[13/22] - What's a pre-mortem? Explain the technique in two 
+[14/22] - Write a short, friendly email to the team recappin
+[15/22] - Write a short, friendly email to the team recappin
+[16/22] - Write a short, friendly email to the team recappin
+[17/22] - This function throws KeyError: 'id'. Can you fix i
+[18/22] - This function throws KeyError: 'id'. Can you fix i
+[19/22] - This function throws KeyError: 'id'. Can you fix i
+[20/22] - Update the README and AGENTS.md so they match the 
+[21/22] - Update the README and AGENTS.md so they match the 
+[22/22] - Update the README and AGENTS.md so they match the 
+{"passed": 25, "total": 35, "positives_passed": 8, "positives": 18, "negatives_passed": 17, "negatives": 17, "error_runs": 0, "unmeasured_queries": 0, "seconds": 120}
 FAIL rate=0.33 want=True  æˆ‘åœ¨çº ç»“è¦ä¸è¦æŠŠå›¢é˜Ÿç°åœ¨ç”¨çš„ jenkins å…¨éƒ¨è¿åˆ° github actionsï¼Œå¤§æ¦‚ 40 ä¸ª pipelineï¼Œè¿ä¸€åŠå‘ç°ä¸è¡Œå°±å¾ˆå°´å°¬ï¼Œå¸®æˆ‘æƒ³æƒ³
 FAIL rate=0.00 want=True  è€æ¿è®©æˆ‘ä¸‹ä¸ªæœˆç‰µå¤´åšå®¢æœç³»ç»Ÿæ”¹ç‰ˆï¼Œæˆ‘ç°åœ¨è„‘å­å¾ˆä¹±ä¸çŸ¥é“ä»å“ªå¼€å§‹ï¼Œä½ å…ˆåˆ«ç»™æ–¹æ¡ˆï¼Œå¸®æˆ‘ç†ä¸€ç†
 FAIL rate=0.00 want=True  æ–¹å‘å·²ç»å®šäº†ï¼Œç”¨ supabase åšåç«¯ã€ä¸¤å‘¨å†…ä¸Šçº¿å†…æµ‹ç‰ˆï¼Œå¸®æˆ‘æ‹†ä¸€ä¸‹æ¯å¤©å¹²ä»€ä¹ˆ
@@ -111,11 +28,6 @@ FAIL rate=0.00 want=True  æŒ‰æ˜¨å¤©å®šçš„è®¡åˆ’åœ¨åšç¬¬4æ­¥æ•°æ®è¿ç§»ï¼Œè·‘åˆ
 FAIL rate=0.00 want=True  æ„Ÿè§‰åšç€åšç€åäº†ï¼Œæœ¬æ¥åªæƒ³åšä¸ªè®°è´¦å°å·¥å…·ï¼Œç°åœ¨åœ¨å†™å¤šå¸ç§æ±‡ç‡åŒæ­¥â€¦â€¦
 FAIL rate=0.00 want=True  é¡¹ç›®åšå®Œäº†ï¼Œä¸‹å‘¨è¦ç»™æŠ•èµ„äººæ¼”ç¤ºï¼Œå¸®æˆ‘ä»å¤´åˆ°å°¾æ£€æŸ¥ä¸€éè¿˜æœ‰ä»€ä¹ˆå‘
 FAIL rate=0.00 want=True  å¸®æˆ‘æŠŠå¼€ä¸€å®¶å’–å•¡é¦†è¿™ä»¶äº‹å†™æˆä¸€ä¸ªä»è°ƒç ”åˆ°å¼€ä¸šçš„ SOPï¼Œæ¯æ­¥æ€ä¹ˆåˆ¤æ–­å®Œæˆäº†
-FAIL rate=0.00 want=True  è¿™ä¸ªé¡¹ç›®åšå®Œäº†ï¼Œ.decision é‡Œçš„ä¸œè¥¿å¸®æˆ‘ç»“ä¸ªæ¡ˆï¼Œå¤ç›˜å·²ç»å†™å¥½äº†
 FAIL rate=0.00 want=True  è¦æŠŠç”Ÿäº§åº“çš„ç”¨æˆ·è¡¨è¿åˆ°æ–° schemaï¼Œå‡ ç™¾ä¸‡è¡Œæ•°æ®ï¼Œä¸èƒ½ä¸¢ï¼Œå…ˆå¸®æˆ‘æƒ³æ¸…æ¥šå†åŠ¨æ‰‹
-FAIL rate=0.00 want=True  We're planning a multi-week migration from MySQL to PostgreSQL across 12 services. Before we start, help me decide whether it's worth it and how to stage it so a failure halfway doesn't hurt.
-FAIL rate=0.00 want=True  Direction is settled: we're rewriting the billing module. Lay out the steps, how each one gets verified, and what we do if a step keeps failing.
 FAIL rate=0.00 want=True  The deploy step has failed three times with the same error and the agent keeps retrying. I think we're off track. What should we do?
 FAIL rate=0.00 want=True  Is this ready to ship? All the tests passed yesterday but we've changed a few things since.
-FAIL rate=0.00 want=True  Pick up where the last session left off on the search-index rebuild. There's a .decision folder in the repo.
-FAIL rate=0.00 want=True  Before I commit to moving our frontend into a monorepo, write a decision card with a steelman of both options and a pre-mortem.

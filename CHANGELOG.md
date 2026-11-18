@@ -39,9 +39,12 @@
 ### 未验证
 - 宿主上的 `allowed-tools` 免审批、SessionStart 钩子注入（Claude Code 与 Codex）、插件与 `npx skills add` 在干净环境的安装、macOS。
 - 真实 Agent 的行为对照（R1）仍未运行。
-- **触发评测已运行一次，结果不可下结论（INCONCLUSIVE）**，原始数据在 `dev/eval-runs/trigger-2026-11-17/`。
-  - 正例触发率：deciding-and-executing 3/18，closing-out 0/13；反例全部正确不触发。
-  - 未触发的正例里，判定依据大多是 `result`：进程跑完了，但没有看到被测技能的调用。closing-out 的 39 次正例全部如此。这更像检测逻辑漏判（例如先调用了别的技能），而不是描述本身失效。下结论前要先诊断运行器。
+- **触发评测（2026-11-17～18，Claude Code 2.1.283，默认模型，本机约 150 个技能与 19 个插件同时在场，每条 3 次，阈值 0.5）**：原始数据与每次运行的工具调用顺序在 `dev/eval-runs/trigger-2026-11-17/`。
+  - **反例全部正确：deciding-and-executing 17/17，closing-out 15/15，没有误触发。**
+  - **正例偏弱：deciding-and-executing 8/18，closing-out 6/13。**
+  - deciding-and-executing 没触发时，模型多半直接作答（方向类问题）或直接动手（Glob / Read / PowerShell，执行类问题），只有 1 次被别的技能（superpowers:systematic-debugging）抢走。
+  - closing-out 没触发时，约一半输给本机已装的同类技能 `neat-freak`，其余是模型直接 Grep / Glob 开始改。
+  - 前两轮作废并归档：`run1-detection-bug/`（运行器把"先调用别的技能再作答"记成了不明结果），`run2-quota-exhausted/`（额度用尽后的错误结果被当成未触发）。运行器现已记录完整调用顺序、把出错运行排除在触发率之外、连续出错时停止，并支持 `--resume` 只补测缺的部分。
   - 已确认的环境问题：本机约 150 个技能超出技能列表预算，新技能只显示名字、不显示描述。运行器默认把子进程的 `SLASH_COMMAND_TOOL_CHAR_BUDGET` 放大到 200000，`--listing-chars 0` 可测默认预算下的真实表现。从桌面应用里启动时，运行器会去掉应用传下来的 `CLAUDE_CODE_*` / `ANTHROPIC_BASE_URL`，否则子进程报 "Not logged in"。
 
 ## [4.2.0] - 2026-11-16（本地候选）

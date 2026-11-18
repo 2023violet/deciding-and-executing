@@ -71,7 +71,7 @@ def run_once(claude, query, name, description, timeout, model):
         with open(os.path.join(cmd_dir, unique + ".md"), "w", encoding="utf-8") as f:
             f.write("---\ndescription: %s\n---\n\n# %s\n\nThis skill handles: %s\n"
                     % (json.dumps(description, ensure_ascii=False), name, description))
-        args = [claude, "-p", query, "--output-format", "stream-json", "--verbose", "--include-partial-messages"]
+        args = [claude, "-p", query, "--output-format", "stream-json", "--verbose"]
         if model:
             args += ["--model", model]
         env = clean_env()
@@ -80,7 +80,7 @@ def run_once(claude, query, name, description, timeout, model):
         proc = subprocess.Popen(args, cwd=proj, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env)
         q = queue.Queue()
         threading.Thread(target=_reader, args=(proc.stdout, q), daemon=True).start()
-        tools_seen, pending, acc = 0, None, ""
+        trace = []          # 依次调用的工具，如 ["Skill(neat-freak)", "Glob"]，用来解释为什么没触发
         deadline = time.time() + timeout
         try:
             while time.time() < deadline:
@@ -89,35 +89,28 @@ def run_once(claude, query, name, description, timeout, model):
                 except queue.Empty:
                     continue
                 if line is None:
-                    return False, "process-ended"
+                    return False, "ended: " + (" > ".join(trace) or "no tool calls")
                 try:
                     ev = json.loads(line.decode("utf-8", "replace"))
                 except ValueError:
                     continue
-                if ev.get("type") == "stream_event":
-                    se = ev.get("event", {})
-                    st = se.get("type", "")
-                    if st == "content_block_start" and se.get("content_block", {}).get("type") == "tool_use":
-                        tool = se["content_block"].get("name", "")
-                        tools_seen += 1
-                        if tool not in ("Skill", "Read"):
-                            return False, "first-work-tool:" + tool
-                        pending, acc = tool, ""
-                    elif st == "content_block_delta" and pending:
-                        acc += se.get("delta", {}).get("partial_json", "")
-                        if unique in acc:
-                            return True, pending
-                    elif st == "content_block_stop" and pending:
-                        if unique in acc:
-                            return True, pending
-                        if tools_seen >= MAX_TOOL_CALLS:
-                            return False, "other-skill:" + acc[:80]
-                        pending, acc = None, ""
-                    elif st == "message_stop" and not pending and tools_seen == 0:
-                        return False, "answered-directly"
+                if ev.get("type") == "assistant":
+                    for c in ev.get("message", {}).get("content", []):
+                        if c.get("type") != "tool_use":
+                            continue
+                        tool, inp = c.get("name", ""), c.get("input") or {}
+                        target = inp.get("skill") if tool == "Skill" else inp.get("file_path") if tool == "Read" else None
+                        if target and unique in str(target):
+                            return True, " > ".join(trace + [tool + "(this skill)"])
+                        trace.append("%s(%s)" % (tool, target) if tool == "Skill" else tool)
+                        if tool not in ("Skill", "Read") or len(trace) >= MAX_TOOL_CALLS:
+                            return False, "other: " + " > ".join(trace)
                 elif ev.get("type") == "result":
-                    return False, "result"
-            return False, "timeout"
+                    if ev.get("is_error"):
+                        # 额度用完、未登录、网络错误：这次运行没有测到任何东西，不能当成"未触发"
+                        return None, "error: " + str(ev.get("result"))[:120]
+                    return False, ("other: " + " > ".join(trace)) if trace else "answered directly"
+            return False, "timeout: " + " > ".join(trace)
         finally:
             if proc.poll() is None:
                 proc.kill()
@@ -157,6 +150,7 @@ def main():
     ap.add_argument("--model")
     ap.add_argument("--description-file", help="用这个文件的内容代替 SKILL.md 的 description（迭代描述时用）")
     ap.add_argument("--out", help="结果 JSON 写到这里")
+    ap.add_argument("--resume", help="上次的结果 JSON：描述相同时沿用已测到的运行，只补测缺的")
     ap.add_argument("--listing-chars", type=int, default=200000,
                     help="技能列表的字符预算（SLASH_COMMAND_TOOL_CHAR_BUDGET）。装了很多技能时宿主会丢掉新技能的描述，"
                          "只剩名字，测不出描述本身；默认放大到 200000。0 表示用宿主默认预算（测真实环境下的表现）")
@@ -173,34 +167,53 @@ def main():
             description = f.read().strip()
     with open(a.eval_set, encoding="utf-8") as f:
         cases = json.load(f)
-    jobs = [(i, r) for i in range(len(cases)) for r in range(a.runs)]
     hits = {i: [] for i in range(len(cases))}
+    if a.resume and os.path.exists(a.resume):
+        # 沿用上次已经测到的运行（同一描述），只补测出错或被跳过的部分，避免重复消耗额度
+        with open(a.resume, encoding="utf-8") as f:
+            prev = json.load(f)
+        if prev.get("description") == description:
+            by_query = {r["query"]: [h for h in r["runs"] if h["triggered"] is not None] for r in prev["results"]}
+            for i, c in enumerate(cases):
+                hits[i] = by_query.get(c["query"], [])[:a.runs]
+    jobs = [(i, r) for i in range(len(cases)) for r in range(len(hits[i]), a.runs)]
     lock = threading.Lock()
     started = time.time()
 
+    state = {"consecutive_errors": 0}
+
     def work(job):
         i, _ = job
-        ok, why = run_once(claude, cases[i]["query"], name, description, a.timeout, a.model)
+        if state["consecutive_errors"] >= 5:        # 多半是额度用完：后面的调用不再发出
+            ok, why = None, "skipped: too many consecutive errors"
+        else:
+            ok, why = run_once(claude, cases[i]["query"], name, description, a.timeout, a.model)
         with lock:
+            if not why.startswith("skipped"):
+                state["consecutive_errors"] = state["consecutive_errors"] + 1 if ok is None else 0
             hits[i].append({"triggered": ok, "why": why})
-            done = sum(len(v) for v in hits.values())
-            print("[%d/%d] %s %s" % (done, len(jobs), "T" if ok else "-", cases[i]["query"][:50]),
-                  file=sys.stderr, flush=True)
+            state["done"] = state.get("done", 0) + 1
+            print("[%d/%d] %s %s" % (state["done"], len(jobs), "E" if ok is None else "T" if ok else "-",
+                                     cases[i]["query"][:50]), file=sys.stderr, flush=True)
 
     with ThreadPoolExecutor(max_workers=a.workers) as ex:
         list(ex.map(work, jobs))
     results = []
+    errors = 0
     for i, c in enumerate(cases):
-        n = sum(1 for h in hits[i] if h["triggered"])
-        rate = n / max(1, len(hits[i]))
-        passed = rate >= a.threshold if c["should_trigger"] else rate < a.threshold
-        results.append({"query": c["query"], "should_trigger": c["should_trigger"], "trigger_rate": round(rate, 2),
-                        "runs": hits[i], "pass": passed})
+        valid = [h for h in hits[i] if h["triggered"] is not None]     # 出错的运行不计入触发率
+        errors += len(hits[i]) - len(valid)
+        n = sum(1 for h in valid if h["triggered"])
+        rate = n / len(valid) if valid else None
+        passed = None if rate is None else rate >= a.threshold if c["should_trigger"] else rate < a.threshold
+        results.append({"query": c["query"], "should_trigger": c["should_trigger"],
+                        "trigger_rate": None if rate is None else round(rate, 2), "runs": hits[i], "pass": passed})
     pos = [r for r in results if r["should_trigger"]]
     neg = [r for r in results if not r["should_trigger"]]
-    summary = {"passed": sum(r["pass"] for r in results), "total": len(results),
-               "positives_passed": sum(r["pass"] for r in pos), "positives": len(pos),
-               "negatives_passed": sum(r["pass"] for r in neg), "negatives": len(neg),
+    summary = {"passed": sum(r["pass"] is True for r in results), "total": len(results),
+               "positives_passed": sum(r["pass"] is True for r in pos), "positives": len(pos),
+               "negatives_passed": sum(r["pass"] is True for r in neg), "negatives": len(neg),
+               "error_runs": errors, "unmeasured_queries": sum(r["pass"] is None for r in results),
                "seconds": round(time.time() - started)}
     report = {"skill": name, "date": dt.date.today().isoformat(), "description": description,
               "runs_per_query": a.runs, "threshold": a.threshold, "environment": environment(claude, a.model),
@@ -215,8 +228,12 @@ def main():
     except (AttributeError, ValueError):
         pass
     print(json.dumps(summary, ensure_ascii=False))
+    if errors:
+        print("注意：%d 次运行出错（额度、登录或网络），未计入触发率" % errors)
     for r in results:
-        if not r["pass"]:
+        if r["pass"] is None:
+            print("UNMEASURED want=%s  %s" % (r["should_trigger"], r["query"]))
+        elif not r["pass"]:
             print("FAIL rate=%.2f want=%s  %s" % (r["trigger_rate"], r["should_trigger"], r["query"]))
     sys.exit(0 if summary["passed"] == summary["total"] else 1)
 

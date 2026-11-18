@@ -1,6 +1,6 @@
 {
   "skill": "closing-out",
-  "date": "2026-11-17",
+  "date": "2026-11-18",
   "description": "当一段工作告一段落，需要让项目里的文档、规则文件、决策记录跟上代码现状时使用：会话结束前收尾、里程碑或发布后整理、交接给别人或下一个 Agent、改名或删模块后担心文档过时、CLAUDE.md 和 AGENTS.md 冲突或引用失效、清理计划草稿和调试残留，或用户说\"收尾\"\"擦屁股\"\"同步一下文档\"\"整理仓库\"\"clean handoff\"。即使用户只说\"今天先到这\"，只要本次改动影响了别人会读的文档，也应使用。不用于写新功能、排查报错、整理一份数据或文案，也不用于复盘决策和做法本身。Also for English requests to wrap up a session, sync docs with the code, clean up the repo, prepare a clean handoff, or fix stale or conflicting CLAUDE.md and AGENTS.md after a rename or deletion. Not for building features, debugging or retrospectives.",
   "runs_per_query": 3,
   "threshold": 0.5,
@@ -33,31 +33,33 @@
     "platform": "win32"
   },
   "summary": {
-    "passed": 15,
+    "passed": 21,
     "total": 28,
-    "positives_passed": 0,
+    "positives_passed": 6,
     "positives": 13,
     "negatives_passed": 15,
     "negatives": 15,
-    "seconds": 506
+    "error_runs": 0,
+    "unmeasured_queries": 0,
+    "seconds": 123
   },
   "results": [
     {
       "query": "今天把 auth 模块重构完了，接口名改了好几个，帮我把文档和 AGENTS.md 同步一下",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 0.33,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(neat-freak) > Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(neat-freak) > Glob"
         }
       ],
       "pass": false
@@ -65,62 +67,62 @@
     {
       "query": "收个尾吧，今天先到这，记得看看 README 里的启动命令还对不对",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 1.0,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "明天要把仓库交给新同事，帮我做个 clean handoff，看看有没有过时的文档和乱七八糟的临时文件",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 0.67,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(neat-freak) > PowerShell"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "我们的 CLAUDE.md 和 AGENTS.md 好像各写各的，Claude Code 和 Codex 表现不一样，帮我理一理",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 0.67,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
           "triggered": false,
-          "why": "result"
-        },
-        {
-          "triggered": false,
-          "why": "result"
+          "why": "other: Skill(neat-freak) > Glob"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "v2.3 发布完了，帮我整理一下仓库，CHANGELOG、README、docs 里的版本号和说明都过一遍",
@@ -129,15 +131,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(neat-freak) > Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         }
       ],
       "pass": false
@@ -149,15 +151,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Grep"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Grep"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Grep"
         }
       ],
       "pass": false
@@ -169,15 +171,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         }
       ],
       "pass": false
@@ -185,42 +187,42 @@
     {
       "query": "擦屁股阶段：这周的开发做完了，帮我把知识同步一下",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 1.0,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "决策流程走完了，项目结束，.decision 已经归档了，接着把整个仓库的文档对齐一下",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 0.67,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(neat-freak) > PowerShell"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "帮我写一份新的 README，这个项目还没有任何文档",
@@ -229,15 +231,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         }
       ],
       "pass": true
@@ -249,15 +251,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Grep"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Grep"
         }
       ],
       "pass": true
@@ -269,15 +271,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         }
       ],
       "pass": true
@@ -289,15 +291,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -309,15 +311,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Read"
         }
       ],
       "pass": true
@@ -329,15 +331,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -349,15 +351,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -369,15 +371,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -389,15 +391,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         }
       ],
       "pass": true
@@ -409,15 +411,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         }
       ],
       "pass": true
@@ -429,15 +431,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(storage-analyzer) > PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(storage-analyzer) > PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(storage-analyzer) > PowerShell"
         }
       ],
       "pass": true
@@ -445,19 +447,19 @@
     {
       "query": "We just finished refactoring the auth module and renamed several endpoints. Sync the docs and AGENTS.md with the code.",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 0.33,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(neat-freak) > Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(neat-freak) > PowerShell"
         }
       ],
       "pass": false
@@ -465,19 +467,19 @@
     {
       "query": "Wrapping up for today. Make sure the README and docs still match what we changed.",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 0.33,
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Skill(neat-freak) > PowerShell"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
           "triggered": false,
-          "why": "result"
-        },
-        {
-          "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         }
       ],
       "pass": false
@@ -485,39 +487,39 @@
     {
       "query": "I'm handing this repo to a colleague tomorrow. Do a clean handoff: stale docs, leftover debug files, outdated plans.",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 0.67,
       "runs": [
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
         },
         {
           "triggered": false,
-          "why": "result"
-        },
-        {
-          "triggered": false,
-          "why": "result"
+          "why": "other: Skill(neat-freak) > PowerShell"
         }
       ],
-      "pass": false
+      "pass": true
     },
     {
       "query": "CLAUDE.md and AGENTS.md now give conflicting instructions, and Codex behaves differently from Claude Code. Sort it out.",
       "should_trigger": true,
-      "trigger_rate": 0.0,
+      "trigger_rate": 0.33,
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
-          "triggered": false,
-          "why": "result"
+          "triggered": true,
+          "why": "Skill(this skill)"
         }
       ],
       "pass": false
@@ -529,15 +531,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         }
       ],
       "pass": true
@@ -549,15 +551,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: PowerShell"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Grep"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Grep"
         }
       ],
       "pass": true
@@ -569,15 +571,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "answered directly"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Read"
         }
       ],
       "pass": true
@@ -589,15 +591,15 @@
       "runs": [
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         },
         {
           "triggered": false,
-          "why": "result"
+          "why": "other: Glob"
         }
       ],
       "pass": true
