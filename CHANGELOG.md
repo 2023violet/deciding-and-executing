@@ -40,8 +40,11 @@
 - 宿主上的 `allowed-tools` 免审批、SessionStart 钩子注入（Claude Code 与 Codex）、插件与 `npx skills add` 在干净环境的安装、macOS。
 - 真实 Agent 的行为对照（R1）仍未运行。
 - **触发评测（2026-11-17～18，Claude Code 2.1.283，默认模型，本机约 150 个技能与 19 个插件同时在场，每条 3 次，阈值 0.5）**：原始数据与每次运行的工具调用顺序在 `dev/eval-runs/trigger-2026-11-17/`。
-  - **反例全部正确：deciding-and-executing 17/17，closing-out 15/15，没有误触发。**
-  - **正例偏弱：deciding-and-executing 8/18，closing-out 6/13。**
+  - **基线（4.2 风格描述）**：反例全部正确（deciding-and-executing 17/17，closing-out 15/15）；正例偏弱（8/18、6/13）。
+  - **迭代 1（本版最终描述）**：把触发时机写成"在回答或动手之前先调用本技能，不要直接给建议或直接开始改"，补用户原话（"帮我理一理""从头到尾检查一遍还有什么坑""查还有哪些文档提到被删的东西"），closing-out 写明与通用整理做法的区别（只读审计脚本）。结果：**deciding-and-executing 33/35（正例 16/18，反例 17/17）；closing-out 28/28（正例 13/13，反例 15/15）**，没有新增误触发。数据在 `dev/eval-runs/trigger-2026-11-18-iter1/`。
+  - 迭代 1 仍未触发：deciding-and-executing 的"做着做着偏了"（3 次都直接作答）和英文的"部署失败三次"（1/3）。
+  - 注意：用例是写描述时就能看到的同一批，没有按 6:4 分训练集与验证集，存在过拟合风险；正例提升应在新用例上复核。
+  - 以下是基线一轮的失败分析：
   - deciding-and-executing 没触发时，模型多半直接作答（方向类问题）或直接动手（Glob / Read / PowerShell，执行类问题），只有 1 次被别的技能（superpowers:systematic-debugging）抢走。
   - closing-out 没触发时，约一半输给本机已装的同类技能 `neat-freak`，其余是模型直接 Grep / Glob 开始改。
   - 前两轮作废并归档：`run1-detection-bug/`（运行器把"先调用别的技能再作答"记成了不明结果），`run2-quota-exhausted/`（额度用尽后的错误结果被当成未触发）。运行器现已记录完整调用顺序、把出错运行排除在触发率之外、连续出错时停止，并支持 `--resume` 只补测缺的部分。

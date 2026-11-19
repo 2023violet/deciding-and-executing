@@ -1,0 +1,65 @@
+[1/64] T 擦屁股阶段：这周的开发做完了，帮我把知识同步一下
+[2/64] T 仓库根目录堆了好多 PLAN.md、test_debug.py、xxx_old 这种东西，帮我看看哪
+[3/64] T 擦屁股阶段：这周的开发做完了，帮我把知识同步一下
+[4/64] T 决策流程走完了，项目结束，.decision 已经归档了，接着把整个仓库的文档对齐一下
+[5/64] T 决策流程走完了，项目结束，.decision 已经归档了，接着把整个仓库的文档对齐一下
+[6/64] T 擦屁股阶段：这周的开发做完了，帮我把知识同步一下
+[7/64] T 决策流程走完了，项目结束，.decision 已经归档了，接着把整个仓库的文档对齐一下
+[8/64] - 帮我写一份新的 README，这个项目还没有任何文档
+[9/64] - 帮我写一份新的 README，这个项目还没有任何文档
+[10/64] - 帮我写一份新的 README，这个项目还没有任何文档
+[11/64] - npm test 报 Cannot find module './legacy/old'，帮我修一下
+[12/64] - npm test 报 Cannot find module './legacy/old'，帮我修一下
+[13/64] - 帮我整理一下这份 CSV，把重复的行删掉
+[14/64] - npm test 报 Cannot find module './legacy/old'，帮我修一下
+[15/64] - 帮我整理一下这份 CSV，把重复的行删掉
+[16/64] - 帮我整理一下这份 CSV，把重复的行删掉
+[17/64] - 我在纠结下个季度要不要把单体拆成微服务，先别急着给答案
+[18/64] - 我在纠结下个季度要不要把单体拆成微服务，先别急着给答案
+[19/64] - 我在纠结下个季度要不要把单体拆成微服务，先别急着给答案
+[20/64] - 项目失败了，帮我认真复盘一下到底是决策错了还是运气不好
+[21/64] - 项目失败了，帮我认真复盘一下到底是决策错了还是运气不好
+[22/64] - 项目失败了，帮我认真复盘一下到底是决策错了还是运气不好
+[23/64] - 帮我写这周的周报，内容是完成了登录模块
+[24/64] - 帮我写这周的周报，内容是完成了登录模块
+[25/64] - 帮我写这周的周报，内容是完成了登录模块
+[26/64] - 把这个函数的注释改成英文
+[27/64] - 把这个函数的注释改成英文
+[28/64] - 把这个函数的注释改成英文
+[29/64] - git 里怎么删除已经合并的本地分支
+[30/64] - git 里怎么删除已经合并的本地分支
+[31/64] - git 里怎么删除已经合并的本地分支
+[32/64] - 帮我给 CLAUDE.md 加一条规则：提交前必须跑 lint
+[33/64] - 帮我给 CLAUDE.md 加一条规则：提交前必须跑 lint
+[34/64] - 帮我给 CLAUDE.md 加一条规则：提交前必须跑 lint
+[35/64] - 帮我润色一下这份项目复盘报告的措辞
+[36/64] - 帮我润色一下这份项目复盘报告的措辞
+[37/64] - 帮我润色一下这份项目复盘报告的措辞
+[38/64] - 清理一下我的 Mac 磁盘，C 盘满了
+[39/64] - 清理一下我的 Mac 磁盘，C 盘满了
+[40/64] - 清理一下我的 Mac 磁盘，C 盘满了
+[41/64] T We just finished refactoring the auth module and r
+[42/64] T We just finished refactoring the auth module and r
+[43/64] T We just finished refactoring the auth module and r
+[44/64] T Wrapping up for today. Make sure the README and do
+[45/64] T Wrapping up for today. Make sure the README and do
+[46/64] T Wrapping up for today. Make sure the README and do
+[47/64] T I'm handing this repo to a colleague tomorrow. Do 
+[48/64] T I'm handing this repo to a colleague tomorrow. Do 
+[49/64] T I'm handing this repo to a colleague tomorrow. Do 
+[50/64] T CLAUDE.md and AGENTS.md now give conflicting instr
+[51/64] - CLAUDE.md and AGENTS.md now give conflicting instr
+[52/64] T CLAUDE.md and AGENTS.md now give conflicting instr
+[53/64] - Write a README from scratch for this new project; 
+[54/64] - Write a README from scratch for this new project; 
+[55/64] - Write a README from scratch for this new project; 
+[56/64] - npm test fails with Cannot find module './legacy/o
+[57/64] - npm test fails with Cannot find module './legacy/o
+[58/64] - npm test fails with Cannot find module './legacy/o
+[59/64] - Run a retrospective on why our last launch slipped
+[60/64] - Run a retrospective on why our last launch slipped
+[61/64] - Run a retrospective on why our last launch slipped
+[62/64] - Add a rule to CLAUDE.md: run lint before committin
+[63/64] - Add a rule to CLAUDE.md: run lint before committin
+[64/64] - Add a rule to CLAUDE.md: run lint before committin
+{"passed": 28, "total": 28, "positives_passed": 13, "positives": 13, "negatives_passed": 15, "negatives": 15, "error_runs": 0, "unmeasured_queries": 0, "seconds": 317}

@@ -1,6 +1,6 @@
 ---
 name: closing-out
-description: 当一段工作告一段落，需要让项目里的文档、规则文件、决策记录跟上代码现状时使用：会话结束前收尾、里程碑或发布后整理、交接给别人或下一个 Agent、改名或删模块后担心文档过时、CLAUDE.md 和 AGENTS.md 冲突或引用失效、清理计划草稿和调试残留，或用户说"收尾""擦屁股""同步一下文档""整理仓库""clean handoff"。即使用户只说"今天先到这"，只要本次改动影响了别人会读的文档，也应使用。不用于写新功能、排查报错、整理一份数据或文案，也不用于复盘决策和做法本身。Also for English requests to wrap up a session, sync docs with the code, clean up the repo, prepare a clean handoff, or fix stale or conflicting CLAUDE.md and AGENTS.md after a rename or deletion. Not for building features, debugging or retrospectives.
+description: 工作告一段落后，让项目里的文档、规则文件和决策记录重新与代码一致。遇到以下情况，在搜索、改文档或删文件之前先调用本技能，不要直接动手：会话收尾（"今天先到这""收个尾""擦屁股"）；重构、改名、删模块后要同步 README、docs、AGENTS.md、CLAUDE.md，或查还有哪些文档提到被删的东西；发布或里程碑后整理仓库、核对 CHANGELOG 与版本号；交接给别人或下一个 Agent（clean handoff）；CLAUDE.md 与 AGENTS.md 各写各的、冲突或引用失效；清理计划草稿、调试脚本、xxx_old 这类残留；.decision 归档后做知识同步。它比通用的整理做法多一个只读审计脚本，能查出失效链接、过期命令、规则链冲突和残留文件。不用于写新功能、修报错、整理数据或文案，也不用于复盘决策本身。Use this skill before searching, editing docs or deleting files when wrapping up a session, syncing docs, AGENTS.md or CLAUDE.md after a refactor, rename or deletion, tidying a repo after a release, preparing a clean handoff, fixing conflicting rule files, or removing leftover plan and debug files. Not for features, bug fixes or retrospectives.
 license: MIT
 metadata:
   version: "2.2.0"
