@@ -1561,7 +1561,7 @@ def cmd_reopen(a, ctx):
 def retro_problems(ctx):
     path = ctx.p("retro.md")
     if not os.path.exists(path):
-        return ["缺少 retro.md：先按 stage-4-review.md 完成复盘"]
+        return ["缺少 retro.md：先按 review-and-close.md 完成复盘"]
     with open(path, encoding="utf-8") as f:
         text = f.read()
     sec, cur = {}, None
@@ -1688,7 +1688,7 @@ MESSAGES = {
         "next.verify_retry": "验证未通过（已计失败 {fails}/{max}）：查明原因、修改后再试",
         "next.verify_all": "审查前重新验证：步骤 {steps} 的命令证据已不对应当前代码",
         "next.reopen": "步骤 {step} 的证据文件已变化：reopen 后重新完成",
-        "next.review_pass": "全部步骤已完成：按 stage-4 审查，把预览给用户看后记录审查结论",
+        "next.review_pass": "全部步骤已完成：按 review-and-close.md 审查，把预览给用户看后记录审查结论",
         "next.review_fix": "审查结论为 fix：把阻断项写成新步骤加入 plan.json，再检查计划",
         "next.review_fail": "审查结论为 fail：和用户决定回到哪一级；决定停止就以止损归档",
         "next.retro": "先写完复盘 retro.md（{problems}），再归档",
@@ -1759,7 +1759,7 @@ MESSAGES = {
         "next.verify_retry": "Verification failed (counted failures {fails}/{max}): find the cause, change something, then retry",
         "next.verify_all": "Re-verify before review: command evidence for steps {steps} no longer matches the code",
         "next.reopen": "Step {step}'s evidence file changed: reopen it and finish it again",
-        "next.review_pass": "All steps are done: review per stage-4, show the preview to the user, then record the verdict",
+        "next.review_pass": "All steps are done: review per review-and-close.md, show the preview to the user, then record the verdict",
         "next.review_fix": "Review verdict is fix: add the blockers to plan.json as new steps, then check the plan",
         "next.review_fail": "Review verdict is fail: decide with the user which level to return to; if stopping, archive as stopped",
         "next.retro": "Finish retro.md first ({problems}), then archive",

@@ -161,7 +161,7 @@ Changing the decision card's goal, success criteria, non-goals, key assumptions 
 
 **Step state machine.** `todo → in_progress → implemented → done`, plus `blocked` and `needs_replan`. A `done` step can't be moved back directly; use `reopen`, which archives the old evidence and voids the review. `needs_replan` is cleared only by `replan`.
 
-**`de.py` commands**: the full command table and how to invoke the script (Claude Code, other hosts, Windows) are maintained only in [SKILL.md section 4](skills/deciding-and-executing/SKILL.md) (Chinese), or run `de.py --help`. The everyday ones are `init`, `status`, `gate AB` (or separate `gate A` / `gate B`), `step`, `verify --all`, `coverage`, `review`, `closeout` and `purge`. Commands that need confirmation first return only a `token` and a `preview`; after the user agrees, rerun with `--confirm`.
+**`de.py` commands**: how to invoke the script is in [SKILL.md section 4](skills/deciding-and-executing/SKILL.md) and the full command table in [script.md](skills/deciding-and-executing/references/script.md) (Chinese), or run `de.py --help`. The everyday ones are `init`, `status`, `gate AB` (or separate `gate A` / `gate B`), `step`, `verify --all`, `coverage`, `review`, `closeout` and `purge`. Commands that need confirmation first return only a `token` and a `preview`; after the user agrees, rerun with `--confirm`.
 
 **Next action, handoff and the session hook:** every command's JSON carries `next = {cmd, why}`; `cmd` is the next legal action, ready to run, so the agent doesn't have to read the references to know what to do, and commands that need your consent are marked `needs_user`. `handoff` prints a read-only handoff in which each step's evidence freshness is derived by the script, not narrated. `status --brief` prints at most 15 lines of plain text for a session-start hook and nothing when there's no workspace.
 
@@ -230,7 +230,7 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 ├── LICENSE
 ├── .claude-plugin/                Claude Code plugin and marketplace manifests (publishes skills/ as one plugin)
 ├── skills/                        ← The only thing you install
-│   ├── deciding-and-executing/   SKILL.md, references/ (five stages, permissions, example, prompts, evidence),
+│   ├── deciding-and-executing/   SKILL.md, references/ (three process docs, script reference, permissions, examples, prompts, evidence),
 │   │                              scripts/de.py, assets/ (templates), agents/openai.yaml
 │   └── closing-out/              SKILL.md, references/ (routing, placement, example),
 │                                  scripts/audit.py, assets/report.md, agents/openai.yaml

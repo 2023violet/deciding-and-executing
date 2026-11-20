@@ -154,7 +154,7 @@
 
 **步骤状态机**：`todo → in_progress → implemented → done`，另有 `blocked` 和 `needs_replan`。`done` 不能直接改回去，只能 `reopen`（旧证据归档、审查结论作废）；`needs_replan` 只能通过 `replan` 解除。
 
-**`de.py` 命令**：完整命令表与调用方式（Claude Code、其他宿主、Windows 的写法）只维护在 [SKILL.md 第 4 节](skills/deciding-and-executing/SKILL.md)，也可以运行 `de.py --help`。最常用的是：`init`、`status`、`gate AB`（或分开的 `gate A` / `gate B`）、`step`、`verify --all`、`coverage`、`review`、`closeout`、`purge`。需要确认的命令第一次只返回 `token` 与 `preview`，用户同意后带 `--confirm` 重跑。
+**`de.py` 命令**：调用方式写在 [SKILL.md 第 4 节](skills/deciding-and-executing/SKILL.md)，完整命令表在 [script.md](skills/deciding-and-executing/references/script.md)，也可以运行 `de.py --help`。最常用的是：`init`、`status`、`gate AB`（或分开的 `gate A` / `gate B`）、`step`、`verify --all`、`coverage`、`review`、`closeout`、`purge`。需要确认的命令第一次只返回 `token` 与 `preview`，用户同意后带 `--confirm` 重跑。
 
 **下一步、交接与会话钩子**：每条命令的 JSON 都带 `next = {cmd, why}`，`cmd` 是可以直接运行的下一个合法动作，Agent 不用读完参考文档才知道该做什么；需要你同意的命令标 `needs_user`。`handoff` 输出只读的交接摘要（每步的证据新鲜度由脚本推出，不是叙述）。`status --brief` 只输出 15 行以内的纯文本，给会话开始钩子用，没有工作区时不输出。
 
@@ -223,7 +223,7 @@ python3 scripts/audit.py [--root .] [--base main] [--rename 旧=新 ...] [--excl
 ├── skills/                        ← 需要安装的只有这里
 │   ├── deciding-and-executing/
 │   │   ├── SKILL.md
-│   │   ├── references/            五个阶段、permissions、示例、独立提示词、设计依据
+│   │   ├── references/            三份流程文档（定方向 / 计划与执行 / 审查与收尾）、脚本说明、permissions、示例、独立提示词、设计依据
 │   │   ├── scripts/de.py
 │   │   ├── assets/                决策卡、计划、进度日志、复盘、独立复核报告模板
 │   │   └── agents/openai.yaml

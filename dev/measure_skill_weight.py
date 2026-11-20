@@ -15,10 +15,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DE = os.path.join(ROOT, "skills", "deciding-and-executing")
 CO = os.path.join(ROOT, "skills", "closing-out")
 
-# 一次标准档流程（从定方向到收尾）Agent 通常会读的文件；文件改名或合并时在这里同步
-STANDARD_FLOW = ["SKILL.md", "references/stage-1-direction.md", "references/stage-2-plan.md",
-                 "references/stage-3-execute.md", "references/stage-4-review.md",
-                 "references/stage-5-closeout.md", "references/verification-strategy.md"]
+# 一次标准档流程（从定方向到收尾）Agent 通常会读的文件；文件改名或合并时在这里同步。
+# v6 之前是 SKILL.md + 五份阶段文档 + verification-strategy.md（共 7 个，见 dev/eval-runs/v6-baseline/weight.json）
+STANDARD_FLOW = ["SKILL.md", "references/direction.md", "references/plan-and-execute.md",
+                 "references/review-and-close.md"]
 FIRST_USE_EXTRA = ["references/worked-example.md"]
 JARGON = ["闸门", "证据链", "证据", "指纹", "两步确认", "门禁", "基线", "哈希", "token", "preview"]
 
