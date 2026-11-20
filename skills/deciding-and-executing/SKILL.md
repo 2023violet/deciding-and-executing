@@ -18,7 +18,7 @@ allowed-tools:
   - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/de.py" preflight *)
   - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/de.py" coverage *)
 metadata:
-  version: "5.0.0"
+  version: "6.0.0"
   language: zh-CN
   companion: closing-out
 ---

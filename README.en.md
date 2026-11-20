@@ -1,4 +1,4 @@
-> **Status: v5.0.0 local candidate, not a stable release.** Paired real-agent behavior evaluations haven't been run. What changed in each version and how far it was verified is in the [CHANGELOG](CHANGELOG.md); past reviews and validation records are in [docs/history/](docs/history/) (Chinese).
+> **Status: v6.0.0 local candidate, not a stable release.** Paired real-agent behavior evaluations haven't been run. What changed in each version and how far it was verified is in the [CHANGELOG](CHANGELOG.md); past reviews and validation records are in [docs/history/](docs/history/) (Chinese).
 
 # deciding-and-executing · From decision to delivery to a clean repo
 
@@ -9,7 +9,7 @@
 > **closing-out** owns the repository's knowledge: when a stretch of work ends, it brings the README, docs, rule files and decision records back in line with the code.
 > Scripts guard the gates, and they only claim what they can actually verify. What they can verify, they enforce. What they can't (for example, "did a human really approve this?"), they say so plainly and hand off to the host's approval mechanism.
 
-![version](https://img.shields.io/badge/version-5.0.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
+![version](https://img.shields.io/badge/version-6.0.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 > **Language note:** the skills' instructions, templates and script messages are in Simplified Chinese. Claude and GPT models read them fine and reply in your language.
 
@@ -30,6 +30,7 @@
 - [Design principles and evidence](#design-principles-and-evidence)
 - [Known limitations](#known-limitations)
 - [FAQ](#faq)
+- [Upgrading from 5.0](#upgrading-from-50)
 - [Upgrading from 4.2](#upgrading-from-42)
 - [Upgrading from 4.1](#upgrading-from-41)
 - [Upgrading from 3.x](#upgrading-from-3x)
@@ -307,6 +308,14 @@ Full rationale: [evidence.md](skills/deciding-and-executing/references/evidence.
 **Will it change my agent memory?** Not by default.
 
 **Why not use someone else's cleanup skill?** You can; the ideas overlap. closing-out shares one interface and set of conventions with deciding-and-executing, and moves more of the checking into a script.
+
+## Upgrading from 5.0
+
+In-progress workspaces need no migration and existing confirmations stay valid. What changes for you:
+- **The standard-tier decision card requires only three sections**: goal, numbered success criteria and stop-loss. Non-goals and key assumptions are optional (assumptions you do write must still be numbered A1, A2...); the high-risk tier is unchanged.
+- **Reference docs reorganised**: the five stage docs are merged into `direction.md`, `plan-and-execute.md` and `review-and-close.md`, and script details moved to `script.md`. Prompts or rules that name the old files (`stage-1-direction.md` etc.) need updating.
+- **New `de.py prove -- <command>`**: shows "this is fixed" without creating a workspace.
+- `check plan` suggests commands the repo already has for steps without a verify command, and warns about Unix-only `verify_cmd` syntax.
 
 ## Upgrading from 4.2
 
