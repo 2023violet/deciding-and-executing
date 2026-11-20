@@ -1,6 +1,6 @@
 {
   "skill": "deciding-and-executing",
-  "date": "2026-11-19",
+  "date": "2026-11-20",
   "description": "跨会话、返工代价高的工作的决策与执行流程，由脚本强制要求可复核的完成证据。遇到以下情况，在回答或动手之前先调用本技能，不要直接给建议或直接开始改：拿不定要不要做一件多日的事（迁移、重构、新系统、上线发布、改生产数据），或用户说\"先别急着回答\"\"帮我想清楚\"\"帮我理一理\"；方向已定、要拆计划、排每天做什么、定每步怎么算完成；执行中同一步反复失败、怀疑方案本身有问题或做着做着跑偏；问\"可以上线了吗\"\"从头到尾检查一遍还有什么坑\"；接着上次做、仓库里有 .decision 目录、项目做完要结案；或明确要决策卡、SOP、钢人论证、事前验尸、止损、复盘。非代码的重要决定（辞职、开店、创业）同样适用。不用于一次会话能做完的小修复、单纯解释概念、写邮件或文案，也不用于文档同步与仓库整理（那是 closing-out）。Use this skill before answering or editing anything when a multi-day effort is being decided, planned, debugged after repeated failures, checked before shipping (\"is this ready to ship?\"), resumed from a .decision folder or closed out, or when a decision card, steelman, pre-mortem or retro is asked for. Not for quick fixes, concept questions or plain writing.",
   "runs_per_query": 3,
   "threshold": 0.5,
@@ -33,15 +33,15 @@
     "platform": "win32"
   },
   "summary": {
-    "passed": 37,
+    "passed": 39,
     "total": 41,
     "positives_passed": 16,
     "positives": 18,
-    "negatives_passed": 21,
+    "negatives_passed": 23,
     "negatives": 23,
-    "error_runs": 6,
-    "unmeasured_queries": 2,
-    "seconds": 644
+    "error_runs": 0,
+    "unmeasured_queries": 0,
+    "seconds": 39
   },
   "results": [
     {
@@ -827,42 +827,42 @@
     {
       "query": "Before you answer, think it through: is a list comprehension faster than map here?",
       "should_trigger": false,
-      "trigger_rate": null,
+      "trigger_rate": 0.0,
       "runs": [
         {
-          "triggered": null,
-          "why": "error: You've hit your session limit · resets 1:20am (America/Los_Angeles)"
+          "triggered": false,
+          "why": "answered directly"
         },
         {
-          "triggered": null,
-          "why": "error: You've hit your session limit · resets 1:20am (America/Los_Angeles)"
+          "triggered": false,
+          "why": "answered directly"
         },
         {
-          "triggered": null,
-          "why": "error: You've hit your session limit · resets 1:20am (America/Los_Angeles)"
+          "triggered": false,
+          "why": "answered directly"
         }
       ],
-      "pass": null
+      "pass": true
     },
     {
       "query": "Is this one-line regex fix ready to commit? It only touches the email validator.",
       "should_trigger": false,
-      "trigger_rate": null,
+      "trigger_rate": 0.0,
       "runs": [
         {
-          "triggered": null,
-          "why": "error: You've hit your session limit · resets 1:20am (America/Los_Angeles)"
+          "triggered": false,
+          "why": "other: Grep"
         },
         {
-          "triggered": null,
-          "why": "error: You've hit your session limit · resets 1:20am (America/Los_Angeles)"
+          "triggered": false,
+          "why": "answered directly"
         },
         {
-          "triggered": null,
-          "why": "error: You've hit your session limit · resets 1:20am (America/Los_Angeles)"
+          "triggered": false,
+          "why": "other: Grep"
         }
       ],
-      "pass": null
+      "pass": true
     }
   ]
 }
