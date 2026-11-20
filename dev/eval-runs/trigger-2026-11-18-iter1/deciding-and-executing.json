@@ -1,0 +1,748 @@
+{
+  "skill": "deciding-and-executing",
+  "date": "2026-11-18",
+  "description": "跨会话、返工代价高的工作的决策与执行流程，由脚本强制要求可复核的完成证据。遇到以下情况，在回答或动手之前先调用本技能，不要直接给建议或直接开始改：拿不定要不要做一件多日的事（迁移、重构、新系统、上线发布、改生产数据），或用户说\"先别急着回答\"\"帮我想清楚\"\"帮我理一理\"；方向已定、要拆计划、排每天做什么、定每步怎么算完成；执行中同一步反复失败、怀疑方案本身有问题或做着做着跑偏；问\"可以上线了吗\"\"从头到尾检查一遍还有什么坑\"；接着上次做、仓库里有 .decision 目录、项目做完要结案；或明确要决策卡、SOP、钢人论证、事前验尸、止损、复盘。非代码的重要决定（辞职、开店、创业）同样适用。不用于一次会话能做完的小修复、单纯解释概念、写邮件或文案，也不用于文档同步与仓库整理（那是 closing-out）。Use this skill before answering or editing anything when a multi-day effort is being decided, planned, debugged after repeated failures, checked before shipping (\"is this ready to ship?\"), resumed from a .decision folder or closed out, or when a decision card, steelman, pre-mortem or retro is asked for. Not for quick fixes, concept questions or plain writing.",
+  "runs_per_query": 3,
+  "threshold": 0.5,
+  "environment": {
+    "claude_version": "2.1.246 (Claude Code)",
+    "model": "default",
+    "listing_chars": 200000,
+    "global_skills": 91,
+    "enabled_plugins": [
+      "chrome-devtools-mcp@claude-plugins-official",
+      "claude-md-management@claude-plugins-official",
+      "code-review@claude-plugins-official",
+      "code-simplifier@claude-plugins-official",
+      "commit-commands@claude-plugins-official",
+      "context7@claude-plugins-official",
+      "feature-dev@claude-plugins-official",
+      "frontend-design@claude-plugins-official",
+      "github@claude-plugins-official",
+      "hookify@claude-plugins-official",
+      "lemo-opuscar@lemolab",
+      "pr-review-toolkit@claude-plugins-official",
+      "pyright-lsp@claude-plugins-official",
+      "remember@claude-plugins-official",
+      "rust-analyzer-lsp@claude-plugins-official",
+      "semgrep@claude-plugins-official",
+      "skill-creator@claude-plugins-official",
+      "superpowers@claude-plugins-official",
+      "typescript-lsp@claude-plugins-official"
+    ],
+    "platform": "win32"
+  },
+  "summary": {
+    "passed": 33,
+    "total": 35,
+    "positives_passed": 16,
+    "positives": 18,
+    "negatives_passed": 17,
+    "negatives": 17,
+    "error_runs": 0,
+    "unmeasured_queries": 0,
+    "seconds": 373
+  },
+  "results": [
+    {
+      "query": "我在纠结要不要把团队现在用的 jenkins 全部迁到 github actions，大概 40 个 pipeline，迁一半发现不行就很尴尬，帮我想想",
+      "should_trigger": true,
+      "trigger_rate": 0.67,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "老板让我下个月牵头做客服系统改版，我现在脑子很乱不知道从哪开始，你先别给方案，帮我理一理",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "方向已经定了，用 supabase 做后端、两周内上线内测版，帮我拆一下每天干什么",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "按昨天定的计划在做第4步数据迁移，跑到一半报 duplicate key，我改了两次索引还是不行，是不是这个方案本身有问题",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "感觉做着做着偏了，本来只想做个记账小工具，现在在写多币种汇率同步……",
+      "should_trigger": true,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": false
+    },
+    {
+      "query": "项目做完了，下周要给投资人演示，帮我从头到尾检查一遍还有什么坑",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "上个季度那个增长实验失败了，想认真复盘一下到底是决策错了还是运气不好",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "用钢人论证帮我评估一下：要不要把公众号停掉专心做小红书",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "我想给自己的副业定个止损线，什么情况下该放弃，帮我想清楚",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "帮我把开一家咖啡馆这件事写成一个从调研到开业的 SOP，每步怎么判断完成了",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "帮我写一段给客户的道歉邮件，项目延期了两周",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "钢人论证和稻草人谬误有什么区别？举个例子",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "这段 python 报 KeyError: 'id'，代码贴给你了，帮我看看哪一行的问题",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "把这份会议纪要整理成 5 条要点",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "推荐几本讲决策和复盘的书",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "帮我把这个函数改成异步的",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "给我做一个下周的健身计划，一周练四次",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "SOP 这个词英文全称是什么",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "帮我润色一下这份项目复盘报告的措辞，内容不用改",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "今天中午吃什么好，在公司附近",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "这个项目做完了，.decision 里的东西帮我结个案，复盘已经写好了",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "帮我把 README 和 AGENTS.md 跟今天的改动对齐一下，改了好几个接口名",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: Skill(neat-freak) > Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Skill(neat-freak) > PowerShell"
+        },
+        {
+          "triggered": false,
+          "why": "other: Skill(neat-freak) > PowerShell"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "readme 有个错别字帮我改下",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "要把生产库的用户表迁到新 schema，几百万行数据，不能丢，先帮我想清楚再动手",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "We're planning a multi-week migration from MySQL to PostgreSQL across 12 services. Before we start, help me decide whether it's worth it and how to stage it so a failure halfway doesn't hurt.",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Direction is settled: we're rewriting the billing module. Lay out the steps, how each one gets verified, and what we do if a step keeps failing.",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "The deploy step has failed three times with the same error and the agent keeps retrying. I think we're off track. What should we do?",
+      "should_trigger": true,
+      "trigger_rate": 0.33,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "other: ListAgents"
+        }
+      ],
+      "pass": false
+    },
+    {
+      "query": "Is this ready to ship? All the tests passed yesterday but we've changed a few things since.",
+      "should_trigger": true,
+      "trigger_rate": 0.67,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": false,
+          "why": "other: PowerShell"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Pick up where the last session left off on the search-index rebuild. There's a .decision folder in the repo.",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Before I commit to moving our frontend into a monorepo, write a decision card with a steelman of both options and a pre-mortem.",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Fix the typo in the README heading.",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "What's a pre-mortem? Explain the technique in two paragraphs.",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Write a short, friendly email to the team recapping last sprint.",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "other: Read"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "This function throws KeyError: 'id'. Can you fix it? It's a one-line change.",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Update the README and AGENTS.md so they match the new API names we introduced today.",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        }
+      ],
+      "pass": true
+    }
+  ]
+}

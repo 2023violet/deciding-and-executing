@@ -15,9 +15,10 @@
    - 有验证命令（`verify_argv` / `verify_cmd`）→ 直接 `step ID --status done`，脚本当场执行命令，通过才标记完成。
    - 没有命令 → `step ID --status done --artifact 证据文件`；标准档也可以 `--evidence "文字"`，但会被记为未验证。
    - 做完但还没法验证 → `step ID --status implemented`。
-   - 验证失败 → `fail ID --note "现象" [--hours 已用小时]`，再按下方分诊表处理。
+   - 验证命令失败 → 脚本**自动计数**：同一个验证命令，上次失败、这次改了代码仍失败，才计一次修复失败。第一次失败是基线（先写测试看红灯不吃名额），代码没动的重跑不计，执行期间代码被改动的运行不算数，非 git 项目不自动计数；启动失败（退出码 127）照常计数。按下方分诊表处理。
+   - 没有验证命令的步骤失败 → `fail ID --note "现象" [--hours 已用小时]` 手动记录。刚被自动计过的同一次失败再手动报告不会重复计数。
    - 投入时间用 `--hours` 记下，超过预计一倍时 `status` 会提示一级升级。
-5. **检查升级条件**：`fail` 返回 `escalate: true` 时，步骤已自动变为 `needs_replan`，脚本会拒绝继续执行它——回到 stage-2-plan.md 的"一级升级回到这里时"。`status` 列出其他 `escalations` 时同样停下处理。
+5. **检查升级条件**：输出里 `escalate: true` 时，步骤已自动变为 `needs_replan`，脚本会拒绝继续执行它——回到 stage-2-plan.md 的"一级升级回到这里时"。`status` 列出其他 `escalations` 时同样停下处理。每条命令输出的 `next.cmd` 就是下一个合法动作。
 
 ## 问题分诊
 

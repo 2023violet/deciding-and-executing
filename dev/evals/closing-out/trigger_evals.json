@@ -78,5 +78,37 @@
   {
     "query": "清理一下我的 Mac 磁盘，C 盘满了",
     "should_trigger": false
+  },
+  {
+    "query": "We just finished refactoring the auth module and renamed several endpoints. Sync the docs and AGENTS.md with the code.",
+    "should_trigger": true
+  },
+  {
+    "query": "Wrapping up for today. Make sure the README and docs still match what we changed.",
+    "should_trigger": true
+  },
+  {
+    "query": "I'm handing this repo to a colleague tomorrow. Do a clean handoff: stale docs, leftover debug files, outdated plans.",
+    "should_trigger": true
+  },
+  {
+    "query": "CLAUDE.md and AGENTS.md now give conflicting instructions, and Codex behaves differently from Claude Code. Sort it out.",
+    "should_trigger": true
+  },
+  {
+    "query": "Write a README from scratch for this new project; there are no docs yet.",
+    "should_trigger": false
+  },
+  {
+    "query": "npm test fails with Cannot find module './legacy/old'. Fix it.",
+    "should_trigger": false
+  },
+  {
+    "query": "Run a retrospective on why our last launch slipped: was it a bad decision or bad luck?",
+    "should_trigger": false
+  },
+  {
+    "query": "Add a rule to CLAUDE.md: run lint before committing.",
+    "should_trigger": false
   }
 ]

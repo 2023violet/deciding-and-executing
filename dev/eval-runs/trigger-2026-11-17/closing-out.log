@@ -1,0 +1,27 @@
+[1/19] T I'm handing this repo to a colleague tomorrow. Do 
+[2/19] T I'm handing this repo to a colleague tomorrow. Do 
+[3/19] - Wrapping up for today. Make sure the README and do
+[4/19] - CLAUDE.md and AGENTS.md now give conflicting instr
+[5/19] - I'm handing this repo to a colleague tomorrow. Do 
+[6/19] - CLAUDE.md and AGENTS.md now give conflicting instr
+[7/19] - Write a README from scratch for this new project; 
+[8/19] T CLAUDE.md and AGENTS.md now give conflicting instr
+[9/19] - Write a README from scratch for this new project; 
+[10/19] - Write a README from scratch for this new project; 
+[11/19] - npm test fails with Cannot find module './legacy/o
+[12/19] - npm test fails with Cannot find module './legacy/o
+[13/19] - npm test fails with Cannot find module './legacy/o
+[14/19] - Run a retrospective on why our last launch slipped
+[15/19] - Run a retrospective on why our last launch slipped
+[16/19] - Run a retrospective on why our last launch slipped
+[17/19] - Add a rule to CLAUDE.md: run lint before committin
+[18/19] - Add a rule to CLAUDE.md: run lint before committin
+[19/19] - Add a rule to CLAUDE.md: run lint before committin
+{"passed": 21, "total": 28, "positives_passed": 6, "positives": 13, "negatives_passed": 15, "negatives": 15, "error_runs": 0, "unmeasured_queries": 0, "seconds": 123}
+FAIL rate=0.33 want=True  今天把 auth 模块重构完了，接口名改了好几个，帮我把文档和 AGENTS.md 同步一下
+FAIL rate=0.00 want=True  v2.3 发布完了，帮我整理一下仓库，CHANGELOG、README、docs 里的版本号和说明都过一遍
+FAIL rate=0.00 want=True  把 src/legacy 删掉之后，不知道还有哪些文档提到它，帮我查一下改掉
+FAIL rate=0.00 want=True  仓库根目录堆了好多 PLAN.md、test_debug.py、xxx_old 这种东西，帮我看看哪些能删
+FAIL rate=0.33 want=True  We just finished refactoring the auth module and renamed several endpoints. Sync the docs and AGENTS.md with the code.
+FAIL rate=0.33 want=True  Wrapping up for today. Make sure the README and docs still match what we changed.
+FAIL rate=0.33 want=True  CLAUDE.md and AGENTS.md now give conflicting instructions, and Codex behaves differently from Claude Code. Sort it out.

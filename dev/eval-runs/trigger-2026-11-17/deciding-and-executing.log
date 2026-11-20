@@ -1,0 +1,33 @@
+[1/22] - Pick up where the last session left off on the sea
+[2/22] T Pick up where the last session left off on the sea
+[3/22] - Is this ready to ship? All the tests passed yester
+[4/22] T Pick up where the last session left off on the sea
+[5/22] T Before I commit to moving our frontend into a mono
+[6/22] T Before I commit to moving our frontend into a mono
+[7/22] - Fix the typo in the README heading.
+[8/22] T Before I commit to moving our frontend into a mono
+[9/22] - Fix the typo in the README heading.
+[10/22] - Fix the typo in the README heading.
+[11/22] - What's a pre-mortem? Explain the technique in two 
+[12/22] - What's a pre-mortem? Explain the technique in two 
+[13/22] - What's a pre-mortem? Explain the technique in two 
+[14/22] - Write a short, friendly email to the team recappin
+[15/22] - Write a short, friendly email to the team recappin
+[16/22] - Write a short, friendly email to the team recappin
+[17/22] - This function throws KeyError: 'id'. Can you fix i
+[18/22] - This function throws KeyError: 'id'. Can you fix i
+[19/22] - This function throws KeyError: 'id'. Can you fix i
+[20/22] - Update the README and AGENTS.md so they match the 
+[21/22] - Update the README and AGENTS.md so they match the 
+[22/22] - Update the README and AGENTS.md so they match the 
+{"passed": 25, "total": 35, "positives_passed": 8, "positives": 18, "negatives_passed": 17, "negatives": 17, "error_runs": 0, "unmeasured_queries": 0, "seconds": 120}
+FAIL rate=0.33 want=True  我在纠结要不要把团队现在用的 jenkins 全部迁到 github actions，大概 40 个 pipeline，迁一半发现不行就很尴尬，帮我想想
+FAIL rate=0.00 want=True  老板让我下个月牵头做客服系统改版，我现在脑子很乱不知道从哪开始，你先别给方案，帮我理一理
+FAIL rate=0.00 want=True  方向已经定了，用 supabase 做后端、两周内上线内测版，帮我拆一下每天干什么
+FAIL rate=0.00 want=True  按昨天定的计划在做第4步数据迁移，跑到一半报 duplicate key，我改了两次索引还是不行，是不是这个方案本身有问题
+FAIL rate=0.00 want=True  感觉做着做着偏了，本来只想做个记账小工具，现在在写多币种汇率同步……
+FAIL rate=0.00 want=True  项目做完了，下周要给投资人演示，帮我从头到尾检查一遍还有什么坑
+FAIL rate=0.00 want=True  帮我把开一家咖啡馆这件事写成一个从调研到开业的 SOP，每步怎么判断完成了
+FAIL rate=0.00 want=True  要把生产库的用户表迁到新 schema，几百万行数据，不能丢，先帮我想清楚再动手
+FAIL rate=0.00 want=True  The deploy step has failed three times with the same error and the agent keeps retrying. I think we're off track. What should we do?
+FAIL rate=0.00 want=True  Is this ready to ship? All the tests passed yesterday but we've changed a few things since.

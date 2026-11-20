@@ -1,0 +1,608 @@
+{
+  "skill": "closing-out",
+  "date": "2026-11-18",
+  "description": "工作告一段落后，让项目里的文档、规则文件和决策记录重新与代码一致。遇到以下情况，在搜索、改文档或删文件之前先调用本技能，不要直接动手：会话收尾（\"今天先到这\"\"收个尾\"\"擦屁股\"）；重构、改名、删模块后要同步 README、docs、AGENTS.md、CLAUDE.md，或查还有哪些文档提到被删的东西；发布或里程碑后整理仓库、核对 CHANGELOG 与版本号；交接给别人或下一个 Agent（clean handoff）；CLAUDE.md 与 AGENTS.md 各写各的、冲突或引用失效；清理计划草稿、调试脚本、xxx_old 这类残留；.decision 归档后做知识同步。它比通用的整理做法多一个只读审计脚本，能查出失效链接、过期命令、规则链冲突和残留文件。不用于写新功能、修报错、整理数据或文案，也不用于复盘决策本身。Use this skill before searching, editing docs or deleting files when wrapping up a session, syncing docs, AGENTS.md or CLAUDE.md after a refactor, rename or deletion, tidying a repo after a release, preparing a clean handoff, fixing conflicting rule files, or removing leftover plan and debug files. Not for features, bug fixes or retrospectives.",
+  "runs_per_query": 3,
+  "threshold": 0.5,
+  "environment": {
+    "claude_version": "2.1.246 (Claude Code)",
+    "model": "default",
+    "listing_chars": 200000,
+    "global_skills": 91,
+    "enabled_plugins": [
+      "chrome-devtools-mcp@claude-plugins-official",
+      "claude-md-management@claude-plugins-official",
+      "code-review@claude-plugins-official",
+      "code-simplifier@claude-plugins-official",
+      "commit-commands@claude-plugins-official",
+      "context7@claude-plugins-official",
+      "feature-dev@claude-plugins-official",
+      "frontend-design@claude-plugins-official",
+      "github@claude-plugins-official",
+      "hookify@claude-plugins-official",
+      "lemo-opuscar@lemolab",
+      "pr-review-toolkit@claude-plugins-official",
+      "pyright-lsp@claude-plugins-official",
+      "remember@claude-plugins-official",
+      "rust-analyzer-lsp@claude-plugins-official",
+      "semgrep@claude-plugins-official",
+      "skill-creator@claude-plugins-official",
+      "superpowers@claude-plugins-official",
+      "typescript-lsp@claude-plugins-official"
+    ],
+    "platform": "win32"
+  },
+  "summary": {
+    "passed": 28,
+    "total": 28,
+    "positives_passed": 13,
+    "positives": 13,
+    "negatives_passed": 15,
+    "negatives": 15,
+    "error_runs": 0,
+    "unmeasured_queries": 0,
+    "seconds": 317
+  },
+  "results": [
+    {
+      "query": "今天把 auth 模块重构完了，接口名改了好几个，帮我把文档和 AGENTS.md 同步一下",
+      "should_trigger": true,
+      "trigger_rate": 0.67,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": false,
+          "why": "other: Skill(neat-freak) > PowerShell"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "收个尾吧，今天先到这，记得看看 README 里的启动命令还对不对",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "明天要把仓库交给新同事，帮我做个 clean handoff，看看有没有过时的文档和乱七八糟的临时文件",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "我们的 CLAUDE.md 和 AGENTS.md 好像各写各的，Claude Code 和 Codex 表现不一样，帮我理一理",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "v2.3 发布完了，帮我整理一下仓库，CHANGELOG、README、docs 里的版本号和说明都过一遍",
+      "should_trigger": true,
+      "trigger_rate": 0.67,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": false,
+          "why": "other: PowerShell"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "把 src/legacy 删掉之后，不知道还有哪些文档提到它，帮我查一下改掉",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "仓库根目录堆了好多 PLAN.md、test_debug.py、xxx_old 这种东西，帮我看看哪些能删",
+      "should_trigger": true,
+      "trigger_rate": 0.67,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: PowerShell"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "擦屁股阶段：这周的开发做完了，帮我把知识同步一下",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "决策流程走完了，项目结束，.decision 已经归档了，接着把整个仓库的文档对齐一下",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "帮我写一份新的 README，这个项目还没有任何文档",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: PowerShell"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "npm test 报 Cannot find module './legacy/old'，帮我修一下",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: PowerShell"
+        },
+        {
+          "triggered": false,
+          "why": "other: Grep"
+        },
+        {
+          "triggered": false,
+          "why": "other: Grep"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "帮我整理一下这份 CSV，把重复的行删掉",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "我在纠结下个季度要不要把单体拆成微服务，先别急着给答案",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "项目失败了，帮我认真复盘一下到底是决策错了还是运气不好",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "帮我写这周的周报，内容是完成了登录模块",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "把这个函数的注释改成英文",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "git 里怎么删除已经合并的本地分支",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "帮我给 CLAUDE.md 加一条规则：提交前必须跑 lint",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "帮我润色一下这份项目复盘报告的措辞",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "清理一下我的 Mac 磁盘，C 盘满了",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: Skill(storage-analyzer) > PowerShell"
+        },
+        {
+          "triggered": false,
+          "why": "other: Skill(storage-analyzer) > PowerShell"
+        },
+        {
+          "triggered": false,
+          "why": "other: Skill(storage-analyzer) > PowerShell"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "We just finished refactoring the auth module and renamed several endpoints. Sync the docs and AGENTS.md with the code.",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Wrapping up for today. Make sure the README and docs still match what we changed.",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "I'm handing this repo to a colleague tomorrow. Do a clean handoff: stale docs, leftover debug files, outdated plans.",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "CLAUDE.md and AGENTS.md now give conflicting instructions, and Codex behaves differently from Claude Code. Sort it out.",
+      "should_trigger": true,
+      "trigger_rate": 0.67,
+      "runs": [
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": true,
+          "why": "Skill(this skill)"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Write a README from scratch for this new project; there are no docs yet.",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "npm test fails with Cannot find module './legacy/old'. Fix it.",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: Grep"
+        },
+        {
+          "triggered": false,
+          "why": "other: Grep"
+        },
+        {
+          "triggered": false,
+          "why": "other: Grep"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Run a retrospective on why our last launch slipped: was it a bad decision or bad luck?",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Add a rule to CLAUDE.md: run lint before committing.",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        },
+        {
+          "triggered": false,
+          "why": "other: Glob"
+        }
+      ],
+      "pass": true
+    }
+  ]
+}

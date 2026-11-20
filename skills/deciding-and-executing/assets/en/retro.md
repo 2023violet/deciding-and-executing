@@ -20,3 +20,8 @@
 ## Where the lessons go
 | Lesson | Destination (rules file / docs / skill gotchas / not recorded) |
 |---|---|
+
+## Environment improvements (optional)
+- Finding things: what took long to find this time? Would a pointer to it save that time?
+- Automated checks: could a lint, type check, test or hook have caught this mistake? Wire up existing but unconnected checks first.
+- Tooling: which commands or tool calls were especially slow or token-heavy, and can they be simplified?

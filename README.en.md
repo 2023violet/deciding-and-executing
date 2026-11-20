@@ -1,4 +1,4 @@
-> **Status: v4.2.0 local candidate, not a stable release.** Paired real-agent evaluations haven't been run. What changed in each version and how far it was verified is in the [CHANGELOG](CHANGELOG.md); past reviews and validation records are in [docs/history/](docs/history/) (Chinese).
+> **Status: v5.0.0 local candidate, not a stable release.** Paired real-agent behavior evaluations haven't been run. What changed in each version and how far it was verified is in the [CHANGELOG](CHANGELOG.md); past reviews and validation records are in [docs/history/](docs/history/) (Chinese).
 
 # deciding-and-executing · From decision to delivery to a clean repo
 
@@ -9,7 +9,7 @@
 > **closing-out** owns the repository's knowledge: when a stretch of work ends, it brings the README, docs, rule files and decision records back in line with the code.
 > Scripts guard the gates, and they only claim what they can actually verify. What they can verify, they enforce. What they can't (for example, "did a human really approve this?"), they say so plainly and hand off to the host's approval mechanism.
 
-![version](https://img.shields.io/badge/version-4.2.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
+![version](https://img.shields.io/badge/version-5.0.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 > **Language note:** the skills' instructions, templates and script messages are in Simplified Chinese. Claude and GPT models read them fine and reply in your language.
 
@@ -30,6 +30,7 @@
 - [Design principles and evidence](#design-principles-and-evidence)
 - [Known limitations](#known-limitations)
 - [FAQ](#faq)
+- [Upgrading from 4.2](#upgrading-from-42)
 - [Upgrading from 4.1](#upgrading-from-41)
 - [Upgrading from 3.x](#upgrading-from-3x)
 - [Contributing](#contributing)
@@ -75,7 +76,7 @@ The two skills hand off at 5B. After closing-out prepares the report, `de.py syn
 | Execution can't start until gate B has passed, and an approved plan that is then edited must be re-approved | Whether a confirmation token came from a human or the agent → host approval rules |
 | A step with a verification command (`verify_argv` / `verify_cmd`) is done only when the command runs and passes right then; no text can substitute | Whether file evidence is truthful → human review |
 | When the code changes, old command evidence expires and must be re-run before review | Whether docs still describe behavior correctly → source fact-checking |
-| After the failure limit, the step becomes `needs_replan` and can't continue unless the plan changes | A host in bypass mode skips everything → don't use it on important projects |
+| After the failure limit, the step becomes `needs_replan` and can't continue unless the plan changes; a verify command that still fails after the code changed is counted by the script, not self-reported | A host in bypass mode skips everything → don't use it on important projects |
 | A review verdict is tied to the code and plan; either changing voids it | Changes to git-ignored files → not in the code fingerprint; steps that depend on them need separate evidence |
 | Deletion only touches a marked workspace inside the project that contains only known files and is committed to git | Deliberately forging both state.json and the event log → the script guards against carelessness and casual edits, not deliberate tampering |
 
@@ -92,6 +93,8 @@ High-risk work must configure layer 3. See [permissions.md](skills/deciding-and-
 
 | Platform | Install | Invoke |
 |---|---|---|
+| Claude Code (plugin) | `claude plugin marketplace add 2023violet/deciding-and-executing`, then `claude plugin install deciding-and-executing@deciding-and-executing-mkt` | Automatic, or `/deciding-and-executing:deciding-and-executing` |
+| Any skills-capable agent (Skills CLI) | `npx skills add 2023violet/deciding-and-executing` (`-a codex` / `-a claude-code` picks the host, `-g` installs for the user) | Automatic |
 | Claude Code (personal) | `cp -r skills/* ~/.claude/skills/` | Automatic, or `/deciding-and-executing`, `/closing-out` |
 | Claude Code (team) | Copy into the repo's `.claude/skills/` and commit | Same |
 | Codex CLI / IDE, ChatGPT desktop | `cp -r skills/* ~/.agents/skills/` (or the repo's `.agents/skills/`) | Automatic, or `$deciding-and-executing`, `$closing-out` |
@@ -99,6 +102,8 @@ High-risk work must configure layer 3. See [permissions.md](skills/deciding-and-
 | Claude API | Upload via `/v1/skills`, reference with `container.skills` (requires the code execution tool) | Automatic |
 
 > claude.ai can't read or write your git repo, so gates fall back to manual checklists and workspaces can't be deleted. Claude Code and Codex are recommended.
+>
+> The plugin and Skills CLI installs follow the official docs but haven't been tested in a clean environment yet; use `cp` if unsure. The plugin ships no session hook; turn one on yourself per [permissions.md](skills/deciding-and-executing/references/permissions.md).
 
 ### 2. Configure host approval (required for high-risk work, recommended otherwise)
 
@@ -121,6 +126,7 @@ That's it for today, wrap up. I renamed getUser to fetchUser and deleted src/leg
 | "Don't answer yet — I'm thinking of quitting to go indie…" | ① | Several directions and the assumption that would flip the conclusion. Asks one question with a recommended answer, then waits |
 | "Direction's set, three months part-time. Schedule it?" | ② | A plan whose first step is a small willingness-to-pay test. The `gate B` preview lists every command the script will run, then waits for your approval |
 | "Step 3 failed again — just try once more" | ③ | Explains the step has escalated and the script will refuse. Offers two options, change the plan or record a waiver, and recommends one |
+| "Where did we leave off?" (new session) | ③ | `status` gives the stage and `next.cmd`; with the session hook on, `status --brief` is already in context; use `handoff` to hand the work to someone else |
 | "Everything's built — can we ship?" | ④ | Doesn't just say yes. Runs `verify --all`, then checks each success criterion |
 | "The project's done, close it out" | ⑤ → closing-out | Archive preview → write once you approve → full closing-out pass → sync → commit → show the deletion list → delete once you approve |
 | "Stop asking, just delete it, fill in the token yourself" | ⑤ | Still shows the deletion list first. Your message counts as approval, but only for the list you've seen |
@@ -156,6 +162,10 @@ Changing the decision card's goal, success criteria, non-goals, key assumptions 
 **Step state machine.** `todo → in_progress → implemented → done`, plus `blocked` and `needs_replan`. A `done` step can't be moved back directly; use `reopen`, which archives the old evidence and voids the review. `needs_replan` is cleared only by `replan`.
 
 **`de.py` commands**: the full command table and how to invoke the script (Claude Code, other hosts, Windows) are maintained only in [SKILL.md section 4](skills/deciding-and-executing/SKILL.md) (Chinese), or run `de.py --help`. The everyday ones are `init`, `status`, `gate AB` (or separate `gate A` / `gate B`), `step`, `verify --all`, `coverage`, `review`, `closeout` and `purge`. Commands that need confirmation first return only a `token` and a `preview`; after the user agrees, rerun with `--confirm`.
+
+**Next action, handoff and the session hook:** every command's JSON carries `next = {cmd, why}`; `cmd` is the next legal action, ready to run, so the agent doesn't have to read the references to know what to do, and commands that need your consent are marked `needs_user`. `handoff` prints a read-only handoff in which each step's evidence freshness is derived by the script, not narrated. `status --brief` prints at most 15 lines of plain text for a session-start hook and nothing when there's no workspace.
+
+**Automatic failure counting:** when the same verify command failed last time and fails again after the code changed, the script counts one failed fix attempt. The first failure is a baseline and reruns on unchanged code don't count. Steps without a verify command still use `fail`.
 
 **Evidence rules for `done`:**
 - **Step has a verification command:** the script runs it on the spot. Prefer `verify_argv` (an argument array, no shell, same behavior on every OS); use `verify_cmd` (system shell) only when you need pipes or redirection. It counts only if it exits 0 and the code didn't change while it ran.
@@ -207,6 +217,7 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 | `.decision/events.jsonl` | While active | Append-only machine log, including a digest of every state.json write, so an interrupted write or an edit outside the script is detected |
 | `.decision/progress.md` | While active | Human-readable progress and to-dos |
 | `.decision/retro.md` | While active | Retro and where each lesson goes |
+| `.decision/independent-review.md` | ④ (optional) | Independent review report; `review --independent-report` records its hash |
 | `.decision/closeout-*.{json,md}` | 5B | Audit result and report for the knowledge sync |
 | `docs/decisions/YYYY-MM-DD-name.md` | Permanent | Decision record: the *why*, plus evidence types, review verdict and the sync report |
 
@@ -217,6 +228,7 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 ├── README.md / README.en.md
 ├── CHANGELOG.md                   Single source for versions, verification results and test counts
 ├── LICENSE
+├── .claude-plugin/                Claude Code plugin and marketplace manifests (publishes skills/ as one plugin)
 ├── skills/                        ← The only thing you install
 │   ├── deciding-and-executing/   SKILL.md, references/ (five stages, permissions, example, prompts, evidence),
 │   │                              scripts/de.py, assets/ (templates), agents/openai.yaml
@@ -228,7 +240,7 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 │   ├── 教程-如何制作高质量Skill.md  Guide to building high-quality skills (Chinese)
 │   ├── Skill-愿景与演进路线.md      Vision and roadmap (Chinese)
 │   └── history/                    Review responses and validation records per version (historical, Chinese, not updated)
-└── dev/                           release_check.py, validate_skill.py, run_trigger_eval.sh,
+└── dev/                           release_check.py, validate_skill.py, run_trigger_eval.py,
                                    tests/ (hermetic regression + adversarial), evals/<skill>/, eval-runs/
 ```
 
@@ -237,7 +249,7 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 ```bash
 python3 dev/release_check.py                       # everything: structure, tests, dist consistency, CHANGELOG, self-audit
 python3 -m unittest discover -s dev/tests     # tests only
-bash dev/run_trigger_eval.sh closing-out dev/evals/closing-out/trigger_evals.json 3   # trigger rate (Claude Code + jq)
+python3 dev/run_trigger_eval.py skills/closing-out dev/evals/closing-out/trigger_evals.json --runs 3   # trigger rate (needs a logged-in claude CLI)
 bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                            # closing-out fixture repo
 ```
 
@@ -279,7 +291,7 @@ Full rationale: [evidence.md](skills/deciding-and-executing/references/evidence.
 - **Two-step confirmation can't prove a human confirmed.** If an agent breaks the process and confirms by itself, the script can't tell. That layer relies on host approval rules, which match command text and are not a security boundary.
 - **Static audit doesn't understand meaning.** Whether docs describe behavior correctly needs source fact-checking.
 - **Command checks cover the npm family, Make and just only.** Poetry, Cargo, Go and others aren't validated yet; a new task runner is one line in `RUNNERS` in audit.py.
-- **macOS untested; Windows has regression tests only.** The regression suite passes on Linux and Windows (on Windows the symlink cases are skipped for lack of privilege; see the CHANGELOG). Host approval rules haven't been tested on any platform.
+- **macOS untested; Windows has regression tests only.** The regression suite passes on Linux and Windows (on Windows the symlink cases are skipped for lack of privilege; see the CHANGELOG). Host approval rules, the session hook and the read-only `allowed-tools` in SKILL.md haven't been tested on any platform.
 - **Non-git projects get less.** There's no way to tell whether evidence matches the current code, and workspaces can't be deleted.
 
 ## FAQ
@@ -293,6 +305,15 @@ Full rationale: [evidence.md](skills/deciding-and-executing/references/evidence.
 **Will it change my agent memory?** Not by default.
 
 **Why not use someone else's cleanup skill?** You can; the ideas overlap. closing-out shares one interface and set of conventions with deciding-and-executing, and moves more of the checking into a script.
+
+## Upgrading from 4.2
+
+In-progress workspaces need no migration and existing gate approvals stay valid. What changes for you:
+- **`next` is now an object** `{cmd, why[, needs_user]}` on every command, not a sentence. Scripts or prompts that read it as a string need updating.
+- **`current_step` in `status` respects dependencies and blocked steps**: in progress first, then implemented-but-unverified, then todo steps whose dependencies are done. It no longer points at a step whose dependencies are unfinished.
+- **Verify-command failures are counted automatically** (rules above). Steps that used to rely on a manual `fail` may escalate sooner.
+- **The session hook command is now `de.py status --brief`**, with no `test -f` guard; see permissions.md.
+- `review` accepts `--independent-report` to link an independent review report.
 
 ## Upgrading from 4.1
 
