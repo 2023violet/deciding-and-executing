@@ -132,5 +132,73 @@ class TestProve(Base):
             rmtree(d0, ignore_errors=True)
 
 
+class TestVerifySuggestions(Base):
+    def no_verify_plan(self):
+        self.set_card()
+        self.set_plan(st=steps({2: {"verify_cmd": None}}))
+
+    def check_plan(self):
+        code, d = self.de("check", "plan")
+        return d
+
+    def test_package_json_scripts_suggested(self):
+        write(self.d, "package.json", '{"scripts": {"test": "jest", "lint": "eslint ."}}')
+        self.no_verify_plan()
+        d = self.check_plan()
+        argvs = [x["argv"] for x in d["suggested_verify_argv"]]
+        self.assertIn(["npm", "test"], argvs)
+        self.assertIn(["npm", "run", "lint"], argvs)
+        self.assertTrue(any("suggested_verify_argv" in w for w in d["warnings"]))
+
+    def test_lockfile_picks_package_manager(self):
+        write(self.d, "package.json", '{"scripts": {"test": "vitest"}}')
+        write(self.d, "pnpm-lock.yaml", "lockfileVersion: 9\n")
+        self.no_verify_plan()
+        self.assertEqual(self.check_plan()["suggested_verify_argv"][0]["argv"], ["pnpm", "test"])
+
+    def test_pytest_makefile_cargo_go(self):
+        write(self.d, "pyproject.toml", "[tool.pytest.ini_options]\naddopts = '-q'\n")
+        write(self.d, "Makefile", "test:\n\tpytest\ncheck:\n\truff .\nCC := gcc\n")
+        write(self.d, "Cargo.toml", "[package]\nname='x'\n")
+        write(self.d, "go.mod", "module x\n")
+        self.no_verify_plan()
+        argvs = [x["argv"] for x in self.check_plan()["suggested_verify_argv"]]
+        for want in (["python", "-m", "pytest"], ["make", "test"], ["make", "check"], ["cargo", "test"],
+                     ["go", "test", "./..."]):
+            self.assertIn(want, argvs)
+        self.assertNotIn(["make", "CC"], argvs)
+
+    def test_no_suggestions_when_every_step_has_a_command(self):
+        write(self.d, "package.json", '{"scripts": {"test": "jest"}}')
+        self.set_card()
+        self.set_plan(st=steps({1: {"verify_argv": PY_OK}, 2: {"verify_cmd": None, "verify_argv": PY_OK}}))
+        self.assertEqual(self.check_plan()["suggested_verify_argv"], [])
+
+    def test_suggestions_never_change_the_plan(self):
+        write(self.d, "package.json", '{"scripts": {"test": "jest"}}')
+        self.no_verify_plan()
+        with open(self.p("plan.json"), "rb") as f:
+            before = f.read()
+        self.check_plan()
+        with open(self.p("plan.json"), "rb") as f:
+            self.assertEqual(before, f.read())
+
+
+class TestPosixSyntaxWarning(Base):
+    def warnings_for(self, cmd):
+        self.set_card()
+        self.set_plan(st=steps({2: {"verify_cmd": cmd}}))
+        return [w for w in self.de("check", "plan")[1]["warnings"] if "Unix shell" in w]
+
+    def test_posix_only_constructs_warned(self):
+        for cmd in ("test -f ok.flag", "[ -d build ]", "npm test > /dev/null", "echo $(date)",
+                    "grep 'a b' file.txt", "export X=1 && npm test"):
+            self.assertTrue(self.warnings_for(cmd), cmd)
+
+    def test_portable_commands_not_warned(self):
+        for cmd in ("npm test", "python -m pytest -q", "npm run build && npm test", 'python -c "print(1)"'):
+            self.assertFalse(self.warnings_for(cmd), cmd)
+
+
 if __name__ == "__main__":
     unittest.main()

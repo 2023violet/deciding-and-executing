@@ -27,8 +27,8 @@
 一天内的小任务可以只有 3 步，省略里程碑和事前验尸；完成判据和验证不能省。
 
 **验证命令**：
-- 优先写 `verify_argv`（参数数组，不经 shell，各系统行为一致），例如 `["python", "-m", "pytest", "tests/test_order.py"]`。
-- 需要管道、重定向时才写 `verify_cmd`，它交给系统 shell（Windows 上是 cmd.exe，`test -f`、`> /dev/null` 跑不通）。
+- 优先写 `verify_argv`（参数数组，不经 shell，各系统行为一致），例如 `["python", "-m", "pytest", "tests/test_order.py"]`。不知道写什么时，`check plan` 的 `suggested_verify_argv` 会列出仓库里已有的测试和检查入口（package.json 脚本、pytest、Makefile、just、cargo、go），合适就照抄。
+- 需要管道、重定向时才写 `verify_cmd`，它交给系统 shell（Windows 上是 cmd.exe，`test -f`、`> /dev/null` 跑不通；`check plan` 会对这类写法给警告）。
 - 验证命令不要往项目里写未被 Git 忽略的文件：执行期间代码一变，这次结果就不算数。
 - 不能写命令的（访谈、截图、用户确认），完成时用 `--artifact` 指向证据文件。真实 GUI、硬件、外部 API 写明观察方式，做不到的标 `NOT_VERIFIED`。
 - 怎么为不同交付类型选验证手段，见 [verification-strategy.md](verification-strategy.md)。

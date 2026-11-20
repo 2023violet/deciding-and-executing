@@ -725,6 +725,89 @@ def gate_a_hash(ci):
 
 
 # ---------------------------------------------------------------- 计划校验
+_POSIX_ONLY = (
+    (r"(?:^|[;&|(\s])test\s+-[a-zA-Z]\b", "test -X"),
+    (r"(?:^|[;&|(\s])\[\s+-[a-zA-Z]\b", "[ -X ]"),
+    (r"/dev/null", "/dev/null"),
+    (r"\$\(", "$(...)"),
+    (r"`", "反引号"),
+    (r"(?:^|\s)'[^']*'", "单引号参数"),
+    (r"(?:^|[;&|]\s*)export\s+\w+=", "export"),
+)
+
+
+def posix_only_syntax(cmd):
+    """verify_cmd 里只有 Unix shell 认识的写法（cmd.exe 下会失败）；这是提示，不是完整的解析。"""
+    return [label for pattern, label in _POSIX_ONLY if cmd and re.search(pattern, cmd)]
+
+
+# 常见的测试与检查入口：给"没有验证命令"的步骤提供候选 verify_argv
+_SCRIPT_KEYS = ("test", "check", "lint", "typecheck", "build")
+
+
+def suggest_verify_commands(root):
+    """从仓库已有的配置里找能当验证命令的入口。只建议，不写进计划。"""
+    found = []
+
+    def add(argv, source):
+        if argv not in [x["argv"] for x in found]:
+            found.append({"argv": argv, "source": source})
+
+    pkg = os.path.join(root, "package.json")
+    if os.path.isfile(pkg):
+        try:
+            with open(pkg, encoding="utf-8") as f:
+                scripts = (json.load(f) or {}).get("scripts") or {}
+        except (OSError, ValueError, AttributeError):
+            scripts = {}
+        tool = "pnpm" if os.path.exists(os.path.join(root, "pnpm-lock.yaml")) else \
+            "yarn" if os.path.exists(os.path.join(root, "yarn.lock")) else "npm"
+        for key in _SCRIPT_KEYS:
+            if isinstance(scripts, dict) and key in scripts:
+                add([tool, "test"] if key == "test" and tool != "yarn" else [tool, "run", key],
+                    "package.json scripts.%s" % key)
+    pytest_markers = ["pytest.ini", "conftest.py", "tox.ini"]
+    pyproject = os.path.join(root, "pyproject.toml")
+    has_pytest = any(os.path.exists(os.path.join(root, m)) for m in pytest_markers)
+    if not has_pytest and os.path.isfile(pyproject):
+        try:
+            with open(pyproject, encoding="utf-8") as f:
+                has_pytest = "[tool.pytest" in f.read()
+        except OSError:
+            pass
+    if has_pytest:
+        add(["python", "-m", "pytest"], "pytest 配置")
+    for name in ("Makefile", "makefile", "GNUmakefile"):
+        path = os.path.join(root, name)
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    targets = set(re.findall(r"(?m)^([A-Za-z0-9_.-]+)\s*:(?!=)", f.read()))
+            except OSError:
+                targets = set()
+            for key in _SCRIPT_KEYS:
+                if key in targets:
+                    add(["make", key], "%s 目标 %s" % (name, key))
+            break
+    for name in ("justfile", "Justfile", ".justfile"):
+        path = os.path.join(root, name)
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    recipes = set(re.findall(r"(?m)^@?([A-Za-z0-9_-]+)(?:[ \t]+[^:\n]*)?:(?!=)", f.read()))
+            except OSError:
+                recipes = set()
+            for key in _SCRIPT_KEYS:
+                if key in recipes:
+                    add(["just", key], "%s 配方 %s" % (name, key))
+            break
+    if os.path.isfile(os.path.join(root, "Cargo.toml")):
+        add(["cargo", "test"], "Cargo.toml")
+    if os.path.isfile(os.path.join(root, "go.mod")):
+        add(["go", "test", "./..."], "go.mod")
+    return found[:8]
+
+
 def plan_errors(plan, ci):
     errors, warnings = [], []
     steps, risk = plan["steps"], plan.get("risk", "standard")
@@ -752,6 +835,10 @@ def plan_errors(plan, ci):
             errors.append("步骤 %s 同时写了 verify_cmd 和 verify_argv，只能保留一种" % sid)
         if risk == "high" and not has_verify(s):
             warnings.append("高风险计划中步骤 %s 没有验证命令（verify_argv / verify_cmd）：只能用文件证据完成" % sid)
+        posix = posix_only_syntax(str(s.get("verify_cmd") or ""))
+        if posix:
+            warnings.append("步骤 %s 的 verify_cmd 用了 Unix shell 专用写法（%s），在 Windows 的 cmd.exe 上会失败；"
+                            "能改就写成 verify_argv" % (sid, "、".join(posix)))
     graph = {sid_key(s.get("id")): [sid_key(d) for d in s.get("depends_on", [])] for s in steps}
     seen, stack = set(), set()
 
@@ -1127,8 +1214,13 @@ def cmd_check(a, ctx):
              else light_next(ctx, ci=ci)}, 0 if not errors else 1)
     plan = load_plan(ctx)
     errors, warnings = plan_errors(plan, ci)
+    missing = [sid_key(s.get("id")) for s in plan["steps"] if not has_verify(s)]
+    suggestions = suggest_verify_commands(ctx.root) if missing else []
+    if suggestions:
+        warnings.append("步骤 %s 没有验证命令；仓库里已有可用的入口：%s（见 suggested_verify_argv，合适就写进对应步骤的 verify_argv）"
+                        % (missing, "、".join(" ".join(x["argv"]) for x in suggestions)))
     out({"ok": not errors, "errors": errors, "warnings": warnings, "step_count": len(plan["steps"]),
-         "risk": plan.get("risk", "standard"),
+         "risk": plan.get("risk", "standard"), "suggested_verify_argv": suggestions,
          "next": nx(ctx, ("check", "plan"), "next.fix_plan", n=len(errors)) if errors
          else light_next(ctx, plan=plan, ci=ci)}, 0 if not errors else 1)
 

@@ -18,7 +18,7 @@
 | `list` | 列出本仓库所有工作区 |
 | `status` [`--brief`] | 当前阶段、确认状态、升级与下一步；`--brief` 是给会话开始钩子用的 ≤15 行纯文本 |
 | `handoff` [`--json`] | 只读交接摘要：步骤与证据新鲜度、升级、假设、最近事件、下一步、文件路径 |
-| `check card` / `check plan` | 只校验，不改状态 |
+| `check card` / `check plan` | 只校验，不改状态；`check plan` 会为没有验证命令的步骤列出仓库里已有的候选命令，并提示只在 Unix 下能用的 `verify_cmd` 写法 |
 | `gate A` / `gate B` / `gate AB` [`--confirm`] | 确认决策卡 / 计划；`AB` 一次确认两者，仅标准档 |
 | `preflight` | 只读预检：分支、未提交改动、将要执行的验证命令及其风险提示 |
 | `coverage` | 只读列出成功标准与步骤证据的对应关系，不自动宣称满足 |
