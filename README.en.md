@@ -1,4 +1,4 @@
-> **v4.1.0 local candidate (not a stable release).** R1 paired real-agent trials are not yet run. R2 adds read-only `preflight` and `coverage`; R3 strengthens regression checks. See [validation report](docs/R1-R2-R3-验收报告.md).
+> **Status: v4.2.0 local candidate, not a stable release.** Paired real-agent evaluations haven't been run. What changed in each version and how far it was verified is in the [CHANGELOG](CHANGELOG.md); past reviews and validation records are in [docs/history/](docs/history/) (Chinese).
 
 # deciding-and-executing · From decision to delivery to a clean repo
 
@@ -9,7 +9,7 @@
 > **closing-out** owns the repository's knowledge: when a stretch of work ends, it brings the README, docs, rule files and decision records back in line with the code.
 > Scripts guard the gates, and they only claim what they can actually verify. What they can verify, they enforce. What they can't (for example, "did a human really approve this?"), they say so plainly and hand off to the host's approval mechanism.
 
-![version](https://img.shields.io/badge/version-4.0.1-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
+![version](https://img.shields.io/badge/version-4.2.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 > **Language note:** the skills' instructions, templates and script messages are in Simplified Chinese. Claude and GPT models read them fine and reply in your language.
 
@@ -30,6 +30,7 @@
 - [Design principles and evidence](#design-principles-and-evidence)
 - [Known limitations](#known-limitations)
 - [FAQ](#faq)
+- [Upgrading from 4.1](#upgrading-from-41)
 - [Upgrading from 3.x](#upgrading-from-3x)
 - [Contributing](#contributing)
 - [License and acknowledgements](#license-and-acknowledgements)
@@ -72,11 +73,11 @@ The two skills hand off at 5B. After closing-out prepares the report, `de.py syn
 | Guaranteed (enforced by script) | Not guaranteed (stated, handed to something else) |
 |---|---|
 | Execution can't start until gate B has passed, and an approved plan that is then edited must be re-approved | Whether a confirmation token came from a human or the agent → host approval rules |
-| A step with a `verify_cmd` is done only when the command runs and passes right then; no text can substitute | Whether file evidence is truthful → human review |
+| A step with a verification command (`verify_argv` / `verify_cmd`) is done only when the command runs and passes right then; no text can substitute | Whether file evidence is truthful → human review |
 | When the code changes, old command evidence expires and must be re-run before review | Whether docs still describe behavior correctly → source fact-checking |
 | After the failure limit, the step becomes `needs_replan` and can't continue unless the plan changes | A host in bypass mode skips everything → don't use it on important projects |
-| A review verdict is tied to the code and plan; either changing voids it | |
-| Deletion only touches a marked workspace inside the project that contains only known files and is committed to git | |
+| A review verdict is tied to the code and plan; either changing voids it | Changes to git-ignored files → not in the code fingerprint; steps that depend on them need separate evidence |
+| Deletion only touches a marked workspace inside the project that contains only known files and is committed to git | Deliberately forging both state.json and the event log → the script guards against carelessness and casual edits, not deliberate tampering |
 
 **Three layers of authorization:**
 1. **Script.** Two-step confirmation prevents one-shot mistakes and confirmations of content that has since changed.
@@ -148,34 +149,21 @@ Full walkthroughs: the [deciding-and-executing example](skills/deciding-and-exec
 | ④ Review & retro | `review --verdict pass` requires: all steps done, command evidence that matches the current code, and no blockers. The retro's three sections must have real content |
 | ⑤ Close-out | 5A `archive --apply`; 5B `sync`; 5C `purge` two-step confirmation |
 
-Changing the decision card's goal, success criteria, non-goals, stop-loss or verdict invalidates gates A and B. Changing a plan step's structure invalidates gate B. Until you re-confirm, execution commands are refused.
+On the standard tier, `gate AB` confirms gates A and B at once and `closeout` does 5A and 5B in one step; the high-risk tier still confirms them separately.
+
+Changing the decision card's goal, success criteria, non-goals, key assumptions (except their status column), stop-loss, verdict or max fails invalidates gates A and B. Changing the plan's name, `first_step`, `if_then` or a step's structure invalidates gate B. Until you re-confirm, execution commands are refused.
 
 **Step state machine.** `todo → in_progress → implemented → done`, plus `blocked` and `needs_replan`. A `done` step can't be moved back directly; use `reopen`, which archives the old evidence and voids the review. `needs_replan` is cleared only by `replan`.
 
-**`de.py` commands** (call the script by its full path inside the skill folder; any subdirectory of the project uses the same workspace)
-
-| Command | What it does |
-|---|---|
-| `init [--name] [--risk standard\|high]` | Creates the workspace. Never overwrites an existing one and refuses a non-empty unknown directory |
-| `check card` / `check plan` | Validate only |
-| `gate A` / `gate B` [`--confirm TOKEN`] | Two-step gate confirmation |
-| `status` | Stage, gates, current step, stale evidence, text-only evidence, escalations, event-log consistency |
-| `step ID --status S [--evidence TEXT \| --artifact FILE] [--hours H]` | State transition; see evidence rules below |
-| `verify ID` / `verify --all` | The script runs `verify_cmd` and records the exit code, an output digest and the code fingerprint |
-| `fail ID --note` | Records a failure; at the limit the step becomes `needs_replan` |
-| `replan ID --note [--waive REASON --confirm]` | Clears escalation. The step must have changed, or a waiver is recorded with two-step confirmation |
-| `reopen ID --reason` | Redo a finished step |
-| `review --verdict pass\|fix\|fail [--blocker …] [--confirm]` | Records the review verdict |
-| `archive [--outcome 完成\|止损\|放弃] [--apply]` | Writes the decision record (completed / stop-loss / abandoned). Deletes nothing |
-| `sync --report` (`--audit-json` optional, fixed workspace output only) | Runs a fresh static audit, then records the knowledge sync |
-| `purge [--confirm TOKEN]` | Deletes the workspace |
-| `show` | Prints the plan table |
+**`de.py` commands**: the full command table and how to invoke the script (Claude Code, other hosts, Windows) are maintained only in [SKILL.md section 4](skills/deciding-and-executing/SKILL.md) (Chinese), or run `de.py --help`. The everyday ones are `init`, `status`, `gate AB` (or separate `gate A` / `gate B`), `step`, `verify --all`, `coverage`, `review`, `closeout` and `purge`. Commands that need confirmation first return only a `token` and a `preview`; after the user agrees, rerun with `--confirm`.
 
 **Evidence rules for `done`:**
-- **Step has a `verify_cmd`:** the script runs it on the spot. It counts only if it exits 0 and the code didn't change while it ran.
+- **Step has a verification command:** the script runs it on the spot. Prefer `verify_argv` (an argument array, no shell, same behavior on every OS); use `verify_cmd` (system shell) only when you need pipes or redirection. It counts only if it exits 0 and the code didn't change while it ran.
 - **Otherwise:** `--artifact FILE`, recorded with its hash.
 - **Standard tier only:** `--evidence TEXT` is accepted but recorded as unverified, and flagged separately in status, review and the decision record.
 - **High-risk tier:** text evidence is rejected.
+
+Artifact evidence is re-checked (path, hash, code fingerprint) by `review --verdict pass` and a completed `archive`. The **code fingerprint** covers tracked git changes plus the contents of untracked files (32 MiB per file, 128 MiB total), but **not git-ignored files**. Evidence is only as good as the verification command's coverage of the real requirement.
 
 Exit codes: `0` success; `1` check failed; `2` usage or data error; `3` refused by a gate or confirmation needed (returns `token` and `preview`).
 
@@ -198,7 +186,7 @@ python3 scripts/audit.py [--root .] [--base main] [--rename OLD=NEW ...] [--excl
 | Check | What it finds |
 |---|---|
 | `rules-chain` | A directory's effective rule chain (one AGENTS file per level, repo root down to that directory) exceeds Codex's default 32 KiB; CLAUDE.md and AGENTS.md coexist without an import; CLAUDE.md over 200 lines; an AGENTS.override.md exists; CLAUDE.local.md isn't gitignored |
-| `rule-refs` | `@imports`, paths, or `npm` / `make` commands in rule files that don't exist |
+| `rule-refs` | `@imports`, paths, or `npm` / `make` / `just` commands in rule files that don't exist |
 | `doc-commands` | Commands in the README and docs that don't exist |
 | `dead-links` | Relative links to missing files (code blocks and inline code are ignored) |
 | `stale-names` | Leftovers of `--rename` names. Skips history files and correctly handles a new name that is a prefix of the old one, or the reverse |
@@ -214,8 +202,9 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 |---|---|---|
 | `.decision/.de-workspace` | While active | Workspace marker; deletion only acts on marked directories |
 | `.decision/decision-card.md` | While active | Verdict, goal, numbered success criteria, non-goals, numbered assumptions, structured stop-loss |
-| `.decision/plan.json` | While active | Steps, gate records, evidence, review verdict |
-| `.decision/events.jsonl` | While active | Append-only machine log. The event is written before the plan, so an interrupted write is detected |
+| `.decision/plan.json` | While active | Plan structure (steps, criteria, verification commands, dependencies), written by the agent |
+| `.decision/state.json` | While active | Status, evidence, gate records, review verdict; written only by the script |
+| `.decision/events.jsonl` | While active | Append-only machine log, including a digest of every state.json write, so an interrupted write or an edit outside the script is detected |
 | `.decision/progress.md` | While active | Human-readable progress and to-dos |
 | `.decision/retro.md` | While active | Retro and where each lesson goes |
 | `.decision/closeout-*.{json,md}` | 5B | Audit result and report for the knowledge sync |
@@ -234,9 +223,11 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 │   └── closing-out/              SKILL.md, references/ (routing, placement, example),
 │                                  scripts/audit.py, assets/report.md, agents/openai.yaml
 ├── dist/                          Packaged .skill files (release_check verifies they match skills/)
+├── experimental/                  Experimental third skill independent-verification (not installed by default; see README-完整交付说明.md)
 ├── docs/
-│   ├── 内审报告-v4.0.0.md          Point-by-point response to the external review, plus self-audit findings (Chinese)
-│   └── 教程-如何制作高质量Skill.md  Guide to building high-quality skills (Chinese)
+│   ├── 教程-如何制作高质量Skill.md  Guide to building high-quality skills (Chinese)
+│   ├── Skill-愿景与演进路线.md      Vision and roadmap (Chinese)
+│   └── history/                    Review responses and validation records per version (historical, Chinese, not updated)
 └── dev/                           release_check.py, validate_skill.py, run_trigger_eval.sh,
                                    tests/ (hermetic regression + adversarial), evals/<skill>/, eval-runs/
 ```
@@ -284,18 +275,18 @@ Full rationale: [evidence.md](skills/deciding-and-executing/references/evidence.
 
 ## Known limitations
 
-- **Agent-level behavior hasn't been independently evaluated.** The regression tests prove the scripts behave correctly. Whether an agent actually shows you the preview before confirming can only be measured by behavior evals, and those haven't been run on a real agent yet.
+- **Agent-level behavior hasn't been independently evaluated.** The regression tests prove the scripts behave correctly. Whether an agent actually shows you the preview before confirming can only be measured by behavior evals, and those haven't been run on a real agent yet. Unit tests can't show that triggering, approval or long-task benefits hold in Claude Code or Codex.
 - **Two-step confirmation can't prove a human confirmed.** If an agent breaks the process and confirms by itself, the script can't tell. That layer relies on host approval rules, which match command text and are not a security boundary.
 - **Static audit doesn't understand meaning.** Whether docs describe behavior correctly needs source fact-checking.
-- **Command checks cover npm and Make only.** Poetry, Cargo, Go and others aren't validated yet.
-- **Tested on Linux only.** Path and symlink handling is written to be portable, but Windows and macOS are unverified.
+- **Command checks cover the npm family, Make and just only.** Poetry, Cargo, Go and others aren't validated yet; a new task runner is one line in `RUNNERS` in audit.py.
+- **macOS untested; Windows has regression tests only.** The regression suite passes on Linux and Windows (on Windows the symlink cases are skipped for lack of privilege; see the CHANGELOG). Host approval rules haven't been tested on any platform.
 - **Non-git projects get less.** There's no way to tell whether evidence matches the current code, and workspaces can't be deleted.
 
 ## FAQ
 
 **Does everything go through the process?** No — see the tier table. A ten-minute fix gets no process.
 
-**The script runs commands from plan.json — is that safe?** It only runs `verify_cmd`, and each command is listed in the `gate B` preview for you to approve. If anyone edits a command afterwards, gate B is invalidated and the script refuses to run it.
+**The script runs commands from plan.json — is that safe?** It only runs the steps' verification commands, and each command is listed in the `gate B` preview for you to approve. If anyone edits a command afterwards, gate B is invalidated and the script refuses to run it.
 
 **Will closing-out delete my files?** No. The audit is read-only; deletions are only proposed.
 
@@ -303,11 +294,15 @@ Full rationale: [evidence.md](skills/deciding-and-executing/references/evidence.
 
 **Why not use someone else's cleanup skill?** You can; the ideas overlap. closing-out shares one interface and set of conventions with deciding-and-executing, and moves more of the checking into a script.
 
+## Upgrading from 4.1
+
+In-progress workspaces need no manual migration. From 4.2, status, evidence and gate records live in `.decision/state.json`; the next write command moves them out of `plan.json`, and existing gate approvals stay valid. After that, `status`, `evidence` and similar fields in `plan.json` are ignored.
+
 ## Upgrading from 3.x
 
 4.0.0 has breaking changes. To migrate an in-progress 3.x workspace:
 1. **Decision card:** start the verdict with 做 / 改后做 / 放弃 (do / do-with-changes / abandon). Number the success criteria. Rewrite the stop-loss as three lines: trigger state / deadline / action.
-2. **Plan:** add `covers` to each step, and `verify_cmd` where a command can verify it.
+2. **Plan:** add `covers` to each step, and `verify_argv` (or `verify_cmd`) where a command can verify it.
 3. **Marker:** create a `.de-workspace` marker in the workspace, or `init` a new one and move the content over.
 4. **Gates:** run `gate A` and then `gate B` to re-confirm.
 5. **Close-out:** `archive --remove-workspace` is gone; use `archive --apply` → `sync` → `purge`.
@@ -332,8 +327,3 @@ Released under the [MIT License](LICENSE). The methodology draws on several sour
 - Open-source skill libraries including [anthropics/skills](https://github.com/anthropics/skills), [openai/skills](https://github.com/openai/skills), [obra/superpowers](https://github.com/obra/superpowers) and [KKKKhazix/khazix-skills](https://github.com/KKKKhazix/khazix-skills).
 
 Most of the 4.0.0 changes came from an external engineering review. The full source list is in [the guide](docs/教程-如何制作高质量Skill.md).
-
-
-## R2 validation visibility
-
-Run `de.py preflight` to inspect Git state and planned shell commands, and `de.py coverage` to see criterion-to-evidence mappings. Neither command proves shell commands are safe or that acceptance requirements are satisfied. R1 agent-level comparisons remain NOT_RUN.

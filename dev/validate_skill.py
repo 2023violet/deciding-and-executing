@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """validate_skill.py — 按 Agent Skills 开放规范 + Claude/Codex 的额外约束检查一个技能目录。
 
-用法: python3 dev/validate_skill.py deciding-and-executing
+用法: python3 dev/validate_skill.py skills/deciding-and-executing
 输出 JSON；有 errors 时退出码 1。仅用标准库。
 
 检查项（来源见 教程-如何制作高质量Skill.md 第 4 节）:
@@ -25,7 +25,7 @@ ALLOWED_KEYS = {"name", "description", "license", "compatibility", "metadata", "
 
 def frontmatter(text):
     """优先用 PyYAML 做真实解析（与上传端行为一致）；没有安装时退回简易解析并给出提示。"""
-    m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+    m = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", text, re.S)
     if not m:
         return None, text
     try:
@@ -113,7 +113,7 @@ def main(skill_dir):
             if n > 100 and not re.search(r"^##\s*(目录|Contents)", content, re.M):
                 warnings.append("%s 有 %d 行但没有目录" % (rel, n))
             for l in re.findall(r"\]\(([^)#\s]+\.md)\)", content):
-                target = os.path.normpath(os.path.join("references", l))
+                target = os.path.normpath(os.path.join("references", l)).replace(os.sep, "/")
                 if not os.path.exists(os.path.join(skill_dir, target)):
                     errors.append("%s 链接不存在: %s" % (rel, l))
                 elif target not in linked:
@@ -134,9 +134,9 @@ def main(skill_dir):
         for f in sorted(os.listdir(sd)):
             if f.endswith(".py"):
                 r = subprocess.run([sys.executable, os.path.join(sd, f), "--help"],
-                                   capture_output=True, text=True)
+                                   capture_output=True)
                 if r.returncode != 0:
-                    errors.append("scripts/%s --help 失败: %s" % (f, r.stderr[:200]))
+                    errors.append("scripts/%s --help 失败: %s" % (f, r.stderr.decode("utf-8", "replace")[:200]))
 
     print(json.dumps({"ok": not errors, "skill": name, "errors": errors,
                       "warnings": warnings, "info": info}, ensure_ascii=False, indent=2))

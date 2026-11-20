@@ -4,7 +4,6 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import re
 
 
 def score(manifest, oracle, records):
@@ -44,7 +43,7 @@ def score(manifest, oracle, records):
         pairs.setdefault(item['case_id'],{})[item['arm']]=item
     valid=[case for case,arms in pairs.items() if set(arms)=={'stage4','independent'}
            and all(x['state']=='SCORED_FROM_OPERATOR_RECORD' for x in arms.values())]
-    state='PAIRED_EXPLORATORY_RESULTS' if len(valid)==len(pairs) else 'INSUFFICIENT_PAIRED_DATA'
+    state='PAIRED_EXPLORATORY_RESULTS' if pairs and len(valid)==len(pairs) else 'INSUFFICIENT_PAIRED_DATA'
     return {'study':'independent-v02-stage4-pilot','state':state,'paired_cases_scored':len(valid),
             'expected_pairs':len(pairs),'trials':summaries,
             'limits':['Judge/operator records are not cryptographically authenticated.',
@@ -58,7 +57,7 @@ def main():
     ap.add_argument('--records-dir',required=True)
     a=ap.parse_args()
     operator=Path(a.operator_dir)
-    print(json.dumps(score(json.loads((operator/'manifest.json').read_text()),
-          json.loads((operator/'oracle.json').read_text()),Path(a.records_dir)),ensure_ascii=False,indent=2))
+    print(json.dumps(score(json.loads((operator/'manifest.json').read_text(encoding='utf-8')),
+          json.loads((operator/'oracle.json').read_text(encoding='utf-8')),Path(a.records_dir)),ensure_ascii=False,indent=2))
 
 if __name__=='__main__':main()

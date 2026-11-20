@@ -25,7 +25,7 @@ for i in $(seq 0 $((count - 1))); do
   for _ in $(seq 1 "$RUNS"); do
     if check_triggered "$q"; then hits=$((hits + 1)); fi
   done
-  rate=$(echo "scale=2; $hits / $RUNS" | bc)
+  rate=$(awk -v h="$hits" -v r="$RUNS" 'BEGIN { printf "%.2f", h / r }')
   ok=$( { [ "$want" = "true" ] && [ $((hits * 2)) -ge "$RUNS" ]; } || { [ "$want" = "false" ] && [ $((hits * 2)) -lt "$RUNS" ]; } && echo PASS || echo FAIL)
   [ "$ok" = PASS ] && pass=$((pass + 1))
   printf '%s\t%s\t期望=%s\t%s\n' "$ok" "$rate" "$want" "$q"

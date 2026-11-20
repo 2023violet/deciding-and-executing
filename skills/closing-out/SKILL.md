@@ -3,7 +3,7 @@ name: closing-out
 description: 当一段工作告一段落，需要让项目里的文档、规则文件、决策记录跟上代码现状时使用：会话结束前收尾、里程碑或发布后整理、交接给别人或下一个 Agent、改名或删模块后担心文档过时、CLAUDE.md 和 AGENTS.md 冲突或引用失效、清理计划草稿和调试残留，或用户说"收尾""擦屁股""同步一下文档""整理仓库""clean handoff"。即使用户只说"今天先到这"，只要本次改动影响了别人会读的文档，也应使用。不用于写新功能、排查报错、整理一份数据或文案，也不用于复盘决策和做法本身。
 license: MIT
 metadata:
-  version: "2.0.1"
+  version: "2.1.0"
   language: zh-CN
   companion: deciding-and-executing
 ---
@@ -55,7 +55,7 @@ metadata:
 - [ ] 7 用户确认后删除，再跑一次审计
 ```
 
-**1 审计**：运行 `python3 scripts/audit.py`；本次改过名字时加 `--rename 旧名=新名`（可重复），对比分支时加 `--base main`，测试夹具等不该检查的目录用 `--exclude 'path/*'`。脚本只读，不改任何文件。读 `inventory` 了解规则文件、各目录的有效规则链和改动范围，读 `findings` 了解问题。
+**1 审计**：从项目目录运行本技能目录下的 `scripts/audit.py`（下文简写为 `audit.py`；Claude Code 中是 `python "${CLAUDE_SKILL_DIR}/scripts/audit.py"`，其他宿主用技能安装位置的绝对路径；macOS / Linux 用 `python3`，Windows 用 `python`）；本次改过名字时加 `--rename 旧名=新名`（可重复），对比分支时加 `--base main`，测试夹具等不该检查的目录用 `--exclude 'path/*'`。脚本只读，不改任何文件。读 `inventory` 了解规则文件、各目录的有效规则链和改动范围，读 `findings` 了解问题。
 
 **审计能证明什么、不能证明什么**——它只做静态审计（输出里 `evidence_level: static` 和 `limits`）。`error 0` 只表示已实现的规则没发现问题，**不表示文档正确**：README 说"用 SQLite"而代码已换成 PostgreSQL，审计发现不了。`complete: false`（输出被截断）时，结果不能当作通过，调大 `--max-findings` 重跑。
 
@@ -108,6 +108,7 @@ metadata:
 - deciding-and-executing 的 ⑤ 收尾分三步：5A 它自己归档；**5B 由本技能做完整档**，先将完整收尾报告存为 `.decision/closeout-report.md`，运行 `de.py sync --report .decision/closeout-report.md`；它会现场执行配套 `audit.py`，将真实结果写入 `.decision/closeout-audit.json`，并核验完整性、当前指纹及错误数；5C 它自己删除工作区。
 - 本技能发现阻断问题时，停在 5B 修复，不能因为决策记录已经写好就当作结案。
 - 审计会识别含 `.de-workspace` 标记的目录：其内容不参与文档检查，也不计入代码指纹；计划全部完成却未归档、或已同步待删除时给出提示。
+- 代码指纹与 de.py 同协议：Git 已跟踪的改动加上未跟踪文件的**内容**（单文件 32 MiB、总量 128 MiB 上限），不含被 Git 忽略的文件。`sync` 必须现场运行审计，任何预先写好的审计 JSON 都不算数。
 - 复盘得到的教训，按 placement.md 的规则决定进规则文件、docs 还是丢弃。
 
 ## 8. 资源索引
@@ -117,8 +118,3 @@ metadata:
 - [references/example.md](references/example.md)：第一次使用、或不确定报告写到什么程度时读
 - [assets/report.md](assets/report.md)：第 6 步的报告模板
 - `scripts/audit.py`：只读审计，`--help` 查看全部参数与检查项
-
-
-### v2.0.1 审计契约补充
-
-本 Skill 的只读审计指纹现在包含 Git 未跟踪文件**内容**（单文件最多 32 MiB、总量最多 128 MiB），但不覆盖被 Git 忽略的文件。`deciding-and-executing sync` 必须现场运行此审计脚本，不能把任何预写 JSON 当作审计已执行的可信证据。静态审计仍不证明文档语义与代码一致，必须单独完成源码事实核查。

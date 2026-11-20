@@ -7,8 +7,9 @@
   3. dist/*.skill 的内容与 skills/ 逐文件一致（防止发布旧包）
   4. 每个技能的 metadata.version 在 CHANGELOG.md 里有对应条目
   5. 用 closing-out 审计本仓库自身：error 0 且输出完整
+  6. 外层交付 ZIP（build_release.py 的产物）与源码逐文件一致，解压后中文路径完整、审计无 error
 
-用法: python3 dev/release_check.py            # 在仓库根目录运行
+用法: python3 dev/release_check.py [--outer-zip 路径]   # 在仓库根目录运行
 输出 JSON；全部通过退出码 0，否则 1。
 """
 import argparse
@@ -26,10 +27,16 @@ import zipfile
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(ROOT, "dev", "tests"))
 from helpers import ENV  # noqa: E402
+sys.path.insert(0, os.path.join(ROOT, "dev"))
+from build_release import RELEASE_NAME, walk_files  # noqa: E402  与打包使用同一套排除规则与版本号
+
+# 历史评测记录与实验性技能故意埋了缺陷的评测夹具，不参与自审计
+AUDIT_EXCLUDES = ["--exclude", "dev/eval-runs/*", "--exclude", "experimental/independent-verification/cases/*"]
 
 
 def sh(args, timeout=900):
-    r = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, env=ENV, timeout=timeout)
+    r = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       env=ENV, timeout=timeout)
     return r.returncode, r.stdout, r.stderr
 
 
@@ -49,10 +56,9 @@ def file_hashes_dir(d):
 def validate_outer(archive):
     """解压最终 ZIP，核对 Unicode 文件名、所有文件哈希与文档链接。"""
     expected = {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
-                for p in pathlib.Path(ROOT).rglob("*") if p.is_file()
-                and "__pycache__" not in p.parts and not p.name.endswith(".pyc")}
+                for p in walk_files(pathlib.Path(ROOT))}
     with zipfile.ZipFile(archive) as z, tempfile.TemporaryDirectory(prefix="skill-release-") as td:
-        rootname = "deciding-and-executing-v4.1.0"
+        rootname = RELEASE_NAME
         actual = {}
         for obj in z.infolist():
             name = obj.filename
@@ -68,13 +74,14 @@ def validate_outer(archive):
             return {"ok": False, "reason": "外层 ZIP 与源码不一致", "paths": sorted(set(actual.items()) ^ set(expected.items()))[:6]}
         z.extractall(td)
         base = pathlib.Path(td, rootname)
-        for required in ["docs/教程-如何制作高质量Skill.md", "docs/内审报告-v4.0.0.md",
-                         "docs/v4.0.1-独立验收记录.md", "docs/Skill-愿景与演进路线.md"]:
+        for required in ["docs/教程-如何制作高质量Skill.md", "docs/history/内审报告-v4.0.0.md",
+                         "docs/history/v4.0.1-独立验收记录.md", "docs/Skill-愿景与演进路线.md"]:
             if not (base / required).is_file():
                 return {"ok": False, "reason": "Unicode 路径解压后缺失", "file": required}
         run = subprocess.run([sys.executable, str(base / "skills/closing-out/scripts/audit.py"),
-                              "--root", str(base), "--exclude", "dev/eval-runs/*"],
-                             capture_output=True, text=True, timeout=180)
+                              "--root", str(base)] + AUDIT_EXCLUDES,
+                             capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             env=ENV, timeout=180)
         try:
             result = json.loads(run.stdout)
         except ValueError:
@@ -86,8 +93,8 @@ def validate_outer(archive):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--outer-zip", default=os.path.join(os.path.dirname(ROOT), "deciding-and-executing-v4.1.0.zip"),
-                    help="最终交付 ZIP；必查，默认使用仓库同级 deciding-and-executing-v4.1.0.zip")
+    ap.add_argument("--outer-zip", default=os.path.join(os.path.dirname(ROOT), RELEASE_NAME + ".zip"),
+                    help="最终交付 ZIP；必查，默认使用仓库同级 %s.zip（先运行 build_release.py）" % RELEASE_NAME)
     a = ap.parse_args()
     results, ok = [], True
     skills = sorted(x for x in os.listdir(os.path.join(ROOT, "skills"))
@@ -114,8 +121,9 @@ def main():
     code, o, e = sh([sys.executable, "-m", "unittest", "discover", "-s", "dev/tests"])
     m = re.search(r"Ran (\d+) tests", e)
     results.append({"check": "tests", "ok": code == 0,
-                    "detail": "%s 项，%.1f 秒，%s" % (m.group(1) if m else "?", time.time() - t, e.strip().splitlines()[-1])})
-    code, o, _ = sh([sys.executable, "skills/closing-out/scripts/audit.py", "--exclude", "dev/eval-runs/*"])
+                    "detail": "%s 项，%.1f 秒，%s" % (m.group(1) if m else "?", time.time() - t,
+                                                    (e.strip().splitlines() or ["无输出"])[-1])})
+    code, o, _ = sh([sys.executable, "skills/closing-out/scripts/audit.py"] + AUDIT_EXCLUDES)
     audit_result = json.loads(o)
     results.append({"check": "self-audit", "ok": audit_result["ok"], "detail": dict(audit_result["summary"], complete=audit_result["complete"])})
     # 外层 ZIP 校验是正式发布的必需闸门（无文件也应 FAIL）。

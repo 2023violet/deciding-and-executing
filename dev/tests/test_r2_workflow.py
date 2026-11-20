@@ -6,7 +6,7 @@ import sys
 import unittest
 sys.path.insert(0, os.path.dirname(__file__))
 from test_de import Base
-from helpers import write, DE, call
+from helpers import write, DE, call, commit_all, git
 
 class TestR2Commands(Base):
     def de(self, *args, cwd=None):
@@ -14,7 +14,7 @@ class TestR2Commands(Base):
         # the verification command timeout, so allow enough time for subprocess startup.
         return call(DE, cwd or self.d, *args, timeout=180)
 
-    def test_preflight_read_only_without_workspace(self):
+    def test_preflight_read_only_with_workspace(self):
         before = open(self.p('plan.json'), 'rb').read()
         code, value = self.de('preflight')
         self.assertEqual(code, 0, value)
@@ -31,6 +31,15 @@ class TestR2Commands(Base):
         self.assertGreater(value['dirty_file_count'], 0)
         self.assertIn('user-change.txt', value['dirty_paths_preview'])
         self.assertTrue(os.path.isfile(os.path.join(self.d, 'user-change.txt')))
+
+    def test_preflight_rename_is_one_dirty_path(self):
+        write(self.d, 'old-name.txt', 'x')
+        commit_all(self.d)
+        git(self.d, 'mv', 'old-name.txt', 'new-name.txt')
+        code, value = self.de('preflight')
+        self.assertEqual(code, 0, value)
+        self.assertEqual(value['dirty_paths_preview'], ['new-name.txt'])
+        self.assertEqual(value['dirty_file_count'], 1)
 
     def test_preflight_reports_commands_without_running_them(self):
         self.set_card()

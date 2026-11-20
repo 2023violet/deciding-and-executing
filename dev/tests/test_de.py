@@ -8,7 +8,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from helpers import DE, AUDIT, call, commit_all, init_repo, write  # noqa: E402
+from helpers import DE, AUDIT, call, commit_all, init_repo, rmtree, write  # noqa: E402
 
 CARD = """# 决策卡：测试项目
 
@@ -43,6 +43,16 @@ CARD = """# 决策卡：测试项目
 RETRO = "# 复盘\n\n## 原本预期\n3 家付费\n\n## 实际发生\n2 家付费\n\n## 差异的原因\n价格偏高\n"
 
 
+def write_json(path, obj):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False)
+
+
+def read_json(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def steps(over=None):
     over = over or {}
     base = [
@@ -64,7 +74,7 @@ class Base(unittest.TestCase):
         self.de("init", "--name", "测试项目")
 
     def tearDown(self):
-        shutil.rmtree(self.d, ignore_errors=True)
+        rmtree(self.d, ignore_errors=True)
 
     def de(self, *args, cwd=None):
         return call(DE, cwd or self.d, *args)
@@ -77,13 +87,19 @@ class Base(unittest.TestCase):
 
     def set_plan(self, risk="standard", st=None):
         path = self.p("plan.json")
-        plan = json.load(open(path, encoding="utf-8"))
+        plan = self.plan()
         plan.update(risk=risk, steps=st or steps(), first_step=1,
                     if_then=[{"if": "a", "then": "b"}, {"if": "c", "then": "d"}])
-        json.dump(plan, open(path, "w", encoding="utf-8"), ensure_ascii=False)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(plan, f, ensure_ascii=False)
 
     def plan(self):
-        return json.load(open(self.p("plan.json"), encoding="utf-8"))
+        with open(self.p("plan.json"), encoding="utf-8") as f:
+            return json.load(f)
+
+    def state(self):
+        with open(self.p("state.json"), encoding="utf-8") as f:
+            return json.load(f)
 
     def confirm(self, *args):
         code, d = self.de(*args)
@@ -128,7 +144,10 @@ class TestWorkspaceSafety(Base):
     def test_symlink_workspace_refused(self):
         outside = tempfile.mkdtemp()
         try:
-            os.symlink(outside, os.path.join(self.d, "ws"))
+            try:
+                os.symlink(outside, os.path.join(self.d, "ws"))
+            except OSError as e:  # Windows 默认没有创建符号链接的权限
+                self.skipTest("无法创建符号链接：%s" % e)
             code, d = self.de("init", "--dir", "ws")
             self.assertEqual(code, 2)
             self.assertIn("符号链接", d["reason"])
@@ -180,7 +199,7 @@ class TestWorkspaceSafety(Base):
         write(self.d, ".decision/retro.md", RETRO)
         self.assertEqual(self.de("archive", "--apply")[0], 0)
         code, audit = call(AUDIT, self.d)
-        json.dump(audit, open(self.p("closeout-audit.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        write_json(self.p("closeout-audit.json"), audit)
         write(self.d, ".decision/closeout-report.md", "# 收尾报告\n\n文档与代码一致，静态审计 error 0，无需修改。\n")
         return audit
 
@@ -217,7 +236,7 @@ class TestWorkspaceSafety(Base):
         code, d = self.de("sync", "--audit-json", self.p("closeout-audit.json"),
                           "--report", self.p("closeout-report.md"))
         self.assertEqual(code, 0, d)
-        saved = json.load(open(self.p("closeout-audit.json"), encoding="utf-8"))
+        saved = read_json(self.p("closeout-audit.json"))
         self.assertTrue(saved["complete"])
         self.assertEqual(saved["summary"]["error"], 0)
         self.assertIn("README.md", saved["inventory"]["changed_files"])
@@ -244,7 +263,7 @@ class TestStateMachine(Base):
         self.ready()
         plan = self.plan()
         plan["steps"][0]["verify"] = "换了验证方法"
-        json.dump(plan, open(self.p("plan.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        write_json(self.p("plan.json"), plan)
         self.assertEqual(self.de("step", "1", "--status", "in_progress")[0], 3)
         self.assertEqual(self.de("status")[1]["stage"], "plan")
 
@@ -260,6 +279,48 @@ class TestStateMachine(Base):
         self.set_card(CARD.replace("| 未验证 |", "| 已证实 |"))
         self.assertEqual(self.de("status")[1]["gates"], {"A": "valid", "B": "valid"})
 
+    def test_raising_max_fails_invalidates_gates(self):
+        # 放宽失败上限会让升级永不触发，必须重新确认
+        self.ready()
+        self.set_card(CARD.replace("修复失败次数上限：2", "修复失败次数上限：99"))
+        st = self.de("status")[1]
+        self.assertEqual(st["gates"], {"A": "stale", "B": "stale"})
+        self.assertEqual(self.de("step", "1", "--status", "in_progress")[0], 3)
+        code, d = self.de("gate", "A")
+        self.assertEqual(code, 3, d)
+        self.assertEqual(d["preview"]["修复失败次数上限"], 99)
+
+    def test_unconfirmed_max_fails_raise_does_not_delay_escalation(self):
+        # 闸门失效期间 fail 仍可记录，但按已确认的上限升级，放宽不能先用后批
+        self.ready()
+        self.de("step", "1", "--status", "in_progress")
+        self.set_card(CARD.replace("修复失败次数上限：2", "修复失败次数上限：99"))
+        self.assertFalse(self.de("fail", "1", "--note", "x")[1]["escalate"])
+        code, d = self.de("fail", "1", "--note", "x")
+        self.assertTrue(d["escalate"], d)
+        self.assertEqual(d["max_fails"], 2)
+
+    def test_unconfirmed_max_fails_tightening_applies_immediately(self):
+        self.ready()
+        self.de("step", "1", "--status", "in_progress")
+        self.set_card(CARD.replace("修复失败次数上限：2", "修复失败次数上限：1"))
+        self.assertTrue(self.de("fail", "1", "--note", "x")[1]["escalate"])
+
+    def test_confirmed_max_fails_raise_applies(self):
+        self.ready()
+        self.set_card(CARD.replace("修复失败次数上限：2", "修复失败次数上限：3"))
+        self.confirm("gate", "AB")
+        self.de("step", "1", "--status", "in_progress")
+        self.assertFalse(self.de("fail", "1", "--note", "x")[1]["escalate"])
+        self.assertFalse(self.de("fail", "1", "--note", "x")[1]["escalate"])
+        self.assertTrue(self.de("fail", "1", "--note", "x")[1]["escalate"])
+
+    def test_default_max_fails_keeps_gates(self):
+        # 显式写默认值与不写等价：沿用默认上限的已有工作区升级后闸门仍有效
+        self.ready()
+        self.set_card(CARD.replace("## 升级阈值\n- 修复失败次数上限：2\n", ""))
+        self.assertEqual(self.de("status")[1]["gates"], {"A": "valid", "B": "valid"})
+
     def test_escalation_blocks_until_replan(self):
         self.ready()
         self.de("step", "1", "--status", "in_progress")
@@ -272,7 +333,7 @@ class TestStateMachine(Base):
         self.assertEqual(self.de("replan", "1", "--note", "没改")[0], 3)       # 未修改步骤
         plan = self.plan()
         plan["steps"][0]["title"] = "访谈（改为当面）"
-        json.dump(plan, open(self.p("plan.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        write_json(self.p("plan.json"), plan)
         code, d = self.de("replan", "1", "--note", "改为当面访谈")
         self.assertEqual(code, 0, d)
         self.assertEqual(d["gates"]["B"], "stale")
@@ -301,10 +362,10 @@ class TestStateMachine(Base):
         self.confirm("review", "--verdict", "pass")
         code, d = self.de("reopen", "1", "--reason", "发现访谈样本有偏差")
         self.assertEqual(code, 0)
-        s = self.plan()["steps"][0]
+        s = self.state()["steps"]["1"]
         self.assertEqual(s["evidence"], [])
         self.assertEqual(s["evidence_history"][0]["evidence"][0]["text"], "访谈记录")
-        self.assertNotIn("review", self.plan())
+        self.assertNotIn("review", self.state())
 
     def test_dependencies_enforced(self):
         self.ready()
@@ -314,6 +375,14 @@ class TestStateMachine(Base):
         self.ready(st=steps({1: {"irreversible": True}}))
         code, d = self.de("step", "1", "--status", "in_progress")
         self.assertEqual(code, 3)
+        self.assertTrue(d["needs_confirmation"])
+        self.confirm("step", "1", "--status", "in_progress")
+
+    def test_irreversible_confirmation_not_bypassed_via_blocked(self):
+        self.ready(st=steps({1: {"irreversible": True}}))
+        self.assertEqual(self.de("step", "1", "--status", "blocked")[0], 0)
+        code, d = self.de("step", "1", "--status", "in_progress")
+        self.assertEqual(code, 3, d)
         self.assertTrue(d["needs_confirmation"])
         self.confirm("step", "1", "--status", "in_progress")
 
@@ -340,7 +409,7 @@ class TestEvidenceAndReview(Base):
         os.remove(os.path.join(self.d, "ok.flag"))
         code, d = self.de("step", "2", "--status", "done", "--evidence", "应该已经通过了")
         self.assertEqual(code, 3)
-        self.assertEqual(self.plan()["steps"][1]["status"], "in_progress")
+        self.assertEqual(self.state()["steps"]["2"]["status"], "in_progress")
         write(self.d, "ok.flag", "1")
         code, d = self.de("step", "2", "--status", "done")
         self.assertEqual((code, d["evidence_kind"]), (0, "command"))

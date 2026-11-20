@@ -1,4 +1,4 @@
-# 宿主审批规则：让真人介入关键操作
+# 宿主配置：审批规则与可选的会话钩子
 
 `de.py` 的两步确认只能保证"内容展示过且没变"，不能保证"是人点了同意"。脚本分辨不了按回车的是人还是 Agent。唯一能让真人介入的，是运行 Agent 的宿主（Claude Code、Codex）在执行命令前弹出的审批。
 
@@ -11,10 +11,10 @@
 | `de.py purge --confirm …` | 删除工作区 |
 | `de.py step … --confirm …` | 开始一个标记为不可逆的步骤 |
 | `de.py replan … --waive …` | 不改计划就继续一个反复失败的步骤 |
-| `de.py gate … --confirm …` | 确认方向或计划（计划里含将要执行的 verify_cmd） |
+| `de.py gate … --confirm …` | 确认方向或计划（计划里含将要执行的验证命令） |
 | `de.py review … --confirm …` | 确认交付结论 |
 
-只读命令（`status`、`check`、`show`）和不带 `--confirm` 的预览不需要审批。
+只读命令（`status`、`check`、`show`、`preflight`、`coverage`）和不带 `--confirm` 的预览不需要审批。
 
 ## Claude Code
 
@@ -57,8 +57,34 @@ prefix_rule(
 - 可以用 `codex execpolicy check --pretty --rules <文件> -- <命令>` 检查规则是否生效。
 - rules 功能标注为实验性；文档没有说明在 never 审批策略下 prompt 是否仍然生效，请在你的配置下实测。
 - 上面的前缀会让这几个子命令的预览调用也弹出审批。嫌打扰的话，只保留 `purge`。
+- 前缀里的解释器名必须和实际调用一致：Windows 上通常是 `python` 或 `py`，需要为实际使用的写法各加一条规则。
+
+## 可选：新会话开始时自动显示状态（Claude Code）
+
+"新会话先运行 `status`"是最容易被跳过的一步。Claude Code 的 SessionStart 钩子的输出会进入会话上下文，可以把它交给宿主来做。在 `.claude/settings.json` 里加入（路径换成你的安装位置；Windows 上把 `python3` 换成 `python`，并确认钩子使用的 shell 支持 `test`）：
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f .decision/.de-workspace && python3 ~/.claude/skills/deciding-and-executing/scripts/de.py status || true"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+配好后开一个新会话，确认 `status` 的输出出现在上下文里；没有出现就不要依赖它，仍按 SKILL.md 先手动运行 `status`。
 
 ## 配好之后怎么验证
+
+以下针对审批规则：
 
 1. 在一个测试仓库里走到 purge 预览，让 Agent 带 `--confirm` 执行。
 2. 应该看到宿主弹出审批；拒绝后命令不执行，`.decision/` 仍然存在。

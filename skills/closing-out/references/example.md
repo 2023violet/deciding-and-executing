@@ -8,7 +8,7 @@
 ## 1 审计
 
 ```
-python3 scripts/audit.py --rename getUser=fetchUser
+audit.py --rename getUser=fetchUser
 ```
 
 主要发现：

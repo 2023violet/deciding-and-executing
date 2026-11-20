@@ -1,162 +1,139 @@
-# 完整示例：餐馆点单小程序
+# 完整示例：订单服务从 SQLite 迁到 PostgreSQL
 
-一件事从头走到尾，用来校准"每个交接件写到什么程度算合格"。
+一项典型的多日开发任务从头走到尾，用来校准"每个交接件写到什么程度算合格"。非代码的重要决定（例如要不要辞职创业）见 [example-decision.md](example-decision.md)。
 
 ## 目录
-- 用户的起点
-- ① 定方向（节选）
-- 闸门 A：决策卡
-- ② 计划与闸门 B
+- 用户的起点与档位
+- ① 定方向（简短）
+- 决策卡
+- ② 计划与 gate AB
 - ③ 执行：一次一级升级
-- ③ 执行：一次二级升级
-- 阶段复盘
-- ④ 交付审查
+- ④ 审查
 - ⑤ 收尾
 
-## 用户的起点
+## 用户的起点与档位
 
-> 先别急着回答。我在考虑辞职全职做独立开发，做一个面向小餐馆的点单小程序，你怎么看？
+> 订单服务要从 SQLite 迁到 PostgreSQL，下周开始做，大概三四天。帮我排一下，别漏东西。
 
-不能分流掉：辞职难以撤回，返工代价大 → 走流程。
+跨多天、多个步骤、有一步动生产数据 → **标准档**，生产切换那一步标为不可逆。没有一步需要别人审批或花钱，所以不用高风险档。
 
-## ① 定方向（节选）
+```
+$ de.py init --name 订单服务迁移到 PostgreSQL
+$ de.py preflight          # 只读：当前分支 main、1 个未提交文件（用户的，不动它）
+```
 
-**重述**：真正的问题不是"小程序值不值得做"，而是"在不知道有没有人付费之前，要不要先承担辞职的成本"。
+## ① 定方向（简短）
 
-**隐含假设**：小餐馆愿意按月付费（A1）；你的技术能力足以独立做完（A2）；积蓄够撑到盈利（A3）。
+方向基本已定，只做两件事：找出能翻转结论的假设，补齐止损。
 
-**方向**：
-1. 辞职全职做——成立条件：A1 已有证据且积蓄 ≥ 12 个月。
-2. 不辞职，业余三个月验证付费意愿——成立条件：每周能拿出约 10 小时。代价：进度慢。
-3. 不做产品，先给餐馆做点单系统咨询/代部署——成立条件：只想验证需求，不在乎产品化。
+- **A1**：ORM 生成的查询在 PostgreSQL 上行为一致。不成立就要先改写 `reports/` 里的原生 SQL，工期翻倍。
+- 只问用户一个问题："切换时能接受 10 分钟只读窗口吗？我的推荐答案是能，这样不用做双写。" 用户：能。
 
-**能翻转结论的假设**：A1。只要有餐馆真的付钱，方向 1 和 2 的差距就只剩节奏问题。
-
-**只问一个问题**：
-> 你现在有没有任何一家餐馆，愿意为这类工具付过钱或明确报过价？我的推荐答案是"还没有"——如果是这样，我建议走方向 2。
-
-用户："没有，只有两个老板口头说感兴趣。" → 结论：**改后做**（走方向 2）。
-
-## 闸门 A：决策卡
+## 决策卡
 
 ```markdown
-# 决策卡：餐馆点单小程序验证
+# 决策卡：订单服务迁移到 PostgreSQL
 
-- 日期：2026-10-10
-- 结论：改后做（先不辞职，业余验证付费意愿）
-- 置信度及依据：中。2 位店主口头感兴趣，但没有任何付费证据。
+- 日期：2026-11-16
+- 结论：改后做（先迁读路径，再迁写路径）
+- 置信度及依据：中，依据是在生产数据副本上的一次试迁移
 
 ## 目标
-三个月内确认小餐馆是否愿意为扫码点单付费。
+订单服务在 PostgreSQL 上运行，迁移不丢数据。
 
 ## 成功标准
-1. 到 2027-01-10 至少 3 家店签约并完成首月付费（每家 ≥ 99 元/月）
+1. 订单相关测试在 PostgreSQL 上全部通过 [CI 任务 pg-tests]
+2. 迁移后两库的订单行数与金额合计一致
+3. 切换期间只读窗口不超过 10 分钟
 
 ## 非目标
-- 不做外卖、不做会员系统、不做多门店后台
+- 不改表结构，不顺手做分库
 
 ## 关键假设
 | # | 假设 | 若不成立的后果 | 状态 |
 |---|---|---|---|
-| A1 | 小餐馆愿意为点单工具按月付费 | 整个方向不成立 | 未验证 |
-| A2 | 业余每周 10 小时足够做出 MVP | 时间线翻倍 | 未验证 |
+| A1 | ORM 查询在 PostgreSQL 上行为一致 | 先改写 reports/ 的原生 SQL，工期翻倍 | 未验证 |
 
 ## 止损条件
-- 触发状态：还没有 1 家店愿意预付或签意向书
-- 期限：2026-11-30
-- 动作：停止开发，转为方向 3（只做部署咨询）
-
-## 升级阈值
-- 修复失败次数上限：2
+- 触发状态：试迁移仍有行数不一致，且找不到原因
+- 期限：2026-11-27
+- 动作：停止迁移，保留 SQLite，把发现写进决策记录
 ```
 
-第一版成功标准里还有一条"用户体验更好"，`check card` 给出警告"可能无法验证"。和用户确认后删掉——体验问题会在付费意愿里体现。
+成功标准里写了 `[CI 任务 pg-tests]` 这样的方括号也没问题：只有模板里原样的占位符才算"没填"。
 
-然后 `gate A` 拿到 preview，展示给用户；用户回复"可以"后，带 `--confirm` 重跑，闸门 A 通过。
-
-## ② 计划与闸门 B
-
-`plan.json` 的核心部分：
+## ② 计划与 gate AB
 
 ```json
 {
+  "name": "订单服务迁移到 PostgreSQL",
   "risk": "standard",
   "steps": [
-    {"id": 1, "title": "访谈 5 家小餐馆店主", "done_when": "5 份访谈记录，含是否愿付费及可接受价格",
-     "verify": "notes/interviews.md 中有 5 条记录", "covers": [1], "tests_assumption": "A1", "estimate_h": 6},
-    {"id": 2, "title": "用表单+收款码做假门测试", "done_when": "至少 1 家店扫码预付 99 元",
-     "verify": "收款记录截图", "covers": [1], "tests_assumption": "A1", "depends_on": [1], "estimate_h": 4},
-    {"id": 3, "title": "部署静态点单页", "done_when": "店主手机能打开点单页",
-     "verify": "页面返回 200", "verify_cmd": "curl -fsS https://demo.example.com/menu > /dev/null",
-     "covers": [1], "estimate_h": 4},
-    {"id": 4, "title": "接入下单接口", "done_when": "测试下单成功", "verify": "接口测试",
-     "verify_cmd": "npm test -- order", "covers": [1], "depends_on": [3], "estimate_h": 6}
+    {"id": 1, "title": "在 PostgreSQL 上跑现有测试", "done_when": "失败用例清单为空或已逐条归因",
+     "verify": "pytest 在 PG 测试库上通过", "covers": [1], "tests_assumption": "A1", "estimate_h": 3,
+     "verify_argv": ["python", "-m", "pytest", "tests/orders", "--db", "postgres"]},
+    {"id": 2, "title": "写迁移脚本并在数据副本上试跑", "done_when": "两库行数与金额合计一致",
+     "verify": "核对脚本退出码 0", "covers": [2], "depends_on": [1], "estimate_h": 5,
+     "verify_argv": ["python", "scripts/compare_counts.py", "--source", "copy.sqlite"]},
+    {"id": 3, "title": "演练切换并计时", "done_when": "演练记录显示只读窗口 ≤ 10 分钟",
+     "verify": "演练记录 docs/ops/cutover-rehearsal.md", "covers": [3], "depends_on": [2], "estimate_h": 2},
+    {"id": 4, "title": "生产切换", "done_when": "生产流量全部走 PostgreSQL",
+     "verify": "切换后核对脚本退出码 0", "covers": [2, 3], "depends_on": [3], "irreversible": true,
+     "estimate_h": 2, "verify_argv": ["python", "scripts/compare_counts.py", "--source", "prod-snapshot"]}
   ],
   "if_then": [
-    {"if": "约不到店主", "then": "去常吃的 3 家店午市后当面问"},
-    {"if": "店主只肯免费用", "then": "问清最低可接受价格并记录，算作 A1 的反面证据"}
+    {"if": "某条原生 SQL 在 PG 上报错", "then": "先加一条只覆盖它的测试，再改写，不批量改"},
+    {"if": "行数一致但金额合计不一致", "then": "检查 numeric 精度映射，停在步骤 2"}
   ],
-  "early_signals": ["连续 3 家店说'现在的纸质菜单够用'"],
   "first_step": 1
 }
 ```
 
-注意三点：前两步都在验证 A1，部署这种"确定能做成"的工作排在后面；第一版里部署是一个 12 小时的步骤，`check plan` 提示拆分，拆成了第 3、4 步；能用命令证明的第 3、4 步都写了 `verify_cmd`，访谈和收款只能用文件证据（`--artifact`）。
+注意四点：
+- 验证 A1 的步骤排第一；
+- 能用命令证明的都写了 `verify_argv`，不经 shell，换到 Windows 上也能跑；
+- 演练记录只能用文件证据（`--artifact`）；
+- 生产切换标了 `irreversible`，开始前脚本会要求两步确认。
 
-`gate B` 的 preview 会列出这两条 `verify_cmd`，用户同意即表示允许脚本执行它们。
+`check plan` 无 error 后，标准档可以把决策卡和计划一起交给用户确认：`de.py gate AB` 返回的 preview 同时列出结论、成功标准、止损和每条验证命令（`runs_via_shell: false`）。用户回复"可以"后，带 `--confirm` 重跑。高风险档不允许 AB，必须分别 `gate A`、`gate B`。
 
 ## ③ 执行：一次一级升级
 
-第 3 步部署后页面 502，按诊断法列了三个独立原因（端口未监听 / 反向代理配置 / 防火墙），排除了前两个后仍失败：
+步骤 2 的核对脚本两次报金额合计不一致：
 
 ```
-$ python3 scripts/de.py fail 3 --note "改完 nginx 配置后仍 502"
+$ de.py fail 2 --note "金额合计差 0.03"
+$ de.py fail 2 --note "改了取整方式仍差 0.03"
 {"fails": 2, "max_fails": 2, "escalate": true, "status": "needs_replan", ...}
-$ python3 scripts/de.py step 3 --status in_progress
-拒绝：步骤 3 已触发升级，待重新规划
 ```
 
-回到②：在 plan.json 把第 3 步改成"改用托管平台部署静态页"（可回滚、成本低），然后 `replan 3 --note "自建 nginx 两次失败，改托管平台"`。脚本核对这一步确实改过；计划结构变了，闸门 B 失效，重新 `gate B` 给用户确认后继续。第 3 步不验证任何关键假设，所以不需要回到①。
+停止盲试，回到②只改这一步：查出 SQLite 的 REAL 存储金额，迁移前要先转成 `numeric(12,2)`。在 `plan.json` 把步骤 2 拆成"2a 金额列转换并单测"和"2b 试迁移"，然后 `replan 2 --note "拆出金额转换"`。计划结构变了，gate B 失效，重新 `gate B` 给用户确认。A1 没有被证伪（问题出在数据类型，不在查询），不回到①。
 
-## ③ 执行：一次二级升级
+开始步骤 4 时：
 
-第 2 步的假门测试中，5 家店里没有一家扫码预付，三家说"免费可以试试"。这是 A1 的反面证据 → 二级升级。
+```
+$ de.py step 4 --status in_progress
+{"needs_confirmation": true, "token": "…", "preview": {"步骤": "生产切换", "警告": "这是不可逆操作，开始前需要用户确认"}}
+```
 
-回到①，只重审 A1：是"不愿意为点单付费"，还是"不愿意为没见过的东西预付"？后者可以用"先免费试用两周再收费"来检验。决策卡修订记录加一行；成功标准的价格从 99 元改为"不低于 69 元"——这改动了成功标准，闸门 A、B 都失效，重新确认。计划里插入新步骤"2 家店免费试用 14 天后报价"，其余步骤不动。
+把 preview 给用户看，用户同意后再带 `--confirm`。
 
-## 阶段复盘（假门测试之后）
+## ④ 审查
 
-1. **预期**：两周内拿到 1 笔预付。
-2. **实际**：预付为零，但免费试用后 2 家中有 1 家愿意付 69 元/月。
-3. **原因**：A1 的表述太粗——"愿意付费"取决于是否先体验过。这是决策质量问题（本可以更早区分），不是运气。
-4. **下次**：写关键假设时，把"愿意付费"拆成"愿意试用"和"试用后愿意付费"两条。
+```
+$ de.py verify --all        # 代码在步骤 3 之后又改过，旧证据已过期
+$ de.py coverage            # 标准 1、2：READY_FOR_INDEPENDENT_REVIEW；标准 3：文件证据，需人工看演练记录
+```
 
-回写：A1 状态改为"部分证实：试用后 1/2 愿付 69 元"；止损条件按新价格修订。
-
-## ④ 交付审查
-
-三个月后，3 家店完成首月付费，所有步骤 done。`verify --all` 重新跑第 3、4 步的命令（代码在第 4 步之后又改过，旧证据已过期）。`review --verdict pass` 的 preview 显示：第 1、2 步是文件证据，第 3、4 步是命令证据。用户确认后记录审查结论。
+`READY_FOR_INDEPENDENT_REVIEW` 不等于通过：逐条对照成功标准，标准 3 打开演练记录确认是 8 分钟。然后 `review --verdict pass`，preview 给用户确认。复盘写进 `retro.md`：估时偏差主要来自数据类型，教训"迁移前先列出所有列在两库中的类型映射"去向是团队规则文件。
 
 ## ⑤ 收尾
 
-**5A**：
+先按 closing-out 完整档同步文档：README 的本地启动命令、`.env.example` 里的数据库地址、AGENTS.md 里"测试用 SQLite"的规则都要改。报告存为 `.decision/closeout-report.md`。
 
 ```
-$ python3 scripts/de.py archive
-{"ok": true, "dry_run": true, "outcome": "完成",
- "would_write": "docs/decisions/2027-01-12-餐馆点单小程序验证.md", "problems": []}
+$ de.py closeout --report .decision/closeout-report.md          # 预览：将写入的决策记录、检查结果
+$ de.py closeout --report .decision/closeout-report.md --apply  # 用户同意后：写决策记录 + 现场重跑审计
 ```
 
-展示预览，用户同意后加 `--apply`。决策记录里写着"知识同步：待完成"。
-
-**5B**：交给 closing-out 完整档，告诉它本次把 `getUser` 改成了 `fetchUser`：
-
-```
-$ python3 <closing-out>/scripts/audit.py --rename getUser=fetchUser > .decision/closeout-audit.json
-```
-
-审计报出：README 的测试命令仍是旧的 `npm run e2e`；AGENTS.md 引用了已删除的 `src/legacy/`；`PLAN.md` 是残留。修好前两项，`PLAN.md` 列入删除候选。修改之后重新审计（旧结果不对应当前代码，`sync` 会拒绝），error 0。报告存为 `.decision/closeout-report.md`，运行 `sync`。
-
-**5C**：提交所有改动。`purge` 列出 9 个将删除的文件，连同 `PLAN.md` 的删除候选一起展示给用户。用户回复"删吧"后，`purge --confirm` 删除工作区，再手动删除 `PLAN.md`，提交，最后再审计一次：error 0。
-
-复盘里的教训"写关键假设时把'愿意付费'拆成'愿意试用'和'试用后付费'"去向：本技能的 Gotchas（这是跨项目的方法教训，不属于这个仓库的规则文件）。
+审计有 error 时 closeout 只完成归档，并提示修复后运行 `sync --report …`。通过后提交所有改动，`de.py purge` 列出将删除的工作区文件，用户同意后 `purge --confirm`，再提交一次。

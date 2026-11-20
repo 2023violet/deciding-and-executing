@@ -2,13 +2,12 @@
 """closing-out/scripts/audit.py 回归与对抗测试。用法: python3 -m unittest discover -s dev/tests"""
 import json
 import os
-import shutil
 import sys
 import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from helpers import AUDIT, DE, call, commit_all, init_repo, write  # noqa: E402
+from helpers import AUDIT, DE, call, commit_all, git, init_repo, rmtree, write  # noqa: E402
 
 
 def checks(data, severity=None):
@@ -25,7 +24,7 @@ class TestAudit(unittest.TestCase):
         write(self.d, "AGENTS.md", "# Rules\n- 测试：`npm test`\n- 代码在 `src/app.ts`\n")
 
     def tearDown(self):
-        shutil.rmtree(self.d, ignore_errors=True)
+        rmtree(self.d, ignore_errors=True)
 
     def audit(self, *args):
         return call(AUDIT, self.d, *args)
@@ -96,6 +95,14 @@ class TestAudit(unittest.TestCase):
         _, d = self.audit()
         self.assertIn(("doc-commands", "README.md"), checks(d, "error"))
 
+    def test_just_recipes_checked(self):
+        write(self.d, "justfile", "set shell := [\"bash\", \"-c\"]\nversion := \"1\"\n\nbuild target='x':\n    echo {{target}}\n\n@lint:\n    echo lint\n")
+        write(self.d, "README.md", "# D\n构建：`just build`，检查：`just lint`，部署：`just deploy`\n")
+        commit_all(self.d)
+        _, d = self.audit()
+        errors = [f for f in d["findings"] if f["check"] == "doc-commands"]
+        self.assertEqual([f["message"].split(" ")[1] for f in errors], ["deploy"], errors)
+
     # ---- 规则链
     def test_rules_chain_requires_import(self):
         write(self.d, "CLAUDE.md", "# Claude\n- plan mode\n")
@@ -155,14 +162,15 @@ class TestAudit(unittest.TestCase):
         write(self.d, "PLAN.md", "- [x] 改 getUser\n")
         write(self.d, "src/app_old.ts", "x")
         commit_all(self.d)
-        write(self.d, "debug thing \"q\" 调试.py", "x")
+        odd = "debug thing 'q' 调试.py" if os.name == "nt" else "debug thing \"q\" 调试.py"  # Windows 文件名不允许双引号
+        write(self.d, odd, "x")
         write(self.d, "docs/新 文件.md", "# x\n")
         code, d = self.audit("--rename", "getUser=fetchUser")
         self.assertNotIn(("stale-names", "PLAN.md"), checks(d))
         warn = sorted(f for c, f in checks(d, "warn") if c == "residue")
         self.assertEqual(warn, ["PLAN.md", "src/app_old.ts"])
         untracked = sorted(f for c, f in checks(d, "info") if c == "residue")
-        self.assertEqual(untracked, ["debug thing \"q\" 调试.py", "docs/新 文件.md"])
+        self.assertEqual(untracked, [odd, "docs/新 文件.md"])
         self.assertIn("docs/新 文件.md", d["inventory"]["changed_files"])
 
     def test_exclude(self):
@@ -174,14 +182,13 @@ class TestAudit(unittest.TestCase):
     def test_changed_files_on_root_commit(self):
         d2 = os.path.realpath(tempfile.mkdtemp())
         try:
-            from helpers import git
             git(d2, "init", "-q")
             write(d2, "README.md", "# x\n")
             commit_all(d2)
             _, d = call(AUDIT, d2)
             self.assertIn("README.md", d["inventory"]["changed_files"])
         finally:
-            shutil.rmtree(d2)
+            rmtree(d2)
 
     # ---- 与 deciding-and-executing 的接口
     def test_decision_workspace_detection_and_exclusion(self):
@@ -218,7 +225,7 @@ class TestAudit(unittest.TestCase):
             self.assertFalse(d["inventory"]["git"])
             self.assertIsNone(d["fingerprint"])
         finally:
-            shutil.rmtree(d2)
+            rmtree(d2)
 
 
 if __name__ == "__main__":
