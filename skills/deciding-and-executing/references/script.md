@@ -32,6 +32,7 @@
 | `sync --report 文件` | 现场运行 closing-out 审计，通过后登记知识同步 |
 | `closeout --report 文件 [--outcome] [--apply]` | 归档与同步一步完成：先预览，用户同意后 `--apply` |
 | `purge` [`--confirm`] | 删除工作区：要求已同步、已提交到 git、只含已知文件 |
+| `prove [--shell] -- <命令>` | 轻量验证：不需要工作区，运行一条命令并绑定当前代码指纹；输出已验证 / 未通过 / 未验证（非 git），不写任何文件 |
 
 需要用户确认的命令，第一次调用只返回 `token`、`preview` 和带 `needs_user: true` 的 `next`；用户同意后带 `--confirm` 重跑。token 由内容计算，内容一变就失效。它防止误操作和确认过期内容，但证明不了确认的是人。
 

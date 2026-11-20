@@ -165,6 +165,8 @@ Changing the decision card's goal, success criteria, non-goals, key assumptions 
 
 **Next action, handoff and the session hook:** every command's JSON carries `next = {cmd, why}`; `cmd` is the next legal action, ready to run, so the agent doesn't have to read the references to know what to do, and commands that need your consent are marked `needs_user`. `handoff` prints a read-only handoff in which each step's evidence freshness is derived by the script, not narrated. `status --brief` prints at most 15 lines of plain text for a session-start hook and nothing when there's no workspace.
 
+**Lightweight check:** without a workspace, `de.py prove -- <command>` runs one command tied to the current code and answers "is this fixed?": verified / failed / unverified (non-git), writing nothing.
+
 **Automatic failure counting:** when the same verify command failed last time and fails again after the code changed, the script counts one failed fix attempt. The first failure is a baseline and reruns on unchanged code don't count. Steps without a verify command still use `fail`.
 
 **Evidence rules for `done`:**
@@ -211,7 +213,7 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 | File | Lifetime | Contents |
 |---|---|---|
 | `.decision/.de-workspace` | While active | Workspace marker; deletion only acts on marked directories |
-| `.decision/decision-card.md` | While active | Verdict, goal, numbered success criteria, non-goals, numbered assumptions, structured stop-loss |
+| `.decision/decision-card.md` | While active | Verdict, goal, numbered success criteria, structured stop-loss; non-goals and numbered assumptions are optional in the standard tier, required in the high-risk tier |
 | `.decision/plan.json` | While active | Plan structure (steps, criteria, verification commands, dependencies), written by the agent |
 | `.decision/state.json` | While active | Status, evidence, gate records, review verdict; written only by the script |
 | `.decision/events.jsonl` | While active | Append-only machine log, including a digest of every state.json write, so an interrupted write or an edit outside the script is detected |
