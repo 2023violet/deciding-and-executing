@@ -1,0 +1,168 @@
+{
+  "skill": "deciding-and-executing",
+  "date": "2026-11-19",
+  "description": "跨会话、返工代价高的工作的决策与执行流程，由脚本强制要求可复核的完成证据。遇到以下情况，在回答或动手之前先调用本技能，不要直接给建议或直接开始改：拿不定要不要做一件多日的事（迁移、重构、新系统、上线发布、改生产数据），或用户说\"先别急着回答\"\"帮我想清楚\"\"帮我理一理\"；方向已定、要拆计划、排每天做什么、定每步怎么算完成；执行中同一步反复失败、怀疑方案本身有问题或做着做着跑偏；问\"可以上线了吗\"\"从头到尾检查一遍还有什么坑\"；接着上次做、仓库里有 .decision 目录、项目做完要结案；或明确要决策卡、SOP、钢人论证、事前验尸、止损、复盘。非代码的重要决定（辞职、开店、创业）同样适用。不用于一次会话能做完的小修复、单纯解释概念、写邮件或文案，也不用于文档同步与仓库整理（那是 closing-out）。Use this skill before answering or editing anything when a multi-day effort is being decided, planned, debugged after repeated failures, checked before shipping (\"is this ready to ship?\"), resumed from a .decision folder or closed out, or when a decision card, steelman, pre-mortem or retro is asked for. Not for quick fixes, concept questions or plain writing.",
+  "runs_per_query": 3,
+  "threshold": 0.5,
+  "environment": {
+    "claude_version": "2.1.246 (Claude Code)",
+    "model": "default",
+    "listing_chars": 200000,
+    "global_skills": 91,
+    "enabled_plugins": [
+      "chrome-devtools-mcp@claude-plugins-official",
+      "claude-md-management@claude-plugins-official",
+      "code-review@claude-plugins-official",
+      "code-simplifier@claude-plugins-official",
+      "commit-commands@claude-plugins-official",
+      "context7@claude-plugins-official",
+      "feature-dev@claude-plugins-official",
+      "frontend-design@claude-plugins-official",
+      "github@claude-plugins-official",
+      "hookify@claude-plugins-official",
+      "lemo-opuscar@lemolab",
+      "pr-review-toolkit@claude-plugins-official",
+      "pyright-lsp@claude-plugins-official",
+      "remember@claude-plugins-official",
+      "rust-analyzer-lsp@claude-plugins-official",
+      "semgrep@claude-plugins-official",
+      "skill-creator@claude-plugins-official",
+      "superpowers@claude-plugins-official",
+      "typescript-lsp@claude-plugins-official"
+    ],
+    "platform": "win32"
+  },
+  "summary": {
+    "passed": 6,
+    "total": 6,
+    "positives_passed": 0,
+    "positives": 0,
+    "negatives_passed": 6,
+    "negatives": 6,
+    "error_runs": 0,
+    "unmeasured_queries": 0,
+    "seconds": 224
+  },
+  "results": [
+    {
+      "query": "帮我想清楚这个变量到底该叫 userId 还是 uid",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "这个函数先别急着改，先给我讲讲它是干什么的",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "要不要把这个 if-else 改成 switch？就一个文件里的事",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Help me decide: should this helper return None or raise an exception? It's a single function.",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Before you answer, think it through: is a list comprehension faster than map here?",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        },
+        {
+          "triggered": false,
+          "why": "answered directly"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "query": "Is this one-line regex fix ready to commit? It only touches the email validator.",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "runs": [
+        {
+          "triggered": false,
+          "why": "other: PowerShell"
+        },
+        {
+          "triggered": false,
+          "why": "other: PowerShell"
+        },
+        {
+          "triggered": false,
+          "why": "other: PowerShell"
+        }
+      ],
+      "pass": true
+    }
+  ]
+}

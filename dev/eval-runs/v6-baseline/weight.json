@@ -1,0 +1,47 @@
+{
+  "skill_md_chars": {
+    "deciding-and-executing": 10079,
+    "closing-out": 5631
+  },
+  "skill_md_lines": {
+    "deciding-and-executing": 150,
+    "closing-out": 113
+  },
+  "standard_flow_files": [
+    "SKILL.md",
+    "references/stage-1-direction.md",
+    "references/stage-2-plan.md",
+    "references/stage-3-execute.md",
+    "references/stage-4-review.md",
+    "references/stage-5-closeout.md",
+    "references/verification-strategy.md"
+  ],
+  "standard_flow_chars": 24499,
+  "first_use_extra_chars": 4045,
+  "references_chars": {
+    "evidence.md": 2417,
+    "example-decision.md": 4423,
+    "permissions.md": 3422,
+    "prompts-standalone.md": 2654,
+    "stage-1-direction.md": 2310,
+    "stage-2-plan.md": 3518,
+    "stage-3-execute.md": 2451,
+    "stage-4-review.md": 2308,
+    "stage-5-closeout.md": 2615,
+    "verification-strategy.md": 1218,
+    "worked-example.md": 4045
+  },
+  "jargon_in_skill_md": {
+    "闸门": 13,
+    "证据链": 0,
+    "证据": 18,
+    "指纹": 5,
+    "两步确认": 6,
+    "门禁": 0,
+    "基线": 0,
+    "哈希": 2,
+    "token": 4,
+    "preview": 6
+  },
+  "jargon_total": 54
+}
