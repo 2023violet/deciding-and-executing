@@ -8,8 +8,8 @@
 
 | 组件 | 版本 | 定位 | 路径 |
 |---|---|---|---|
-| deciding-and-executing | 5.0.0 | 核心候选 | `skills/deciding-and-executing/` |
-| closing-out | 2.2.0 | 核心候选 | `skills/closing-out/` |
+| deciding-and-executing | 6.0.0 | 核心候选 | `skills/deciding-and-executing/` |
+| closing-out | 2.3.0 | 核心候选 | `skills/closing-out/` |
 | independent-verification | 0.2.0 | **实验候选，非默认安装** | `experimental/independent-verification/skill/independent-verification/` |
 
 **只想安装正式核心组合：**只使用 `skills/` 的两个目录，或 `dist/` 内对应的两个 `.skill`。

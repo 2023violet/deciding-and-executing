@@ -138,5 +138,29 @@
   {
     "query": "Update the README and AGENTS.md so they match the new API names we introduced today.",
     "should_trigger": false
+  },
+  {
+    "query": "帮我想清楚这个变量到底该叫 userId 还是 uid",
+    "should_trigger": false
+  },
+  {
+    "query": "这个函数先别急着改，先给我讲讲它是干什么的",
+    "should_trigger": false
+  },
+  {
+    "query": "要不要把这个 if-else 改成 switch？就一个文件里的事",
+    "should_trigger": false
+  },
+  {
+    "query": "Help me decide: should this helper return None or raise an exception? It's a single function.",
+    "should_trigger": false
+  },
+  {
+    "query": "Before you answer, think it through: is a list comprehension faster than map here?",
+    "should_trigger": false
+  },
+  {
+    "query": "Is this one-line regex fix ready to commit? It only touches the email validator.",
+    "should_trigger": false
   }
 ]

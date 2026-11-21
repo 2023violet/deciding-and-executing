@@ -14,6 +14,8 @@
 
 Rule: PASS needs evidence the reviewer obtained itself; anything that needs a real device, a browser view or user acceptance that did not happen is NOT_VERIFIED, not PASS.
 
+Finding no problems is a valid result; just write "no problems found". Every FAIL and every listed problem needs a reproduction; anything you could not reproduce goes under "Explicitly not verified", not under problems.
+
 ## Problems found
 
 - Reproduction (observed, not inferred):

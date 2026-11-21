@@ -1,4 +1,4 @@
-> **Status: v5.0.0 local candidate, not a stable release.** Paired real-agent behavior evaluations haven't been run. What changed in each version and how far it was verified is in the [CHANGELOG](CHANGELOG.md); past reviews and validation records are in [docs/history/](docs/history/) (Chinese).
+> **Status: v6.0.0 local candidate, not a stable release.** Paired real-agent behavior evaluations haven't been run. What changed in each version and how far it was verified is in the [CHANGELOG](CHANGELOG.md); past reviews and validation records are in [docs/history/](docs/history/) (Chinese).
 
 # deciding-and-executing · From decision to delivery to a clean repo
 
@@ -9,7 +9,7 @@
 > **closing-out** owns the repository's knowledge: when a stretch of work ends, it brings the README, docs, rule files and decision records back in line with the code.
 > Scripts guard the gates, and they only claim what they can actually verify. What they can verify, they enforce. What they can't (for example, "did a human really approve this?"), they say so plainly and hand off to the host's approval mechanism.
 
-![version](https://img.shields.io/badge/version-5.0.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
+![version](https://img.shields.io/badge/version-6.0.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 > **Language note:** the skills' instructions, templates and script messages are in Simplified Chinese. Claude and GPT models read them fine and reply in your language.
 
@@ -30,6 +30,7 @@
 - [Design principles and evidence](#design-principles-and-evidence)
 - [Known limitations](#known-limitations)
 - [FAQ](#faq)
+- [Upgrading from 5.0](#upgrading-from-50)
 - [Upgrading from 4.2](#upgrading-from-42)
 - [Upgrading from 4.1](#upgrading-from-41)
 - [Upgrading from 3.x](#upgrading-from-3x)
@@ -161,9 +162,11 @@ Changing the decision card's goal, success criteria, non-goals, key assumptions 
 
 **Step state machine.** `todo → in_progress → implemented → done`, plus `blocked` and `needs_replan`. A `done` step can't be moved back directly; use `reopen`, which archives the old evidence and voids the review. `needs_replan` is cleared only by `replan`.
 
-**`de.py` commands**: the full command table and how to invoke the script (Claude Code, other hosts, Windows) are maintained only in [SKILL.md section 4](skills/deciding-and-executing/SKILL.md) (Chinese), or run `de.py --help`. The everyday ones are `init`, `status`, `gate AB` (or separate `gate A` / `gate B`), `step`, `verify --all`, `coverage`, `review`, `closeout` and `purge`. Commands that need confirmation first return only a `token` and a `preview`; after the user agrees, rerun with `--confirm`.
+**`de.py` commands**: how to invoke the script is in [SKILL.md section 4](skills/deciding-and-executing/SKILL.md) and the full command table in [script.md](skills/deciding-and-executing/references/script.md) (Chinese), or run `de.py --help`. The everyday ones are `init`, `status`, `gate AB` (or separate `gate A` / `gate B`), `step`, `verify --all`, `coverage`, `review`, `closeout` and `purge`. Commands that need confirmation first return only a `token` and a `preview`; after the user agrees, rerun with `--confirm`.
 
 **Next action, handoff and the session hook:** every command's JSON carries `next = {cmd, why}`; `cmd` is the next legal action, ready to run, so the agent doesn't have to read the references to know what to do, and commands that need your consent are marked `needs_user`. `handoff` prints a read-only handoff in which each step's evidence freshness is derived by the script, not narrated. `status --brief` prints at most 15 lines of plain text for a session-start hook and nothing when there's no workspace.
+
+**Lightweight check:** without a workspace, `de.py prove -- <command>` runs one command tied to the current code and answers "is this fixed?": verified / failed / unverified (non-git), writing nothing.
 
 **Automatic failure counting:** when the same verify command failed last time and fails again after the code changed, the script counts one failed fix attempt. The first failure is a baseline and reruns on unchanged code don't count. Steps without a verify command still use `fail`.
 
@@ -211,7 +214,7 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 | File | Lifetime | Contents |
 |---|---|---|
 | `.decision/.de-workspace` | While active | Workspace marker; deletion only acts on marked directories |
-| `.decision/decision-card.md` | While active | Verdict, goal, numbered success criteria, non-goals, numbered assumptions, structured stop-loss |
+| `.decision/decision-card.md` | While active | Verdict, goal, numbered success criteria, structured stop-loss; non-goals and numbered assumptions are optional in the standard tier, required in the high-risk tier |
 | `.decision/plan.json` | While active | Plan structure (steps, criteria, verification commands, dependencies), written by the agent |
 | `.decision/state.json` | While active | Status, evidence, gate records, review verdict; written only by the script |
 | `.decision/events.jsonl` | While active | Append-only machine log, including a digest of every state.json write, so an interrupted write or an edit outside the script is detected |
@@ -230,7 +233,7 @@ The output includes `complete` (false if truncated), `evidence_level: "static"`,
 ├── LICENSE
 ├── .claude-plugin/                Claude Code plugin and marketplace manifests (publishes skills/ as one plugin)
 ├── skills/                        ← The only thing you install
-│   ├── deciding-and-executing/   SKILL.md, references/ (five stages, permissions, example, prompts, evidence),
+│   ├── deciding-and-executing/   SKILL.md, references/ (three process docs, script reference, permissions, examples, prompts, evidence),
 │   │                              scripts/de.py, assets/ (templates), agents/openai.yaml
 │   └── closing-out/              SKILL.md, references/ (routing, placement, example),
 │                                  scripts/audit.py, assets/report.md, agents/openai.yaml
@@ -305,6 +308,14 @@ Full rationale: [evidence.md](skills/deciding-and-executing/references/evidence.
 **Will it change my agent memory?** Not by default.
 
 **Why not use someone else's cleanup skill?** You can; the ideas overlap. closing-out shares one interface and set of conventions with deciding-and-executing, and moves more of the checking into a script.
+
+## Upgrading from 5.0
+
+In-progress workspaces need no migration and existing confirmations stay valid. What changes for you:
+- **The standard-tier decision card requires only three sections**: goal, numbered success criteria and stop-loss. Non-goals and key assumptions are optional (assumptions you do write must still be numbered A1, A2...); the high-risk tier is unchanged.
+- **Reference docs reorganised**: the five stage docs are merged into `direction.md`, `plan-and-execute.md` and `review-and-close.md`, and script details moved to `script.md`. Prompts or rules that name the old files (`stage-1-direction.md` etc.) need updating.
+- **New `de.py prove -- <command>`**: shows "this is fixed" without creating a workspace.
+- `check plan` suggests commands the repo already has for steps without a verify command, and warns about Unix-only `verify_cmd` syntax.
 
 ## Upgrading from 4.2
 

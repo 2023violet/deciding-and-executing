@@ -1,0 +1,43 @@
+{
+  "skill_md_chars": {
+    "deciding-and-executing": 5024,
+    "closing-out": 5631
+  },
+  "skill_md_lines": {
+    "deciding-and-executing": 69,
+    "closing-out": 113
+  },
+  "standard_flow_files": [
+    "SKILL.md",
+    "references/direction.md",
+    "references/plan-and-execute.md",
+    "references/review-and-close.md"
+  ],
+  "standard_flow_chars": 13737,
+  "first_use_extra_chars": 4045,
+  "references_chars": {
+    "direction.md": 1697,
+    "evidence.md": 2417,
+    "example-decision.md": 4423,
+    "permissions.md": 3422,
+    "plan-and-execute.md": 3777,
+    "prompts-standalone.md": 3226,
+    "review-and-close.md": 3239,
+    "script.md": 2780,
+    "verification-strategy.md": 1218,
+    "worked-example.md": 4045
+  },
+  "jargon_in_skill_md": {
+    "闸门": 0,
+    "证据链": 0,
+    "证据": 10,
+    "指纹": 1,
+    "两步确认": 0,
+    "门禁": 0,
+    "基线": 0,
+    "哈希": 0,
+    "token": 0,
+    "preview": 1
+  },
+  "jargon_total": 12
+}

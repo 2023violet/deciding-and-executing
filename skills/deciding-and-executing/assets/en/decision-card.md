@@ -10,10 +10,10 @@
 ## Success criteria
 1. [observable and verifiable, ideally with a number or a named acceptor; the plan refers to these numbers]
 
-## Non-goals
+## Non-goals (optional in the standard tier)
 - [what you explicitly won't do; the yardstick for drift]
 
-## Key assumptions
+## Key assumptions (optional in the standard tier)
 | # | Assumption | If it is false | Status |
 |---|---|---|---|
 | A1 | [the one that could flip the verdict] | | unverified |

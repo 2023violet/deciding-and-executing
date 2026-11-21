@@ -1,4 +1,4 @@
-> **状态：v5.0.0 本地候选，非稳定发布。** 真实 Agent 的行为对照评测尚未运行；各版本改了什么、验证到哪一层，见 [CHANGELOG](CHANGELOG.md)，历次评审与验收记录在 [docs/history/](docs/history/)。
+> **状态：v6.0.0 本地候选，非稳定发布。** 真实 Agent 的行为对照评测尚未运行；各版本改了什么、验证到哪一层，见 [CHANGELOG](CHANGELOG.md)，历次评审与验收记录在 [docs/history/](docs/history/)。
 
 # deciding-and-executing · 从决策到执行，再到收拾干净
 
@@ -9,7 +9,7 @@
 > **closing-out** 负责整个仓库的知识：工作结束后，让 README、docs、规则文件、决策记录重新与代码现状一致。
 > 闸门由脚本把守。脚本只宣称它能验证的东西：能验证的就强制，不能验证的（比如"是不是真人同意的"）就明说，并交给宿主的审批机制。
 
-![version](https://img.shields.io/badge/version-5.0.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
+![version](https://img.shields.io/badge/version-6.0.0--candidate-blue) ![spec](https://img.shields.io/badge/Agent%20Skills-open%20spec-green) ![platforms](https://img.shields.io/badge/Claude%20Code%20%7C%20Codex%20%7C%20claude.ai-supported-purple) ![python](https://img.shields.io/badge/python-3.8%2B%20stdlib%20only-yellow) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ---
 
@@ -28,6 +28,7 @@
 - [设计原则与依据](#设计原则与依据)
 - [已知局限](#已知局限)
 - [常见问题](#常见问题)
+- [从 5.0 升级](#从-50-升级)
 - [从 4.2 升级](#从-42-升级)
 - [从 4.1 升级](#从-41-升级)
 - [从 3.x 升级](#从-3x-升级)
@@ -154,9 +155,11 @@
 
 **步骤状态机**：`todo → in_progress → implemented → done`，另有 `blocked` 和 `needs_replan`。`done` 不能直接改回去，只能 `reopen`（旧证据归档、审查结论作废）；`needs_replan` 只能通过 `replan` 解除。
 
-**`de.py` 命令**：完整命令表与调用方式（Claude Code、其他宿主、Windows 的写法）只维护在 [SKILL.md 第 4 节](skills/deciding-and-executing/SKILL.md)，也可以运行 `de.py --help`。最常用的是：`init`、`status`、`gate AB`（或分开的 `gate A` / `gate B`）、`step`、`verify --all`、`coverage`、`review`、`closeout`、`purge`。需要确认的命令第一次只返回 `token` 与 `preview`，用户同意后带 `--confirm` 重跑。
+**`de.py` 命令**：调用方式写在 [SKILL.md 第 4 节](skills/deciding-and-executing/SKILL.md)，完整命令表在 [script.md](skills/deciding-and-executing/references/script.md)，也可以运行 `de.py --help`。最常用的是：`init`、`status`、`gate AB`（或分开的 `gate A` / `gate B`）、`step`、`verify --all`、`coverage`、`review`、`closeout`、`purge`。需要确认的命令第一次只返回 `token` 与 `preview`，用户同意后带 `--confirm` 重跑。
 
 **下一步、交接与会话钩子**：每条命令的 JSON 都带 `next = {cmd, why}`，`cmd` 是可以直接运行的下一个合法动作，Agent 不用读完参考文档才知道该做什么；需要你同意的命令标 `needs_user`。`handoff` 输出只读的交接摘要（每步的证据新鲜度由脚本推出，不是叙述）。`status --brief` 只输出 15 行以内的纯文本，给会话开始钩子用，没有工作区时不输出。
+
+**轻量验证**：不想建工作区时，`de.py prove -- <命令>` 运行一条命令并绑定当前代码，回答"这改好了吗"：已验证 / 未通过 / 未验证（非 git），不写任何文件。
 
 **失败自动计数**：同一个验证命令上次失败、这次改了代码仍失败，脚本自动计一次修复失败；第一次失败是基线，代码没变的重跑不计。没有验证命令的步骤仍用 `fail` 手动记录。
 
@@ -202,7 +205,7 @@ python3 scripts/audit.py [--root .] [--base main] [--rename 旧=新 ...] [--excl
 | 文件 | 生命周期 | 说明 |
 |---|---|---|
 | `.decision/.de-workspace` | 进行中 | 工作区标记；删除时只认带标记的目录 |
-| `.decision/decision-card.md` | 进行中 | 结论、目标、编号的成功标准、非目标、编号假设、结构化止损条件 |
+| `.decision/decision-card.md` | 进行中 | 结论、目标、编号的成功标准、结构化止损条件；非目标与编号假设在标准档选填、高风险档必填 |
 | `.decision/plan.json` | 进行中 | 计划结构（步骤、判据、验证命令、依赖），由 Agent 编写 |
 | `.decision/state.json` | 进行中 | 状态、证据、闸门记录、审查结论，只由脚本写入 |
 | `.decision/events.jsonl` | 进行中 | 只追加的机器事件日志，含每次写入 state.json 的摘要；中断或在脚本之外的修改可被发现 |
@@ -223,7 +226,7 @@ python3 scripts/audit.py [--root .] [--base main] [--rename 旧=新 ...] [--excl
 ├── skills/                        ← 需要安装的只有这里
 │   ├── deciding-and-executing/
 │   │   ├── SKILL.md
-│   │   ├── references/            五个阶段、permissions、示例、独立提示词、设计依据
+│   │   ├── references/            三份流程文档（定方向 / 计划与执行 / 审查与收尾）、脚本说明、permissions、示例、独立提示词、设计依据
 │   │   ├── scripts/de.py
 │   │   ├── assets/                决策卡、计划、进度日志、复盘、独立复核报告模板
 │   │   └── agents/openai.yaml
@@ -298,6 +301,14 @@ bash dev/evals/closing-out/make_fixture.sh /tmp/fixture-co                      
 **它会改我的 Agent 记忆吗？** 默认不会。
 
 **为什么不直接用别人的收尾技能？** 可以用，思路相通。这里的 closing-out 与 deciding-and-executing 共享一套接口与约定，并把更多检查交给了脚本。
+
+## 从 5.0 升级
+
+进行中的工作区不需要迁移，已有的确认保持有效。会影响你的变化：
+- **标准档决策卡只要求三节**：目标、编号的成功标准、止损。非目标和关键假设改为选填（写了关键假设仍要按 A1、A2 编号）；高风险档不变。
+- **参考文档重组**：五份阶段文档合并为 `direction.md`、`plan-and-execute.md`、`review-and-close.md`，脚本细节移到 `script.md`。引用了旧文件名（`stage-1-direction.md` 等）的提示词或规则要改。
+- **新增 `de.py prove -- <命令>`**：不建工作区也能证明"这改好了"。
+- `check plan` 会为没写验证命令的步骤推荐仓库里已有的命令，并提示只在 Unix 下能用的 `verify_cmd` 写法。
 
 ## 从 4.2 升级
 

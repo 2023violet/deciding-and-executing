@@ -99,6 +99,8 @@ _SECTION_LOOKUP = {alias: zh for zh, aliases in SECTION_ALIASES.items() for alia
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next",
              "vendor", "target", ".tox", ".mypy_cache", ".pytest_cache", "coverage"}   # 与 audit.py 一致
 CARD_SECTIONS = ["目标", "成功标准", "非目标", "关键假设", "止损条件"]
+# 标准档只要求这三节；非目标与关键假设选填（填了照常进入确认哈希）。高风险档五节都必填。
+CARD_REQUIRED_STANDARD = ["目标", "成功标准", "止损条件"]
 GATE_A_SECTIONS = CARD_SECTIONS.copy()   # 改动这些即"方向变了"，闸门 A 失效
 STRUCT_FIELDS = ["id", "title", "done_when", "verify", "verify_cmd", "depends_on", "tests_assumption",
                  "covers", "irreversible", "estimate_h"]          # 改动这些即"计划变了"，闸门 B 失效
@@ -651,9 +653,22 @@ def card_info(ctx):
             "assumptions": [l for l in meaningful(sec.get("关键假设", [])) if re.search(r"\|\s*A\d+\s*\|", l)]}
 
 
-def card_errors(ci):
+def workspace_risk(ctx):
+    """风险档位：以 plan.json 为准；计划读不了时退回 init 写在标记里的档位。"""
+    try:
+        return load_plan(ctx).get("risk", "standard")
+    except Refuse:
+        try:
+            with open(ctx.p(MARKER), encoding="utf-8") as f:
+                return json.load(f).get("risk", "standard")
+        except (OSError, ValueError, AttributeError):
+            return "standard"
+
+
+def card_errors(ci, risk="standard"):
     errors, warnings = [], []
-    for s in CARD_SECTIONS:
+    required = CARD_SECTIONS if risk == "high" else CARD_REQUIRED_STANDARD
+    for s in required:
         if s not in ci["sec"]:
             errors.append("缺少章节「%s」" % s)
         elif not meaningful(ci["sec"][s]):
@@ -667,7 +682,9 @@ def card_errors(ci):
         body = re.sub(r"^\d+[.、]\s*", "", c)
         if any(w in body.lower() for w in VAGUE_WORDS) and not re.search(r"\d", body):
             warnings.append("成功标准可能无法验证（含模糊词且没有数字）：「%s」" % c)
-    if "关键假设" in ci["sec"] and not ci["assumptions"]:
+    # 关键假设：高风险档必填；标准档选填，但写了内容就要按 A1、A2… 编号
+    if "关键假设" in ci["sec"] and not ci["assumptions"] \
+            and (risk == "high" or meaningful(ci["sec"]["关键假设"])):
         errors.append("关键假设表里没有编号为 A1、A2… 的假设")
     if ci["deadline"] in (None, "invalid"):
         errors.append("止损条件缺少「- 期限：YYYY-MM-DD」或日期格式不对")
@@ -708,6 +725,89 @@ def gate_a_hash(ci):
 
 
 # ---------------------------------------------------------------- 计划校验
+_POSIX_ONLY = (
+    (r"(?:^|[;&|(\s])test\s+-[a-zA-Z]\b", "test -X"),
+    (r"(?:^|[;&|(\s])\[\s+-[a-zA-Z]\b", "[ -X ]"),
+    (r"/dev/null", "/dev/null"),
+    (r"\$\(", "$(...)"),
+    (r"`", "反引号"),
+    (r"(?:^|\s)'[^']*'", "单引号参数"),
+    (r"(?:^|[;&|]\s*)export\s+\w+=", "export"),
+)
+
+
+def posix_only_syntax(cmd):
+    """verify_cmd 里只有 Unix shell 认识的写法（cmd.exe 下会失败）；这是提示，不是完整的解析。"""
+    return [label for pattern, label in _POSIX_ONLY if cmd and re.search(pattern, cmd)]
+
+
+# 常见的测试与检查入口：给"没有验证命令"的步骤提供候选 verify_argv
+_SCRIPT_KEYS = ("test", "check", "lint", "typecheck", "build")
+
+
+def suggest_verify_commands(root):
+    """从仓库已有的配置里找能当验证命令的入口。只建议，不写进计划。"""
+    found = []
+
+    def add(argv, source):
+        if argv not in [x["argv"] for x in found]:
+            found.append({"argv": argv, "source": source})
+
+    pkg = os.path.join(root, "package.json")
+    if os.path.isfile(pkg):
+        try:
+            with open(pkg, encoding="utf-8") as f:
+                scripts = (json.load(f) or {}).get("scripts") or {}
+        except (OSError, ValueError, AttributeError):
+            scripts = {}
+        tool = "pnpm" if os.path.exists(os.path.join(root, "pnpm-lock.yaml")) else \
+            "yarn" if os.path.exists(os.path.join(root, "yarn.lock")) else "npm"
+        for key in _SCRIPT_KEYS:
+            if isinstance(scripts, dict) and key in scripts:
+                add([tool, "test"] if key == "test" and tool != "yarn" else [tool, "run", key],
+                    "package.json scripts.%s" % key)
+    pytest_markers = ["pytest.ini", "conftest.py", "tox.ini"]
+    pyproject = os.path.join(root, "pyproject.toml")
+    has_pytest = any(os.path.exists(os.path.join(root, m)) for m in pytest_markers)
+    if not has_pytest and os.path.isfile(pyproject):
+        try:
+            with open(pyproject, encoding="utf-8") as f:
+                has_pytest = "[tool.pytest" in f.read()
+        except OSError:
+            pass
+    if has_pytest:
+        add(["python", "-m", "pytest"], "pytest 配置")
+    for name in ("Makefile", "makefile", "GNUmakefile"):
+        path = os.path.join(root, name)
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    targets = set(re.findall(r"(?m)^([A-Za-z0-9_.-]+)\s*:(?!=)", f.read()))
+            except OSError:
+                targets = set()
+            for key in _SCRIPT_KEYS:
+                if key in targets:
+                    add(["make", key], "%s 目标 %s" % (name, key))
+            break
+    for name in ("justfile", "Justfile", ".justfile"):
+        path = os.path.join(root, name)
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    recipes = set(re.findall(r"(?m)^@?([A-Za-z0-9_-]+)(?:[ \t]+[^:\n]*)?:(?!=)", f.read()))
+            except OSError:
+                recipes = set()
+            for key in _SCRIPT_KEYS:
+                if key in recipes:
+                    add(["just", key], "%s 配方 %s" % (name, key))
+            break
+    if os.path.isfile(os.path.join(root, "Cargo.toml")):
+        add(["cargo", "test"], "Cargo.toml")
+    if os.path.isfile(os.path.join(root, "go.mod")):
+        add(["go", "test", "./..."], "go.mod")
+    return found[:8]
+
+
 def plan_errors(plan, ci):
     errors, warnings = [], []
     steps, risk = plan["steps"], plan.get("risk", "standard")
@@ -735,6 +835,10 @@ def plan_errors(plan, ci):
             errors.append("步骤 %s 同时写了 verify_cmd 和 verify_argv，只能保留一种" % sid)
         if risk == "high" and not has_verify(s):
             warnings.append("高风险计划中步骤 %s 没有验证命令（verify_argv / verify_cmd）：只能用文件证据完成" % sid)
+        posix = posix_only_syntax(str(s.get("verify_cmd") or ""))
+        if posix:
+            warnings.append("步骤 %s 的 verify_cmd 用了 Unix shell 专用写法（%s），在 Windows 的 cmd.exe 上会失败；"
+                            "能改就写成 verify_argv" % (sid, "、".join(posix)))
     graph = {sid_key(s.get("id")): [sid_key(d) for d in s.get("depends_on", [])] for s in steps}
     seen, stack = set(), set()
 
@@ -1103,15 +1207,20 @@ def cmd_check(a, ctx):
     ctx.require()
     ci = card_info(ctx)
     if a.target == "card":
-        errors, warnings = card_errors(ci)
+        errors, warnings = card_errors(ci, workspace_risk(ctx))
         out({"ok": not errors, "errors": errors, "warnings": warnings,
              "verdict": ci["verdict"], "assumptions": ci["assumptions"],
              "next": nx(ctx, ("check", "card"), "next.fix_card", n=len(errors)) if errors
              else light_next(ctx, ci=ci)}, 0 if not errors else 1)
     plan = load_plan(ctx)
     errors, warnings = plan_errors(plan, ci)
+    missing = [sid_key(s.get("id")) for s in plan["steps"] if not has_verify(s)]
+    suggestions = suggest_verify_commands(ctx.root) if missing else []
+    if suggestions:
+        warnings.append("步骤 %s 没有验证命令；仓库里已有可用的入口：%s（见 suggested_verify_argv，合适就写进对应步骤的 verify_argv）"
+                        % (missing, "、".join(" ".join(x["argv"]) for x in suggestions)))
     out({"ok": not errors, "errors": errors, "warnings": warnings, "step_count": len(plan["steps"]),
-         "risk": plan.get("risk", "standard"),
+         "risk": plan.get("risk", "standard"), "suggested_verify_argv": suggestions,
          "next": nx(ctx, ("check", "plan"), "next.fix_plan", n=len(errors)) if errors
          else light_next(ctx, plan=plan, ci=ci)}, 0 if not errors else 1)
 
@@ -1138,7 +1247,7 @@ def cmd_gate(a, ctx):
     ci, plan = card_info(ctx), load_plan(ctx)
     gates = plan.setdefault("gates", {})
     if a.which in ("A", "AB"):
-        errors, warnings_a = card_errors(ci)
+        errors, warnings_a = card_errors(ci, plan.get("risk", "standard"))
         if errors:
             out({"ok": False, "gate": "A", "errors": errors, "warnings": warnings_a,
                  "next": nx(ctx, ("check", "card"), "next.fix_card", n=len(errors))}, 1)
@@ -1561,7 +1670,7 @@ def cmd_reopen(a, ctx):
 def retro_problems(ctx):
     path = ctx.p("retro.md")
     if not os.path.exists(path):
-        return ["缺少 retro.md：先按 stage-4-review.md 完成复盘"]
+        return ["缺少 retro.md：先按 review-and-close.md 完成复盘"]
     with open(path, encoding="utf-8") as f:
         text = f.read()
     sec, cur = {}, None
@@ -1688,7 +1797,7 @@ MESSAGES = {
         "next.verify_retry": "验证未通过（已计失败 {fails}/{max}）：查明原因、修改后再试",
         "next.verify_all": "审查前重新验证：步骤 {steps} 的命令证据已不对应当前代码",
         "next.reopen": "步骤 {step} 的证据文件已变化：reopen 后重新完成",
-        "next.review_pass": "全部步骤已完成：按 stage-4 审查，把预览给用户看后记录审查结论",
+        "next.review_pass": "全部步骤已完成：按 review-and-close.md 审查，把预览给用户看后记录审查结论",
         "next.review_fix": "审查结论为 fix：把阻断项写成新步骤加入 plan.json，再检查计划",
         "next.review_fail": "审查结论为 fail：和用户决定回到哪一级；决定停止就以止损归档",
         "next.retro": "先写完复盘 retro.md（{problems}），再归档",
@@ -1732,6 +1841,14 @@ MESSAGES = {
         "handoff.criteria": "## 成功标准覆盖", "handoff.criteria_head": "| # | 标准 | 状态 |",
         "handoff.events": "## 最近事件", "handoff.next": "## 下一步",
         "handoff.files": "## 相关文件（只列路径；需要内容时直接读文件）", "handoff.none": "无",
+        "prove.verified": "已验证：命令在当前代码上通过（退出码 0，执行期间代码没变）",
+        "prove.failed": "未通过：命令退出码非 0，或执行期间代码被改动",
+        "prove.unverifiable": "命令通过了，但这里不是 git 仓库，无法绑定到当前代码：只能算未验证",
+        "prove.limits": "只证明这条命令在当前代码上通过，不等于需求已经满足；命令没覆盖到的部分仍要写明未验证",
+        "next.prove_done": "可以把这条命令和结果作为证据告诉用户；代码再改就要重新运行",
+        "next.prove_failed": "查明原因、修改后再运行同一条命令",
+        "next.prove_unverifiable": "如实告诉用户这是未验证的结果，或在 git 仓库里重新运行",
+        "next.prove_workspace": "这里有决策工作区：要记为某一步的证据，把这条命令写进该步骤的验证命令，再完成那一步",
     },
     "en": {
         "ph.note": "<note>", "ph.evidence": "<evidence>", "ph.artifact": "<evidence file>", "ph.reason": "<reason>",
@@ -1759,7 +1876,7 @@ MESSAGES = {
         "next.verify_retry": "Verification failed (counted failures {fails}/{max}): find the cause, change something, then retry",
         "next.verify_all": "Re-verify before review: command evidence for steps {steps} no longer matches the code",
         "next.reopen": "Step {step}'s evidence file changed: reopen it and finish it again",
-        "next.review_pass": "All steps are done: review per stage-4, show the preview to the user, then record the verdict",
+        "next.review_pass": "All steps are done: review per review-and-close.md, show the preview to the user, then record the verdict",
         "next.review_fix": "Review verdict is fix: add the blockers to plan.json as new steps, then check the plan",
         "next.review_fail": "Review verdict is fail: decide with the user which level to return to; if stopping, archive as stopped",
         "next.retro": "Finish retro.md first ({problems}), then archive",
@@ -1804,6 +1921,14 @@ MESSAGES = {
         "handoff.criteria": "## Success criteria coverage", "handoff.criteria_head": "| # | Criterion | Status |",
         "handoff.events": "## Recent events", "handoff.next": "## Next",
         "handoff.files": "## Files (paths only; read them directly for content)", "handoff.none": "none",
+        "prove.verified": "Verified: the command passed on the current code (exit code 0, code unchanged while it ran)",
+        "prove.failed": "Failed: non-zero exit code, or the code changed while the command ran",
+        "prove.unverifiable": "The command passed, but this is not a git repo so it can't be tied to the current code: treat it as unverified",
+        "prove.limits": "This only shows the command passes on the current code, not that the requirement is met; anything it doesn't cover is still unverified",
+        "next.prove_done": "Report this command and its result to the user as evidence; rerun it if the code changes",
+        "next.prove_failed": "Find the cause, change something, then rerun the same command",
+        "next.prove_unverifiable": "Tell the user this result is unverified, or rerun inside a git repo",
+        "next.prove_workspace": "There is a decision workspace here: to record this as a step's evidence, put the command in that step's verify command and finish the step",
     },
 }
 
@@ -1956,7 +2081,7 @@ def snap_next(ctx, snap):
     """按阶段补算 next_action 需要的检查，再求下一步。"""
     extras, stage = {}, snap["stage"]
     if stage == "direction":
-        extras["card_errors"] = card_errors(snap["ci"])[0]
+        extras["card_errors"] = card_errors(snap["ci"], snap["plan"].get("risk", "standard"))[0]
         if not extras["card_errors"]:
             extras["plan_errors"] = plan_errors(snap["plan"], snap["ci"])[0]
     elif stage == "plan":
@@ -2194,7 +2319,7 @@ def archive_core(a, ctx, apply):
     problems = []
     if not inside(docs_dir, ctx.root) or inside(docs_dir, ctx.dir):
         problems.append("--docs-dir 必须位于项目内且不在工作区里：%s" % docs_dir)
-    errors, _ = card_errors(ci)
+    errors, _ = card_errors(ci, plan.get("risk", "standard"))
     if errors:
         problems.append("决策卡未通过检查：" + "；".join(errors))
     problems += retro_problems(ctx)
@@ -2408,6 +2533,33 @@ def cmd_purge(a, ctx):
          "next": nx(ctx, None, "next.purge_done")})
 
 
+def cmd_prove(a, ctx):
+    """轻量入口：不需要工作区，运行一条验证命令并绑定当前代码指纹。只输出结果，不写任何文件。"""
+    parts = list(a.command)
+    if parts and parts[0] == "--":
+        parts = parts[1:]
+    if not parts:
+        raise Refuse("用法：de.py prove -- <验证命令及参数>（需要管道或重定向时加 --shell）", 2)
+    step = {"id": "prove", "verify_cmd": " ".join(parts)} if a.shell else {"id": "prove", "verify_argv": parts}
+    ev = run_verify(ctx, step, a.timeout)
+    if ev.get("note"):
+        verdict = "failed"            # 执行期间代码变了：这次结果不算数
+    elif ev["exit_code"] != 0:
+        verdict = "failed"
+    elif ev["fingerprint"] is None:
+        verdict = "unverifiable"      # 非 git：命令通过了，但没法绑定到当前代码
+    else:
+        verdict = "verified"
+    has_ws = os.path.isfile(ctx.p(MARKER))
+    out({"ok": verdict == "verified", "verdict": verdict, "command": ev["cmd"], "exit_code": ev["exit_code"],
+         "seconds": ev["seconds"], "fingerprint": ev["fingerprint"], "output_tail": ev["output_tail"][-1000:],
+         "note": ev.get("note") or T(ctx, "prove." + verdict),
+         "limits": T(ctx, "prove.limits"),
+         "next": nx(ctx, ("status",), "next.prove_workspace") if has_ws and verdict == "verified"
+         else nx(ctx, None, "next.prove_" + ("done" if verdict == "verified" else verdict))},
+        0 if verdict == "verified" else 1)
+
+
 def cmd_list(a, ctx):
     items = []
     for rel in find_workspaces(ctx.root, ctx.git):
@@ -2512,6 +2664,11 @@ def main():
     s = add("purge", "删除已归档且已同步的工作区（两步确认；要求已提交到 git）")
     s.add_argument("--confirm")
     add("show", "把计划渲染成 Markdown 表格")
+    s = add("prove", "轻量验证：不需要工作区，运行一条命令并绑定当前代码指纹（只输出结果，不写文件）")
+    s.add_argument("--shell", action="store_true",
+                   help="把 -- 之后的内容作为一整条命令交给系统 shell（需要管道、重定向时；整条命令放在一个引号里）")
+    s.add_argument("--timeout", type=int, default=600)
+    s.add_argument("command", nargs=argparse.REMAINDER, help="-- 之后是要运行的命令及参数")
 
     a = ap.parse_args()
     if not a.cmd:
@@ -2525,7 +2682,7 @@ def main():
         {"init": cmd_init, "check": cmd_check, "gate": cmd_gate, "status": cmd_status, "step": cmd_step,
          "verify": cmd_verify, "preflight": cmd_preflight, "coverage": cmd_coverage, "fail": cmd_fail, "replan": cmd_replan, "reopen": cmd_reopen,
          "review": cmd_review, "archive": cmd_archive, "sync": cmd_sync, "purge": cmd_purge,
-         "closeout": cmd_closeout, "list": cmd_list, "show": cmd_show, "handoff": cmd_handoff}[a.cmd](a, ctx)
+         "closeout": cmd_closeout, "list": cmd_list, "show": cmd_show, "handoff": cmd_handoff, "prove": cmd_prove}[a.cmd](a, ctx)
     except Refuse as r:
         print(("需要确认：" if r.extra.get("needs_confirmation") else "拒绝：") + r.reason, file=sys.stderr)
         extra = dict(r.extra)
